@@ -39,6 +39,7 @@ export async function GET(req: NextRequest) {
       difficulty: r.difficulty,
       prepTime: r.prepTime,
       cuisine: r.cuisine,
+      imageUrl: r.imageUrl || '',
       matchPercent,
       matchCount: `${available}/${total} ingrédients`,
       isFavorite: r.favorites.length > 0,

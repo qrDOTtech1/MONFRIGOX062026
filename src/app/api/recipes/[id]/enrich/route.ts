@@ -4,9 +4,7 @@ import { getCurrentUser } from '@/lib/auth';
 import { chatCompletion } from '@/lib/ollama';
 
 // POST /api/recipes/[id]/enrich
-// Accessible à tout utilisateur connecté.
-// Traduit + calcule la nutrition si ce n'est pas déjà fait.
-// Renvoie la recette mise à jour.
+// Traduit recette + ingrédients en français + calcule valeurs nutritionnelles.
 export async function POST(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
@@ -18,27 +16,40 @@ export async function POST(
 
   const recipe = await prisma.recipe.findUnique({
     where: { id },
-    select: { id: true, name: true, description: true, instructions: true, cuisine: true, servings: true, calories: true },
+    select: {
+      id: true, name: true, description: true, instructions: true,
+      cuisine: true, servings: true, calories: true,
+      ingredients: { include: { ingredient: true } },
+    },
   });
   if (!recipe) return NextResponse.json({ error: 'Introuvable' }, { status: 404 });
 
-  // Déjà enrichi → on retourne directement
+  // Déjà enrichi → retour immédiat
   if (recipe.calories !== null) {
     return NextResponse.json({ alreadyDone: true });
   }
 
+  // Ingrédients potentiellement en anglais
+  const ingredientList = recipe.ingredients.map(i => ({
+    id: i.ingredient.id,
+    name: i.ingredient.name,
+    unit: i.unit,
+  }));
+
   const prompt = `Tu es un assistant culinaire expert en nutrition.
 
-Voici une recette (peut être en anglais ou dans une autre langue) :
+Voici une recette (peut être en anglais) :
 - Nom: ${recipe.name}
 - Description: ${recipe.description}
 - Instructions: ${recipe.instructions}
 - Cuisine: ${recipe.cuisine}
 - Portions: ${recipe.servings}
+- Ingrédients: ${ingredientList.map(i => `"${i.name}" (unité: "${i.unit}")`).join(', ')}
 
 Ta tâche :
-1. Traduis le nom, la description et les instructions EN FRANÇAIS si ce n'est pas déjà le cas. Si c'est déjà en français, garde les textes tels quels.
-2. Estime les valeurs nutritionnelles PAR PORTION (pour ${recipe.servings} portion${recipe.servings > 1 ? 's' : ''}).
+1. Traduis EN FRANÇAIS le nom, la description, les instructions et chaque ingrédient si ce n'est pas déjà le cas.
+2. Traduis également les unités de mesure (cups → tasses ou ml, tbsp → cuillère à soupe, tsp → cuillère à café, oz → g, lb → g, etc.)
+3. Estime les valeurs nutritionnelles PAR PORTION.
 
 Réponds UNIQUEMENT en JSON valide, sans commentaire, sans balise markdown :
 {
@@ -50,10 +61,14 @@ Réponds UNIQUEMENT en JSON valide, sans commentaire, sans balise markdown :
   "carbs": 40.0,
   "fat": 18.0,
   "fiber": 4.5,
-  "salt": 1.2
+  "salt": 1.2,
+  "ingredients": [
+    { "id": "...", "nameFr": "...", "unitFr": "..." }
+  ]
 }
 
-Pour les instructions : garde chaque étape sur une ligne séparée (\\n). Supprime les numéros en début d'étape.`;
+Pour les instructions : chaque étape sur une ligne séparée (\\n). Sans numéros en début d'étape.
+Pour les ingrédients : traduis seulement, garde le même id.`;
 
   try {
     const resp = await chatCompletion(
@@ -70,6 +85,7 @@ Pour les instructions : garde chaque étape sur une ligne séparée (\\n). Suppr
 
     const data = JSON.parse(jsonMatch[0]);
 
+    // Mise à jour de la recette
     const updated = await prisma.recipe.update({
       where: { id },
       data: {
@@ -84,6 +100,29 @@ Pour les instructions : garde chaque étape sur une ligne séparée (\\n). Suppr
         salt:     typeof data.salt     === 'number' ? data.salt     : undefined,
       },
     });
+
+    // Mise à jour des noms d'ingrédients + unités
+    if (Array.isArray(data.ingredients)) {
+      for (const ing of data.ingredients) {
+        if (!ing.id) continue;
+
+        // Mettre à jour le nom de l'ingrédient en français (si pas déjà traduit)
+        if (typeof ing.nameFr === 'string' && ing.nameFr.trim()) {
+          await prisma.ingredient.update({
+            where: { id: ing.id },
+            data: { name: ing.nameFr.trim() },
+          }).catch(() => {}); // ignore si conflit unique
+        }
+
+        // Mettre à jour l'unité dans RecipeIngredient
+        if (typeof ing.unitFr === 'string' && ing.unitFr.trim()) {
+          await prisma.recipeIngredient.updateMany({
+            where: { recipeId: id, ingredientId: ing.id },
+            data: { unit: ing.unitFr.trim() },
+          }).catch(() => {});
+        }
+      }
+    }
 
     return NextResponse.json({ ok: true, recipe: updated });
   } catch (err) {

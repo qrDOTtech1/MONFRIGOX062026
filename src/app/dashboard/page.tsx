@@ -3,98 +3,65 @@
 import { useState, useEffect, useCallback } from 'react';
 import AppShell from '@/components/AppShell';
 import RecipeCard from '@/components/RecipeCard';
-import { Refrigerator, Plus, X, AlertTriangle, ChefHat, Wand2, Loader2 } from 'lucide-react';
-
-interface FridgeItem {
-  id: string;
-  quantity: number;
-  unit: string;
-  expiresAt: string | null;
-  ingredient: { id: string; name: string; emoji: string; category: string };
-}
+import { Search, ChefHat, SlidersHorizontal } from 'lucide-react';
 
 interface Recipe {
   id: string;
   name: string;
+  description: string;
   difficulty: string;
   prepTime: number;
   cuisine: string;
+  imageUrl: string;
   matchPercent: number;
   matchCount: string;
   ingredients: Array<{ ingredient: { emoji: string } }>;
+  isFavorite: boolean;
 }
 
-export default function DashboardPage() {
-  const [fridgeItems, setFridgeItems] = useState<FridgeItem[]>([]);
+const DIFFICULTIES = ['Tous', 'Facile', 'Moyen', 'Difficile'];
+const TIMES = ['Tous', '< 15 min', '< 30 min', '< 45 min'];
+const CUISINES = ['Toutes', 'FR', 'IT', 'JP', 'MX', 'IN', 'MA', 'TH', 'VN', 'CN', 'US', 'ES', 'GR'];
+
+export default function ExplorerPage() {
   const [recipes, setRecipes] = useState<Recipe[]>([]);
   const [loading, setLoading] = useState(true);
-  const [showAdd, setShowAdd] = useState(false);
-  const [searchIngredient, setSearchIngredient] = useState('');
-  const [suggestions, setSuggestions] = useState<Array<{ id: string; name: string; emoji: string }>>([]);
-  const [filter, setFilter] = useState('Tous');
-  const [aiLoading, setAiLoading] = useState(false);
-  const [aiError, setAiError] = useState('');
-  const filters = ['Tous', 'Facile', 'Street Food', '< 20 min'];
+  const [search, setSearch] = useState('');
+  const [difficulty, setDifficulty] = useState('Tous');
+  const [time, setTime] = useState('Tous');
+  const [cuisine, setCuisine] = useState('Toutes');
+  const [showFilters, setShowFilters] = useState(false);
 
-  const loadData = useCallback(async () => {
-    try {
-      const [fridgeRes, recipesRes] = await Promise.all([
-        fetch('/api/fridge'),
-        fetch('/api/recipes'),
-      ]);
-      if (fridgeRes.ok) setFridgeItems(await fridgeRes.json());
-      if (recipesRes.ok) setRecipes(await recipesRes.json());
-    } finally {
-      setLoading(false);
-    }
+  const load = useCallback(async () => {
+    const res = await fetch('/api/recipes');
+    if (res.ok) setRecipes(await res.json());
+    setLoading(false);
   }, []);
 
-  useEffect(() => { loadData(); }, [loadData]);
+  useEffect(() => { load(); }, [load]);
 
-  useEffect(() => {
-    if (searchIngredient.length < 2) { setSuggestions([]); return; }
-    const timer = setTimeout(async () => {
-      const res = await fetch(`/api/ingredients/search?q=${encodeURIComponent(searchIngredient)}`);
-      if (res.ok) setSuggestions(await res.json());
-    }, 300);
-    return () => clearTimeout(timer);
-  }, [searchIngredient]);
-
-  async function addToFridge(ingredientId: string) {
-    await fetch('/api/fridge', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ingredientId }),
-    });
-    setSearchIngredient('');
-    setSuggestions([]);
-    setShowAdd(false);
-    loadData();
-  }
-
-  async function removeFromFridge(id: string) {
-    await fetch(`/api/fridge/${id}`, { method: 'DELETE' });
-    loadData();
-  }
-
-  const expiringSoon = fridgeItems.filter(item => {
-    if (!item.expiresAt) return false;
-    const days = (new Date(item.expiresAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24);
-    return days <= 3 && days > 0;
-  });
-
-  const filteredRecipes = recipes.filter(r => {
-    if (filter === 'Facile') return r.difficulty === 'FACILE';
-    if (filter === '< 20 min') return r.prepTime <= 20;
-    if (filter === 'Street Food') return r.cuisine === 'Street Food' || r.prepTime <= 15;
+  const filtered = recipes.filter(r => {
+    if (search && !r.name.toLowerCase().includes(search.toLowerCase()) &&
+        !r.description?.toLowerCase().includes(search.toLowerCase()) &&
+        !r.cuisine.toLowerCase().includes(search.toLowerCase())) return false;
+    if (difficulty === 'Facile' && r.difficulty !== 'FACILE') return false;
+    if (difficulty === 'Moyen' && r.difficulty !== 'MOYEN') return false;
+    if (difficulty === 'Difficile' && r.difficulty !== 'DIFFICILE') return false;
+    if (time === '< 15 min' && r.prepTime > 15) return false;
+    if (time === '< 30 min' && r.prepTime > 30) return false;
+    if (time === '< 45 min' && r.prepTime > 45) return false;
+    if (cuisine !== 'Toutes' && r.cuisine !== cuisine) return false;
     return true;
   });
+
+  const activeFilters = [difficulty !== 'Tous', time !== 'Tous', cuisine !== 'Toutes'].filter(Boolean).length;
 
   if (loading) {
     return (
       <AppShell>
         <div className="flex items-center justify-center h-[60vh]">
-          <div className="w-8 h-8 border-2 border-t-transparent rounded-full animate-spin" style={{ borderColor: 'var(--border)', borderTopColor: 'transparent' }} />
+          <div className="w-8 h-8 border-2 border-t-transparent rounded-full animate-spin"
+            style={{ borderColor: 'var(--border)', borderTopColor: 'transparent' }} />
         </div>
       </AppShell>
     );
@@ -102,137 +69,106 @@ export default function DashboardPage() {
 
   return (
     <AppShell>
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-2.5">
-          <Refrigerator className="w-5 h-5" style={{ color: 'var(--text-secondary)' }} />
-          <div>
-            <h2 className="font-semibold text-base">Mon Frigo</h2>
-            <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{fridgeItems.length} ingrédient{fridgeItems.length !== 1 ? 's' : ''}</p>
-          </div>
+      <div className="flex items-center gap-2.5 mb-4">
+        <ChefHat className="w-5 h-5" style={{ color: 'var(--text-secondary)' }} />
+        <h1 className="font-semibold text-base">Explorer</h1>
+        <span className="text-xs ml-auto" style={{ color: 'var(--text-muted)' }}>
+          {filtered.length} recette{filtered.length !== 1 ? 's' : ''}
+        </span>
+      </div>
+
+      {/* Barre de recherche */}
+      <div className="flex gap-2 mb-3">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: 'var(--text-muted)' }} />
+          <input
+            type="text"
+            placeholder="Rechercher une recette…"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            className="input-field !pl-9"
+          />
         </div>
-        <button onClick={() => setShowAdd(!showAdd)} className="w-9 h-9 rounded-lg flex items-center justify-center transition-colors" style={{ backgroundColor: 'var(--accent)', color: 'var(--accent-text)' }}>
-          <Plus className="w-4 h-4" />
+        <button
+          onClick={() => setShowFilters(!showFilters)}
+          className="relative px-3 rounded-lg text-sm font-medium transition-colors flex items-center gap-1.5"
+          style={showFilters || activeFilters > 0
+            ? { backgroundColor: 'var(--accent)', color: 'var(--accent-text)' }
+            : { backgroundColor: 'var(--bg-inset)', color: 'var(--text-secondary)', border: '1px solid var(--border)' }}
+        >
+          <SlidersHorizontal className="w-4 h-4" />
+          {activeFilters > 0 && (
+            <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full text-[9px] font-bold flex items-center justify-center bg-red-500 text-white">
+              {activeFilters}
+            </span>
+          )}
         </button>
       </div>
 
-      {showAdd && (
-        <div className="card p-3.5 mb-4 fade-in">
-          <input
-            type="text"
-            placeholder="Chercher un ingrédient..."
-            value={searchIngredient}
-            onChange={e => setSearchIngredient(e.target.value)}
-            className="input-field mb-2"
-            autoFocus
-          />
-          {suggestions.length > 0 && (
-            <div className="space-y-0.5 max-h-40 overflow-y-auto">
-              {suggestions.map(s => (
-                <button
-                  key={s.id}
-                  onClick={() => addToFridge(s.id)}
-                  className="w-full text-left px-3 py-2 rounded-md text-sm flex items-center gap-2 transition-colors hover:bg-[var(--bg-inset)]"
-                >
-                  <span>{s.emoji}</span> {s.name}
+      {/* Filtres dépliables */}
+      {showFilters && (
+        <div className="card p-3.5 mb-3 space-y-3 fade-in">
+          <div>
+            <p className="text-[10px] font-medium uppercase tracking-wide mb-1.5" style={{ color: 'var(--text-muted)' }}>Difficulté</p>
+            <div className="flex gap-1.5 flex-wrap">
+              {DIFFICULTIES.map(d => (
+                <button key={d} onClick={() => setDifficulty(d)}
+                  className="px-2.5 py-1 rounded-md text-xs font-medium transition-all"
+                  style={difficulty === d
+                    ? { backgroundColor: 'var(--accent)', color: 'var(--accent-text)' }
+                    : { backgroundColor: 'var(--bg-inset)', color: 'var(--text-muted)', border: '1px solid var(--border-subtle)' }}>
+                  {d}
                 </button>
               ))}
             </div>
+          </div>
+          <div>
+            <p className="text-[10px] font-medium uppercase tracking-wide mb-1.5" style={{ color: 'var(--text-muted)' }}>Temps</p>
+            <div className="flex gap-1.5 flex-wrap">
+              {TIMES.map(t => (
+                <button key={t} onClick={() => setTime(t)}
+                  className="px-2.5 py-1 rounded-md text-xs font-medium transition-all"
+                  style={time === t
+                    ? { backgroundColor: 'var(--accent)', color: 'var(--accent-text)' }
+                    : { backgroundColor: 'var(--bg-inset)', color: 'var(--text-muted)', border: '1px solid var(--border-subtle)' }}>
+                  {t}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div>
+            <p className="text-[10px] font-medium uppercase tracking-wide mb-1.5" style={{ color: 'var(--text-muted)' }}>Cuisine</p>
+            <div className="flex gap-1.5 flex-wrap">
+              {CUISINES.map(c => (
+                <button key={c} onClick={() => setCuisine(c)}
+                  className="px-2.5 py-1 rounded-md text-xs font-medium transition-all"
+                  style={cuisine === c
+                    ? { backgroundColor: 'var(--accent)', color: 'var(--accent-text)' }
+                    : { backgroundColor: 'var(--bg-inset)', color: 'var(--text-muted)', border: '1px solid var(--border-subtle)' }}>
+                  {c}
+                </button>
+              ))}
+            </div>
+          </div>
+          {activeFilters > 0 && (
+            <button onClick={() => { setDifficulty('Tous'); setTime('Tous'); setCuisine('Toutes'); }}
+              className="text-xs text-red-500 hover:text-red-400 transition-colors">
+              Réinitialiser les filtres
+            </button>
           )}
         </div>
       )}
 
-      {fridgeItems.length > 0 && (
-        <div className="flex flex-wrap gap-1.5 mb-5">
-          {fridgeItems.map(item => (
-            <div key={item.id} className="flex items-center gap-1.5 rounded-md pl-2.5 pr-1 py-1 text-sm group" style={{ backgroundColor: 'var(--bg-inset)', border: '1px solid var(--border-subtle)' }}>
-              <span className="text-xs">{item.ingredient.emoji}</span>
-              <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>{item.ingredient.name}</span>
-              <button onClick={() => removeFromFridge(item.id)} className="w-5 h-5 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                <X className="w-3 h-3" style={{ color: 'var(--text-muted)' }} />
-              </button>
-            </div>
-          ))}
+      {/* Résultats */}
+      {filtered.length === 0 ? (
+        <div className="text-center py-16">
+          <ChefHat className="w-10 h-10 mx-auto mb-3" style={{ color: 'var(--text-muted)', opacity: 0.3 }} />
+          <p className="text-sm font-medium mb-1">Aucun résultat</p>
+          <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Essaie un autre terme ou modifie les filtres</p>
         </div>
-      )}
-
-      {expiringSoon.length > 0 && (
-        <div className="rounded-lg p-3 mb-5 flex items-start gap-2.5 fade-in" style={{ backgroundColor: 'rgba(234,179,8,0.06)', border: '1px solid rgba(234,179,8,0.15)' }}>
-          <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
-          <div>
-            <p className="text-sm font-medium text-amber-600 dark:text-amber-400">Expire bientôt</p>
-            <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
-              {expiringSoon.map(i => i.ingredient.name).join(', ')}
-            </p>
-          </div>
-        </div>
-      )}
-
-      {fridgeItems.length > 0 && (
-        <button
-          onClick={async () => {
-            setAiLoading(true);
-            setAiError('');
-            try {
-              const res = await fetch('/api/ai/suggest', { method: 'POST' });
-              const data = await res.json();
-              if (!res.ok) setAiError(data.error);
-              else loadData();
-            } catch { setAiError('Erreur réseau'); }
-            finally { setAiLoading(false); }
-          }}
-          disabled={aiLoading}
-          className="w-full card p-3.5 mb-5 flex items-center gap-3 hover:shadow-sm transition-all disabled:opacity-50 text-left"
-        >
-          {aiLoading ? <Loader2 className="w-5 h-5 animate-spin" style={{ color: 'var(--text-muted)' }} /> : <Wand2 className="w-5 h-5" style={{ color: 'var(--text-secondary)' }} />}
-          <div>
-            <p className="font-medium text-sm">{aiLoading ? 'Génération en cours...' : 'Suggérer des recettes'}</p>
-            <p className="text-[11px]" style={{ color: 'var(--text-muted)' }}>L&apos;IA crée de nouvelles recettes avec tes ingrédients</p>
-          </div>
-        </button>
-      )}
-      {aiError && (
-        <div className="rounded-lg px-3.5 py-2.5 text-sm mb-4 text-red-600 dark:text-red-400" style={{ backgroundColor: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)' }}>
-          {aiError}
-        </div>
-      )}
-
-      <div className="flex items-center gap-2 mb-2">
-        <ChefHat className="w-4 h-4" style={{ color: 'var(--text-secondary)' }} />
-        <h2 className="font-semibold text-sm">
-          {recipes.length} recette{recipes.length !== 1 ? 's' : ''} disponibles
-        </h2>
-      </div>
-      <p className="text-xs mb-3" style={{ color: 'var(--text-muted)' }}>
-        {filteredRecipes.length === recipes.length
-          ? 'Triées par compatibilité avec tes ingrédients'
-          : `${filteredRecipes.length} après filtrage`}
-      </p>
-
-      <div className="flex gap-1.5 mb-4 overflow-x-auto pb-1 scrollbar-none">
-        {filters.map(f => (
-          <button
-            key={f}
-            onClick={() => setFilter(f)}
-            className={`whitespace-nowrap px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
-              filter === f ? 'text-[var(--accent-text)]' : ''
-            }`}
-            style={filter === f
-              ? { backgroundColor: 'var(--accent)', color: 'var(--accent-text)' }
-              : { backgroundColor: 'var(--bg-inset)', color: 'var(--text-secondary)', border: '1px solid var(--border-subtle)' }}
-          >
-            {f}
-          </button>
-        ))}
-      </div>
-
-      <div className="space-y-2">
-        {filteredRecipes.length === 0 ? (
-          <div className="text-center py-12">
-            <ChefHat className="w-10 h-10 mx-auto mb-3" style={{ color: 'var(--text-muted)', opacity: 0.4 }} />
-            <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Ajoute des ingrédients pour voir les recettes</p>
-          </div>
-        ) : (
-          filteredRecipes.map(r => (
+      ) : (
+        <div className="space-y-2">
+          {filtered.map(r => (
             <RecipeCard
               key={r.id}
               id={r.id}
@@ -240,13 +176,15 @@ export default function DashboardPage() {
               difficulty={r.difficulty}
               prepTime={r.prepTime}
               cuisine={r.cuisine}
+              imageUrl={r.imageUrl}
               matchPercent={r.matchPercent}
               matchCount={r.matchCount}
               emoji={r.ingredients?.[0]?.ingredient?.emoji}
+              isFavorite={r.isFavorite}
             />
-          ))
-        )}
-      </div>
+          ))}
+        </div>
+      )}
     </AppShell>
   );
 }
