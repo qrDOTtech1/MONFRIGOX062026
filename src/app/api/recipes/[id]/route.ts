@@ -1,7 +1,7 @@
 import type { NextRequest } from 'next/server';
 
-export async function GET(req: NextRequest, { params }: { params: { id: string } }): Promise<Response> {
-  const { id } = params;
+export async function GET(req: NextRequest, context: any): Promise<Response> {
+  const { id } = context.params;
   // TheMealDB lookup by id endpoint
   const apiUrl = `https://www.themealdb.com/api/json/v1/1/lookup.php?i=${id}`;
   try {
@@ -23,7 +23,6 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
         let quantity = 1;
         let unit = '';
         if (measure) {
-          // Very simple parsing: grab every numeric part
           const numMatch = measure.match(/([\d\.]+)[\s\/]?([\d\.]+)?/);
           if (numMatch) {
             if (numMatch[2]) {
@@ -34,7 +33,6 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
               quantity = parseFloat(numMatch[1]);
             }
           }
-          // remove the matched numbers from the string to isolate unit
           unit = measure.replace(/([\d\.]+)[\s\/]?([\d\.]+)?/, '').trim();
         }
         ingredients.push({
@@ -46,8 +44,8 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
       }
     }
 
-const recipe = {
-      id: id,
+    const recipe = {
+      id,
       name: meal.strMeal,
       prepTime: 15,
       servings: 4,
@@ -60,10 +58,7 @@ const recipe = {
     };
 
     return new Response(JSON.stringify(recipe), { status: 200 });
-  }
-  catch (e: any) {
+  } catch (e: any) {
     return new Response(JSON.stringify({ error: e?.message ?? 'Unknown error' }), { status: 500 });
   }
-}
-
 }
