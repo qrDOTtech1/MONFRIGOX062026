@@ -1,77 +1,77 @@
+import { Ollama } from 'ollama';
 import { prisma } from './db';
 
 interface OllamaConfig {
-  apiUrl: string;
+  host: string;
   apiKey: string;
   model: string;
   visionModel: string;
 }
 
-async function getConfig(): Promise<OllamaConfig> {
-  const configs = await prisma.appConfig.findMany({
-    where: {
-      key: {
-        in: [
-          'OLLAMA_API_URL', 'OLLAMA_API_KEY', 'OLLAMA_MODEL', 'OLLAMA_VISION_MODEL',
-          'OLLAMA_BACKUP_API_URL', 'OLLAMA_BACKUP_API_KEY',
-        ],
-      },
-    },
+interface BackupConfig {
+  host: string;
+  apiKey: string;
+}
+
+const CONFIG_KEYS = [
+  'OLLAMA_HOST', 'OLLAMA_API_KEY', 'OLLAMA_MODEL', 'OLLAMA_VISION_MODEL',
+  'OLLAMA_BACKUP_HOST', 'OLLAMA_BACKUP_API_KEY',
+] as const;
+
+async function getAllConfigs(): Promise<Record<string, string>> {
+  const rows = await prisma.appConfig.findMany({
+    where: { key: { in: [...CONFIG_KEYS] } },
   });
+  return Object.fromEntries(rows.map(r => [r.key, r.value]));
+}
 
-  const configMap = Object.fromEntries(configs.map(c => [c.key, c.value]));
-
+async function getConfig(): Promise<OllamaConfig> {
+  const c = await getAllConfigs();
   return {
-    apiUrl: configMap['OLLAMA_API_URL'] || process.env.OLLAMA_API_URL || 'https://api.together.xyz/v1',
-    apiKey: configMap['OLLAMA_API_KEY'] || process.env.OLLAMA_API_KEY || '',
-    model: configMap['OLLAMA_MODEL'] || process.env.OLLAMA_MODEL || 'meta-llama/Llama-3-70b-chat-hf',
-    visionModel: configMap['OLLAMA_VISION_MODEL'] || process.env.OLLAMA_VISION_MODEL || 'meta-llama/Llama-4-Scout-17B-16E-Instruct',
+    host: c['OLLAMA_HOST'] || 'https://ollama.com',
+    apiKey: c['OLLAMA_API_KEY'] || '',
+    model: c['OLLAMA_MODEL'] || 'qwen3.5',
+    visionModel: c['OLLAMA_VISION_MODEL'] || 'gemma3:27b',
   };
 }
 
-async function getBackupConfig(): Promise<{ apiUrl: string; apiKey: string } | null> {
-  const configs = await prisma.appConfig.findMany({
-    where: { key: { in: ['OLLAMA_BACKUP_API_URL', 'OLLAMA_BACKUP_API_KEY'] } },
-  });
-  const map = Object.fromEntries(configs.map(c => [c.key, c.value]));
-  const url = map['OLLAMA_BACKUP_API_URL'] || process.env.OLLAMA_BACKUP_API_URL;
-  const key = map['OLLAMA_BACKUP_API_KEY'] || process.env.OLLAMA_BACKUP_API_KEY;
-  if (!url || !key) return null;
-  return { apiUrl: url, apiKey: key };
+async function getBackupConfig(): Promise<BackupConfig | null> {
+  const c = await getAllConfigs();
+  const host = c['OLLAMA_BACKUP_HOST'];
+  const key = c['OLLAMA_BACKUP_API_KEY'];
+  if (!key) return null;
+  return { host: host || 'https://ollama.com', apiKey: key };
 }
 
-async function callApi(url: string, apiKey: string, body: Record<string, unknown>) {
-  const res = await fetch(`${url}/chat/completions`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${apiKey}`,
-    },
-    body: JSON.stringify(body),
+function createClient(host: string, apiKey: string): Ollama {
+  return new Ollama({
+    host,
+    headers: { 'Authorization': `Bearer ${apiKey}` },
   });
-
-  if (!res.ok) throw new Error(`API error: ${res.status}`);
-  return res.json();
 }
 
-export async function chatCompletion(messages: Array<{ role: string; content: string }>) {
+export async function chatCompletion(
+  messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }>,
+  options?: { temperature?: number },
+) {
   const config = await getConfig();
+  const client = createClient(config.host, config.apiKey);
 
   try {
-    return await callApi(config.apiUrl, config.apiKey, {
+    const response = await client.chat({
       model: config.model,
       messages,
-      temperature: 0.7,
-      max_tokens: 2048,
+      options: { temperature: options?.temperature ?? 0.7 },
     });
+    return response;
   } catch (err) {
     const backup = await getBackupConfig();
     if (backup) {
-      return await callApi(backup.apiUrl, backup.apiKey, {
+      const backupClient = createClient(backup.host, backup.apiKey);
+      return backupClient.chat({
         model: config.model,
         messages,
-        temperature: 0.7,
-        max_tokens: 2048,
+        options: { temperature: options?.temperature ?? 0.7 },
       });
     }
     throw err;
@@ -80,40 +80,49 @@ export async function chatCompletion(messages: Array<{ role: string; content: st
 
 export async function analyzeImage(base64Image: string, prompt: string) {
   const config = await getConfig();
+  const client = createClient(config.host, config.apiKey);
 
   const messages = [
     {
       role: 'user' as const,
-      content: [
-        { type: 'text', text: prompt },
-        { type: 'image_url', image_url: { url: `data:image/jpeg;base64,${base64Image}` } },
-      ],
+      content: prompt,
+      images: [base64Image],
     },
   ];
 
   try {
-    return await callApi(config.apiUrl, config.apiKey, {
+    return await client.chat({
       model: config.visionModel,
       messages,
-      temperature: 0.3,
-      max_tokens: 2048,
+      options: { temperature: 0.3 },
     });
   } catch (err) {
     const backup = await getBackupConfig();
     if (backup) {
-      return await callApi(backup.apiUrl, backup.apiKey, {
+      const backupClient = createClient(backup.host, backup.apiKey);
+      return backupClient.chat({
         model: config.visionModel,
         messages,
-        temperature: 0.3,
-        max_tokens: 2048,
+        options: { temperature: 0.3 },
       });
     }
     throw err;
   }
 }
 
+export async function listModels() {
+  const config = await getConfig();
+  const client = createClient(config.host, config.apiKey);
+  try {
+    const response = await client.list();
+    return response.models;
+  } catch {
+    return [];
+  }
+}
+
 export async function suggestRecipes(ingredients: string[]) {
-  const messages = [
+  return chatCompletion([
     {
       role: 'system',
       content: `Tu es un chef cuisinier expert. Tu suggères des recettes basées sur les ingrédients disponibles.
@@ -125,13 +134,11 @@ Suggère 3-5 recettes. Privilégie les recettes qui utilisent un maximum des ing
       role: 'user',
       content: `Voici mes ingrédients disponibles: ${ingredients.join(', ')}. Suggère-moi des recettes!`,
     },
-  ];
-
-  return chatCompletion(messages);
+  ]);
 }
 
 export async function generateShoppingList(recipeName: string, availableIngredients: string[]) {
-  const messages = [
+  return chatCompletion([
     {
       role: 'system',
       content: `Tu es un assistant cuisine. Génère une liste de courses pour une recette en tenant compte des ingrédients déjà disponibles.
@@ -142,7 +149,5 @@ N'inclus PAS les ingrédients déjà disponibles.`,
       role: 'user',
       content: `Recette: ${recipeName}\nIngrédients déjà disponibles: ${availableIngredients.join(', ')}\nQue dois-je acheter?`,
     },
-  ];
-
-  return chatCompletion(messages);
+  ]);
 }

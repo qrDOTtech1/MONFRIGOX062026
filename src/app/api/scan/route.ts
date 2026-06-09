@@ -19,7 +19,7 @@ Réponds UNIQUEMENT en JSON valide avec ce format:
 Sois précis et utilise des noms simples en français (ex: "tomate", "lait", "beurre").`
     );
 
-    const content = result.choices?.[0]?.message?.content || '[]';
+    const content = result.message?.content || '[]';
     let items: Array<{ name: string; confidence: number }>;
 
     try {
