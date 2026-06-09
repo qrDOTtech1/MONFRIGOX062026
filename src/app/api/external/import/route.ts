@@ -10,6 +10,7 @@ import {
   type MealDBRecipe,
   type SpoonacularRecipe,
 } from '@/lib/food-apis';
+import { translateRecipe, translateToFrench } from '@/lib/ollama';
 
 /**
  * POST /api/external/import
@@ -54,11 +55,22 @@ export async function POST(req: NextRequest) {
         });
         if (existing) { skipped++; continue; }
 
+        // Traduire en français via Ollama
+        let trName = meal.name;
+        let trDesc = meal.instructions.slice(0, 150) + '...';
+        let trInstructions = meal.instructions;
+        try {
+          const tr = await translateRecipe({ name: meal.name, description: trDesc, instructions: meal.instructions });
+          trName = tr.name;
+          trDesc = tr.description;
+          trInstructions = tr.instructions;
+        } catch { /* garde l'original si traduction échoue */ }
+
         const recipe = await prisma.recipe.create({
           data: {
-            name: meal.name,
-            description: meal.instructions.slice(0, 150) + '...',
-            instructions: meal.instructions,
+            name: trName,
+            description: trDesc,
+            instructions: trInstructions,
             difficulty: 'FACILE',
             prepTime: 30,
             cuisine: meal.area || 'International',
@@ -69,14 +81,15 @@ export async function POST(req: NextRequest) {
           },
         });
 
-        // Lier les ingrédients — créer s'ils n'existent pas
+        // Lier les ingrédients — créer s'ils n'existent pas (traduits en FR)
         for (const ing of meal.ingredients) {
+          const ingNameFr = await translateToFrench(ing.name, 'ingredient').catch(() => ing.name);
           let ingredient = await prisma.ingredient.findFirst({
-            where: { name: { equals: ing.name, mode: 'insensitive' } },
+            where: { OR: [{ name: { equals: ingNameFr, mode: 'insensitive' } }, { name: { equals: ing.name, mode: 'insensitive' } }] },
           });
           if (!ingredient) {
             ingredient = await prisma.ingredient.create({
-              data: { name: ing.name, category: 'Importé', emoji: '🥘' },
+              data: { name: ingNameFr, category: 'Importé', emoji: '🥘' },
             });
           }
           // Parse quantity from measure
@@ -118,11 +131,22 @@ export async function POST(req: NextRequest) {
 
         const diff = sr.readyInMinutes <= 20 ? 'FACILE' : sr.readyInMinutes <= 45 ? 'MOYEN' : 'DIFFICILE';
 
+        // Traduire en français via Ollama
+        let trName = sr.title;
+        let trDesc = sr.title;
+        let trInstructions = sr.instructions;
+        try {
+          const tr = await translateRecipe({ name: sr.title, description: sr.title, instructions: sr.instructions });
+          trName = tr.name;
+          trDesc = tr.description;
+          trInstructions = tr.instructions;
+        } catch { /* garde l'original si traduction échoue */ }
+
         const recipe = await prisma.recipe.create({
           data: {
-            name: sr.title,
-            description: sr.title,
-            instructions: sr.instructions,
+            name: trName,
+            description: trDesc,
+            instructions: trInstructions,
             difficulty: diff as any,
             prepTime: sr.readyInMinutes || 30,
             cuisine: sr.cuisines?.[0] || 'International',
@@ -134,12 +158,13 @@ export async function POST(req: NextRequest) {
         });
 
         for (const ing of sr.ingredients) {
+          const ingNameFr = await translateToFrench(ing.name, 'ingredient').catch(() => ing.name);
           let ingredient = await prisma.ingredient.findFirst({
-            where: { name: { contains: ing.name, mode: 'insensitive' } },
+            where: { OR: [{ name: { equals: ingNameFr, mode: 'insensitive' } }, { name: { contains: ing.name, mode: 'insensitive' } }] },
           });
           if (!ingredient) {
             ingredient = await prisma.ingredient.create({
-              data: { name: ing.name, category: 'Importé', emoji: '🥘' },
+              data: { name: ingNameFr, category: 'Importé', emoji: '🥘' },
             });
           }
           await prisma.recipeIngredient.create({

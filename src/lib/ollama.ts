@@ -138,6 +138,37 @@ Suggère 3-5 recettes. Privilégie les recettes qui utilisent un maximum des ing
   ]);
 }
 
+export async function translateToFrench(text: string, field: 'name' | 'description' | 'instructions' | 'ingredient'): Promise<string> {
+  if (!text || text.trim().length === 0) return text;
+
+  const prompts: Record<string, string> = {
+    name: 'Traduis ce nom de recette en français. Réponds UNIQUEMENT avec le nom traduit, rien d\'autre.',
+    description: 'Traduis cette description de recette en français. Réponds UNIQUEMENT avec la description traduite, rien d\'autre.',
+    instructions: 'Traduis ces instructions de recette en français. Garde le même format (sauts de ligne, étapes). Réponds UNIQUEMENT avec les instructions traduites, rien d\'autre.',
+    ingredient: 'Traduis ce nom d\'ingrédient en français. Réponds UNIQUEMENT avec le nom traduit en minuscules, rien d\'autre.',
+  };
+
+  try {
+    const response = await chatCompletion([
+      { role: 'system', content: prompts[field] },
+      { role: 'user', content: text },
+    ], { temperature: 0.2 });
+    const result = response.message?.content?.trim();
+    return result || text;
+  } catch {
+    return text; // Fallback: keep original if AI fails
+  }
+}
+
+export async function translateRecipe(recipe: { name: string; description: string; instructions: string }): Promise<{ name: string; description: string; instructions: string }> {
+  const [name, description, instructions] = await Promise.all([
+    translateToFrench(recipe.name, 'name'),
+    translateToFrench(recipe.description, 'description'),
+    translateToFrench(recipe.instructions, 'instructions'),
+  ]);
+  return { name, description, instructions };
+}
+
 export async function generateShoppingList(recipeName: string, availableIngredients: string[]) {
   return chatCompletion([
     {

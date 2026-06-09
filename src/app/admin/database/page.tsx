@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Database, RefreshCw, Download, Check, AlertTriangle, Server, Loader2, ChefHat, Utensils, Zap, Play, X } from 'lucide-react';
+import { Database, RefreshCw, Download, Check, AlertTriangle, Server, Loader2, ChefHat, Utensils, Zap, Play, X, Languages } from 'lucide-react';
 
 interface DbStatus {
   connected: boolean;
@@ -38,6 +38,10 @@ export default function AdminDatabasePage() {
   const [spoonQuery, setSpoonQuery] = useState('');
   const [spoonResult, setSpoonResult] = useState<ImportResult | null>(null);
   const [spoonError, setSpoonError] = useState('');
+
+  // Translate
+  const [translating, setTranslating] = useState(false);
+  const [translateResult, setTranslateResult] = useState<{ translated: number; failed: number; total: number } | null>(null);
 
   // Logs
   const [logs, setLogs] = useState<string[]>([]);
@@ -109,6 +113,29 @@ export default function AdminDatabasePage() {
       log(`Erreur seed: ${e.message}`);
     } finally {
       setSeeding(false);
+    }
+  }
+
+  async function translateRecipes() {
+    setTranslating(true);
+    setTranslateResult(null);
+    log('Traduction des recettes anglaises en français via IA...');
+    try {
+      const res = await fetch('/api/admin/translate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setTranslateResult(data);
+        log(`Traduction: ${data.translated} traduites, ${data.failed} échouées sur ${data.total}`);
+      } else {
+        log(`Traduction erreur: ${data.error}`);
+      }
+    } catch (e: any) {
+      log(`Traduction erreur: ${e.message}`);
+    } finally {
+      setTranslating(false);
     }
   }
 
@@ -270,6 +297,31 @@ export default function AdminDatabasePage() {
             style={{ backgroundColor: seedResult.ok ? 'rgba(16,185,129,0.06)' : 'rgba(239,68,68,0.08)', border: `1px solid ${seedResult.ok ? 'rgba(16,185,129,0.15)' : 'rgba(239,68,68,0.2)'}` }}
           >
             {seedResult.ok ? <><Check className="w-4 h-4 inline mr-1" />{seedResult.message}</> : <><X className="w-4 h-4 inline mr-1" />{seedResult.error}</>}
+          </div>
+        )}
+      </div>
+
+      {/* === TRADUCTION FR === */}
+      <div className="card p-5">
+        <div className="flex items-center gap-2.5 mb-1">
+          <Languages className="w-4 h-4 text-blue-500" />
+          <h2 className="font-medium">Traduire les recettes en français</h2>
+        </div>
+        <p className="text-xs mb-4" style={{ color: 'var(--text-muted)' }}>
+          Détecte les recettes importées en anglais et les traduit automatiquement en français via Ollama IA (nom, description, instructions, ingrédients).
+        </p>
+        <button
+          onClick={translateRecipes}
+          disabled={translating}
+          className="btn-primary flex items-center gap-2 disabled:opacity-40"
+        >
+          {translating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Languages className="w-4 h-4" />}
+          {translating ? 'Traduction en cours... (peut prendre plusieurs minutes)' : 'Traduire en français'}
+        </button>
+        {translateResult && (
+          <div className="mt-3 rounded-lg px-3.5 py-2.5 text-sm text-emerald-600 dark:text-emerald-400" style={{ backgroundColor: 'rgba(16,185,129,0.06)', border: '1px solid rgba(16,185,129,0.15)' }}>
+            <Check className="w-4 h-4 inline mr-1" />
+            {translateResult.translated} recettes traduites{translateResult.failed > 0 ? `, ${translateResult.failed} échouées` : ''} sur {translateResult.total} importées
           </div>
         )}
       </div>
