@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Users, ChefHat, Refrigerator, ShoppingCart, TrendingUp } from 'lucide-react';
+import { Users, ChefHat, Refrigerator, ShoppingCart, BarChart3 } from 'lucide-react';
 
 interface Stats {
   totalUsers: number;
@@ -21,50 +21,50 @@ export default function AdminDashboard() {
   if (!stats) {
     return (
       <div className="flex items-center justify-center h-[60vh]">
-        <div className="w-10 h-10 border-2 border-fresh-500 border-t-transparent rounded-full animate-spin" />
+        <div className="w-8 h-8 border-2 border-t-transparent rounded-full animate-spin" style={{ borderColor: 'var(--border)', borderTopColor: 'transparent' }} />
       </div>
     );
   }
 
   const cards = [
-    { icon: Users, label: 'Utilisateurs', value: stats.totalUsers, color: 'text-blue-400' },
-    { icon: ChefHat, label: 'Recettes', value: stats.totalRecipes, color: 'text-fresh-400' },
-    { icon: Refrigerator, label: 'Items frigo', value: stats.totalFridgeItems, color: 'text-yellow-400' },
-    { icon: ShoppingCart, label: 'Listes courses', value: stats.totalShoppingLists, color: 'text-purple-400' },
+    { icon: Users, label: 'Utilisateurs', value: stats.totalUsers },
+    { icon: ChefHat, label: 'Recettes', value: stats.totalRecipes },
+    { icon: Refrigerator, label: 'Items frigo', value: stats.totalFridgeItems },
+    { icon: ShoppingCart, label: 'Listes courses', value: stats.totalShoppingLists },
   ];
 
   return (
     <div className="fade-in">
-      <div className="flex items-center gap-3 mb-6">
-        <TrendingUp className="w-6 h-6 text-fresh-500" />
-        <h1 className="text-2xl font-bold">Dashboard</h1>
+      <div className="flex items-center gap-2.5 mb-6">
+        <BarChart3 className="w-5 h-5" style={{ color: 'var(--text-secondary)' }} />
+        <h1 className="text-xl font-semibold">Dashboard</h1>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-        {cards.map(({ icon: Icon, label, value, color }) => (
-          <div key={label} className="glass-card p-5">
-            <Icon className={`w-6 h-6 ${color} mb-2`} />
-            <p className="text-2xl font-bold">{value}</p>
-            <p className="text-xs text-gray-500">{label}</p>
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+        {cards.map(({ icon: Icon, label, value }) => (
+          <div key={label} className="card p-4">
+            <Icon className="w-5 h-5 mb-2" style={{ color: 'var(--text-muted)' }} />
+            <p className="text-2xl font-semibold">{value}</p>
+            <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{label}</p>
           </div>
         ))}
       </div>
 
-      <div className="glass-card p-5">
-        <h2 className="font-semibold mb-4">Derniers inscrits</h2>
-        <div className="space-y-3">
+      <div className="card p-4">
+        <h2 className="font-medium text-sm mb-4">Derniers inscrits</h2>
+        <div className="space-y-2">
           {stats.recentUsers.map(u => (
-            <div key={u.id} className="flex items-center justify-between py-2 border-b border-dark-600/30 last:border-0">
+            <div key={u.id} className="flex items-center justify-between py-2" style={{ borderBottom: '1px solid var(--border-subtle)' }}>
               <div className="flex items-center gap-3">
-                <div className="w-8 h-8 bg-fresh-500/20 rounded-full flex items-center justify-center text-sm font-bold text-fresh-500">
+                <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-semibold" style={{ backgroundColor: 'var(--bg-inset)', color: 'var(--text-secondary)' }}>
                   {u.name.charAt(0).toUpperCase()}
                 </div>
                 <div>
                   <p className="text-sm font-medium">{u.name}</p>
-                  <p className="text-xs text-gray-500">{u.email}</p>
+                  <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{u.email}</p>
                 </div>
               </div>
-              <p className="text-xs text-gray-500">
+              <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
                 {new Date(u.createdAt).toLocaleDateString('fr-FR')}
               </p>
             </div>

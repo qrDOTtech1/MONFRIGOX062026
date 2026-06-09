@@ -60,7 +60,7 @@ export default function RecipeDetailPage() {
     return (
       <AppShell>
         <div className="flex items-center justify-center h-[60vh]">
-          <div className="w-10 h-10 border-2 border-fresh-500 border-t-transparent rounded-full animate-spin" />
+          <div className="w-8 h-8 border-2 border-t-transparent rounded-full animate-spin" style={{ borderColor: 'var(--border)', borderTopColor: 'transparent' }} />
         </div>
       </AppShell>
     );
@@ -69,7 +69,7 @@ export default function RecipeDetailPage() {
   if (!recipe) {
     return (
       <AppShell>
-        <p className="text-center text-gray-500 py-20">Recette introuvable</p>
+        <p className="text-center py-20" style={{ color: 'var(--text-muted)' }}>Recette introuvable</p>
       </AppShell>
     );
   }
@@ -83,30 +83,30 @@ export default function RecipeDetailPage() {
 
   return (
     <AppShell>
-      <button onClick={() => router.back()} className="flex items-center gap-2 text-gray-400 hover:text-cream mb-4 transition-colors">
-        <ArrowLeft className="w-5 h-5" /> Retour
+      <button onClick={() => router.back()} className="flex items-center gap-1.5 text-sm mb-4 transition-colors" style={{ color: 'var(--text-muted)' }}>
+        <ArrowLeft className="w-4 h-4" /> Retour
       </button>
 
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold mb-2">{recipe.name}</h1>
-        <p className="text-gray-400 text-sm mb-4">{recipe.description}</p>
+      <div className="mb-5">
+        <h1 className="text-xl font-semibold mb-1.5">{recipe.name}</h1>
+        <p className="text-sm mb-4" style={{ color: 'var(--text-secondary)' }}>{recipe.description}</p>
 
-        <div className="flex flex-wrap gap-3 mb-4">
+        <div className="flex flex-wrap gap-2 mb-4">
           <span className={diffColors[recipe.difficulty]}>{diffLabels[recipe.difficulty]}</span>
-          <span className="badge bg-dark-600 text-gray-300"><Clock className="w-3 h-3 mr-1" />{recipe.prepTime} min</span>
-          <span className="badge bg-dark-600 text-gray-300"><Users className="w-3 h-3 mr-1" />{recipe.servings} pers.</span>
-          <span className="badge bg-dark-600 text-gray-300">{recipe.cuisine}</span>
+          <span className="badge" style={{ backgroundColor: 'var(--bg-inset)', color: 'var(--text-secondary)' }}><Clock className="w-3 h-3 mr-1" />{recipe.prepTime} min</span>
+          <span className="badge" style={{ backgroundColor: 'var(--bg-inset)', color: 'var(--text-secondary)' }}><Users className="w-3 h-3 mr-1" />{recipe.servings} pers.</span>
+          <span className="badge" style={{ backgroundColor: 'var(--bg-inset)', color: 'var(--text-secondary)' }}>{recipe.cuisine}</span>
         </div>
 
         <button
           onClick={() => router.push(`/recipes/${recipe.id}/cook`)}
-          className="btn-primary w-full flex items-center justify-center gap-2 mb-3 !py-4 text-lg"
+          className="btn-primary w-full flex items-center justify-center gap-2 mb-3 !py-3 text-base"
         >
           <ChefHat className="w-5 h-5" /> Cuisiner cette recette
         </button>
 
-        <div className="flex gap-3">
-          <button onClick={toggleFav} className={`btn-secondary flex items-center gap-2 flex-1 justify-center ${recipe.isFavorite ? '!border-red-500/50' : ''}`}>
+        <div className="flex gap-2">
+          <button onClick={toggleFav} className={`btn-secondary flex items-center gap-2 flex-1 justify-center ${recipe.isFavorite ? '!border-red-400' : ''}`}>
             <Heart className={`w-4 h-4 ${recipe.isFavorite ? 'fill-red-500 text-red-500' : ''}`} />
             {recipe.isFavorite ? 'Favori' : 'Ajouter'}
           </button>
@@ -118,42 +118,40 @@ export default function RecipeDetailPage() {
         </div>
       </div>
 
-      {/* Ingredients */}
-      <div className="glass-card p-4 mb-4">
+      <div className="card p-4 mb-3">
         <div className="flex items-center justify-between mb-3">
-          <h2 className="font-semibold">Ingrédients</h2>
-          <span className={`text-sm font-bold ${pct >= 80 ? 'text-fresh-400' : pct >= 50 ? 'text-yellow-400' : 'text-orange-400'}`}>
-            {available}/{total} disponibles
+          <h2 className="font-medium text-sm">Ingrédients</h2>
+          <span className={`text-sm font-semibold ${pct >= 80 ? 'text-emerald-600 dark:text-emerald-400' : pct >= 50 ? 'text-amber-600 dark:text-amber-400' : 'text-orange-600 dark:text-orange-400'}`}>
+            {available}/{total}
           </span>
         </div>
-        <div className="space-y-2">
+        <div className="space-y-1">
           {recipe.ingredients.map((ing, i) => (
-            <div key={i} className="flex items-center gap-3 py-1">
+            <div key={i} className="flex items-center gap-2.5 py-1.5">
               {ing.inFridge ? (
-                <Check className="w-4 h-4 text-fresh-500 shrink-0" />
+                <Check className="w-4 h-4 text-emerald-500 shrink-0" />
               ) : (
                 <X className="w-4 h-4 text-red-400 shrink-0" />
               )}
               <span className="text-sm">{ing.ingredient.emoji}</span>
-              <span className={`text-sm flex-1 ${ing.inFridge ? 'text-cream' : 'text-gray-500'}`}>
+              <span className={`text-sm flex-1 ${ing.inFridge ? '' : ''}`} style={{ color: ing.inFridge ? 'var(--text)' : 'var(--text-muted)' }}>
                 {ing.ingredient.name}
               </span>
-              <span className="text-xs text-gray-500">{ing.quantity} {ing.unit}</span>
+              <span className="text-xs" style={{ color: 'var(--text-muted)' }}>{ing.quantity} {ing.unit}</span>
             </div>
           ))}
         </div>
       </div>
 
-      {/* Instructions */}
-      <div className="glass-card p-4">
-        <h2 className="font-semibold mb-3">Préparation</h2>
-        <div className="space-y-4">
+      <div className="card p-4">
+        <h2 className="font-medium text-sm mb-3">Préparation</h2>
+        <div className="space-y-3">
           {recipe.instructions.split('\n').filter(Boolean).map((step, i) => (
             <div key={i} className="flex gap-3">
-              <div className="w-7 h-7 bg-fresh-500/20 rounded-lg flex items-center justify-center shrink-0 text-fresh-400 text-xs font-bold">
+              <div className="w-6 h-6 rounded-md flex items-center justify-center shrink-0 text-xs font-semibold" style={{ backgroundColor: 'var(--bg-inset)', color: 'var(--text-secondary)' }}>
                 {i + 1}
               </div>
-              <p className="text-sm text-gray-300 leading-relaxed pt-1">{step}</p>
+              <p className="text-sm leading-relaxed pt-0.5" style={{ color: 'var(--text-secondary)' }}>{step}</p>
             </div>
           ))}
         </div>

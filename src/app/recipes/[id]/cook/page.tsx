@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { ArrowLeft, ArrowRight, ChefHat, Clock, X, Timer, Check, Flame, Users } from 'lucide-react';
+import { ArrowLeft, ArrowRight, ChefHat, Clock, X, Timer, Check, Users } from 'lucide-react';
 
 interface Recipe {
   id: string;
@@ -23,7 +23,7 @@ export default function CookModePage() {
   const { id } = useParams();
   const router = useRouter();
   const [recipe, setRecipe] = useState<Recipe | null>(null);
-  const [step, setStep] = useState(-1); // -1 = intro/ingredients, 0+ = steps
+  const [step, setStep] = useState(-1);
   const [steps, setSteps] = useState<string[]>([]);
   const [checkedIngredients, setCheckedIngredients] = useState<Set<number>>(new Set());
   const [timer, setTimer] = useState<number | null>(null);
@@ -43,7 +43,6 @@ export default function CookModePage() {
       });
   }, [id]);
 
-  // Keep screen awake
   useEffect(() => {
     let wakeLock: WakeLockSentinel | null = null;
     if ('wakeLock' in navigator) {
@@ -52,7 +51,6 @@ export default function CookModePage() {
     return () => { wakeLock?.release(); };
   }, []);
 
-  // Timer
   useEffect(() => {
     if (!timerRunning || timerSeconds <= 0) return;
     const interval = setInterval(() => {
@@ -123,21 +121,21 @@ export default function CookModePage() {
 
   if (!recipe) {
     return (
-      <div className="fixed inset-0 bg-dark-900 flex items-center justify-center z-50">
-        <div className="w-10 h-10 border-2 border-fresh-500 border-t-transparent rounded-full animate-spin" />
+      <div className="fixed inset-0 flex items-center justify-center z-50" style={{ backgroundColor: 'var(--bg)' }}>
+        <div className="w-8 h-8 border-2 border-t-transparent rounded-full animate-spin" style={{ borderColor: 'var(--border)', borderTopColor: 'transparent' }} />
       </div>
     );
   }
 
   if (done) {
     return (
-      <div className="fixed inset-0 bg-dark-900 flex items-center justify-center z-50 px-6">
+      <div className="fixed inset-0 flex items-center justify-center z-50 px-6" style={{ backgroundColor: 'var(--bg)' }}>
         <div className="text-center fade-in">
-          <div className="text-6xl mb-6">🎉</div>
-          <h1 className="text-3xl font-bold mb-3">Bon appétit!</h1>
-          <p className="text-gray-400 mb-2">{recipe.name} est prêt</p>
-          <p className="text-gray-600 text-sm mb-8">Pour {recipe.servings} personne{recipe.servings > 1 ? 's' : ''}</p>
-          <div className="flex gap-3 justify-center">
+          <div className="text-5xl mb-5">🎉</div>
+          <h1 className="text-2xl font-semibold mb-2">Bon appétit!</h1>
+          <p className="text-sm mb-1" style={{ color: 'var(--text-secondary)' }}>{recipe.name} est prêt</p>
+          <p className="text-xs mb-8" style={{ color: 'var(--text-muted)' }}>Pour {recipe.servings} personne{recipe.servings > 1 ? 's' : ''}</p>
+          <div className="flex gap-2 justify-center">
             <button onClick={() => router.push('/dashboard')} className="btn-secondary">Retour</button>
             <button onClick={() => { setStep(-1); setDone(false); }} className="btn-primary">Refaire</button>
           </div>
@@ -147,106 +145,96 @@ export default function CookModePage() {
   }
 
   return (
-    <div className="fixed inset-0 bg-dark-900 z-50 flex flex-col select-none">
-      {/* Header */}
-      <header className="flex items-center justify-between px-4 py-3 bg-dark-800/80 backdrop-blur-lg">
-        <button onClick={() => router.back()} className="p-2 hover:bg-dark-700 rounded-xl transition-colors">
-          <X className="w-5 h-5 text-gray-400" />
+    <div className="fixed inset-0 z-50 flex flex-col select-none" style={{ backgroundColor: 'var(--bg)' }}>
+      <header className="flex items-center justify-between px-4 py-3" style={{ backgroundColor: 'var(--bg-raised)', borderBottom: '1px solid var(--border)' }}>
+        <button onClick={() => router.back()} className="p-2 rounded-lg transition-colors hover:bg-[var(--bg-inset)]">
+          <X className="w-5 h-5" style={{ color: 'var(--text-muted)' }} />
         </button>
         <div className="text-center flex-1">
-          <p className="text-xs text-gray-500 font-medium">MODE CUISINE</p>
-          <p className="text-sm font-semibold truncate px-4">{recipe.name}</p>
+          <p className="text-[10px] font-medium uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>Mode cuisine</p>
+          <p className="text-sm font-medium truncate px-4">{recipe.name}</p>
         </div>
-        <div className="flex items-center gap-1 text-xs text-gray-500">
+        <div className="flex items-center gap-1 text-xs" style={{ color: 'var(--text-muted)' }}>
           <Clock className="w-3.5 h-3.5" />
           {recipe.prepTime}min
         </div>
       </header>
 
-      {/* Progress bar */}
-      <div className="h-1 bg-dark-800">
-        <div className="h-full bg-fresh-500 transition-all duration-500 ease-out" style={{ width: `${progress}%` }} />
+      <div className="h-0.5" style={{ backgroundColor: 'var(--bg-inset)' }}>
+        <div className="h-full transition-all duration-500 ease-out" style={{ width: `${progress}%`, backgroundColor: 'var(--accent)' }} />
       </div>
 
-      {/* Content */}
       <div className="flex-1 overflow-y-auto">
         {step === -1 ? (
-          /* Ingredient checklist */
           <div className="max-w-lg mx-auto px-6 py-8 fade-in">
-            <div className="flex items-center gap-3 mb-2">
-              <Flame className="w-6 h-6 text-fresh-500" />
-              <h2 className="text-xl font-bold">Prépare tes ingrédients</h2>
-            </div>
-            <p className="text-gray-500 text-sm mb-6">Coche chaque ingrédient quand il est prêt</p>
+            <h2 className="text-lg font-semibold mb-1">Prépare tes ingrédients</h2>
+            <p className="text-xs mb-5" style={{ color: 'var(--text-muted)' }}>Coche chaque ingrédient quand il est prêt</p>
 
-            <div className="flex items-center gap-4 mb-6">
-              <span className="badge bg-dark-600 text-gray-300"><Users className="w-3 h-3 mr-1" />{recipe.servings} pers.</span>
-              <span className="badge bg-dark-600 text-gray-300"><Clock className="w-3 h-3 mr-1" />{recipe.prepTime} min</span>
-              <span className="text-xs text-gray-500">{totalSteps} étapes</span>
+            <div className="flex items-center gap-3 mb-5">
+              <span className="badge" style={{ backgroundColor: 'var(--bg-inset)', color: 'var(--text-secondary)' }}><Users className="w-3 h-3 mr-1" />{recipe.servings} pers.</span>
+              <span className="badge" style={{ backgroundColor: 'var(--bg-inset)', color: 'var(--text-secondary)' }}><Clock className="w-3 h-3 mr-1" />{recipe.prepTime} min</span>
+              <span className="text-xs" style={{ color: 'var(--text-muted)' }}>{totalSteps} étapes</span>
             </div>
 
-            <div className="space-y-1">
+            <div className="space-y-0.5">
               {recipe.ingredients.map((ing, i) => (
                 <button
                   key={i}
                   onClick={() => toggleIngredient(i)}
-                  className="w-full flex items-center gap-4 py-3 px-4 rounded-xl hover:bg-dark-700/40 transition-colors text-left"
+                  className="w-full flex items-center gap-3 py-2.5 px-3 rounded-lg transition-colors text-left hover:bg-[var(--bg-inset)]"
                 >
-                  <div className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-all ${
-                    checkedIngredients.has(i) ? 'bg-fresh-500 border-fresh-500' : 'border-gray-600'
-                  }`}>
-                    {checkedIngredients.has(i) && <Check className="w-4 h-4 text-dark-900" />}
+                  <div className={`w-5 h-5 rounded border flex items-center justify-center transition-all ${
+                    checkedIngredients.has(i) ? 'bg-[var(--accent)] border-[var(--accent)]' : ''
+                  }`} style={!checkedIngredients.has(i) ? { borderColor: 'var(--border)' } : undefined}>
+                    {checkedIngredients.has(i) && <Check className="w-3.5 h-3.5" style={{ color: 'var(--accent-text)' }} />}
                   </div>
-                  <span className="text-lg">{ing.ingredient.emoji}</span>
-                  <span className={`flex-1 ${checkedIngredients.has(i) ? 'line-through text-gray-600' : 'text-cream'}`}>
+                  <span className="text-base">{ing.ingredient.emoji}</span>
+                  <span className={`flex-1 text-sm ${checkedIngredients.has(i) ? 'line-through' : ''}`} style={{ color: checkedIngredients.has(i) ? 'var(--text-muted)' : 'var(--text)' }}>
                     {ing.ingredient.name}
                   </span>
-                  <span className="text-sm text-gray-500">{ing.quantity} {ing.unit}</span>
+                  <span className="text-xs" style={{ color: 'var(--text-muted)' }}>{ing.quantity} {ing.unit}</span>
                 </button>
               ))}
             </div>
 
-            <p className="text-center text-gray-600 text-xs mt-8">
+            <p className="text-center text-xs mt-6" style={{ color: 'var(--text-muted)' }}>
               {checkedIngredients.size}/{recipe.ingredients.length} prêts
             </p>
           </div>
         ) : (
-          /* Step view */
           <div className="max-w-lg mx-auto px-6 py-8 fade-in" key={step}>
             <div className="flex items-center gap-3 mb-6">
-              <div className="w-12 h-12 bg-fresh-500/20 rounded-2xl flex items-center justify-center">
-                <span className="text-fresh-400 text-xl font-bold">{step + 1}</span>
+              <div className="w-10 h-10 rounded-lg flex items-center justify-center" style={{ backgroundColor: 'var(--bg-inset)' }}>
+                <span className="text-lg font-semibold" style={{ color: 'var(--text-secondary)' }}>{step + 1}</span>
               </div>
               <div>
-                <p className="text-xs text-gray-500">Étape {step + 1} sur {totalSteps}</p>
-                <p className="text-xs text-gray-600">Swipe ou utilise les flèches</p>
+                <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Étape {step + 1} sur {totalSteps}</p>
               </div>
             </div>
 
-            <p className="text-xl leading-relaxed text-cream font-light mb-8">
+            <p className="text-lg leading-relaxed font-light mb-8">
               {steps[step]}
             </p>
 
-            {/* Timer */}
             {timer !== null && (
-              <div className="glass-card p-5 text-center mb-6">
+              <div className="card p-5 text-center mb-6">
                 <div className="flex items-center justify-center gap-2 mb-3">
-                  <Timer className="w-5 h-5 text-fresh-500" />
-                  <span className="text-sm text-gray-400">Minuteur</span>
+                  <Timer className="w-4 h-4" style={{ color: 'var(--text-muted)' }} />
+                  <span className="text-xs" style={{ color: 'var(--text-muted)' }}>Minuteur</span>
                 </div>
-                <p className={`text-4xl font-mono font-bold mb-4 ${timerSeconds === 0 && timerRunning === false && timer ? 'text-fresh-400' : 'text-cream'}`}>
+                <p className={`text-3xl font-mono font-semibold mb-4 ${timerSeconds === 0 && !timerRunning && timer ? 'text-emerald-500' : ''}`}>
                   {formatTime(timerSeconds)}
                 </p>
                 <div className="flex gap-2 justify-center">
                   {!timerRunning ? (
                     <button
                       onClick={() => { if (timerSeconds === 0) setTimerSeconds(timer! * 60); setTimerRunning(true); }}
-                      className="btn-primary !py-2 !px-6 text-sm"
+                      className="btn-primary !py-2 !px-5 text-sm"
                     >
                       {timerSeconds === 0 ? 'Relancer' : 'Démarrer'}
                     </button>
                   ) : (
-                    <button onClick={() => setTimerRunning(false)} className="btn-secondary !py-2 !px-6 text-sm">
+                    <button onClick={() => setTimerRunning(false)} className="btn-secondary !py-2 !px-5 text-sm">
                       Pause
                     </button>
                   )}
@@ -258,7 +246,7 @@ export default function CookModePage() {
                   </button>
                 </div>
                 {timerSeconds === 0 && (
-                  <p className="text-fresh-400 text-sm mt-3 font-medium animate-pulse">C&apos;est prêt!</p>
+                  <p className="text-emerald-500 text-sm mt-3 font-medium animate-pulse">C&apos;est prêt!</p>
                 )}
               </div>
             )}
@@ -266,23 +254,22 @@ export default function CookModePage() {
         )}
       </div>
 
-      {/* Navigation */}
-      <div className="px-4 py-4 bg-dark-800/80 backdrop-blur-lg border-t border-dark-700/50">
-        <div className="max-w-lg mx-auto flex items-center gap-3">
+      <div className="px-4 py-4" style={{ backgroundColor: 'var(--bg-raised)', borderTop: '1px solid var(--border)' }}>
+        <div className="max-w-lg mx-auto flex items-center gap-2">
           <button
             onClick={prev}
             disabled={step === -1}
-            className="btn-secondary !py-3 !px-4 disabled:opacity-20"
+            className="btn-secondary !py-2.5 !px-3.5 disabled:opacity-20"
           >
             <ArrowLeft className="w-5 h-5" />
           </button>
-          <button onClick={next} className="btn-primary flex-1 !py-3 flex items-center justify-center gap-2 text-lg">
+          <button onClick={next} className="btn-primary flex-1 !py-2.5 flex items-center justify-center gap-2">
             {step === -1 ? (
-              <><ChefHat className="w-5 h-5" /> C&apos;est parti!</>
+              <><ChefHat className="w-4 h-4" /> C&apos;est parti!</>
             ) : step === totalSteps - 1 ? (
-              <><Check className="w-5 h-5" /> Terminé!</>
+              <><Check className="w-4 h-4" /> Terminé</>
             ) : (
-              <>Étape suivante <ArrowRight className="w-5 h-5" /></>
+              <>Suivant <ArrowRight className="w-4 h-4" /></>
             )}
           </button>
         </div>

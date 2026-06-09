@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import AppShell from '@/components/AppShell';
 import RecipeCard from '@/components/RecipeCard';
-import { Refrigerator, Plus, X, AlertTriangle, ChefHat, Sparkles, Wand2, Loader2 } from 'lucide-react';
+import { Refrigerator, Plus, X, AlertTriangle, ChefHat, Wand2, Loader2 } from 'lucide-react';
 
 interface FridgeItem {
   id: string;
@@ -94,7 +94,7 @@ export default function DashboardPage() {
     return (
       <AppShell>
         <div className="flex items-center justify-center h-[60vh]">
-          <div className="w-10 h-10 border-2 border-fresh-500 border-t-transparent rounded-full animate-spin" />
+          <div className="w-8 h-8 border-2 border-t-transparent rounded-full animate-spin" style={{ borderColor: 'var(--border)', borderTopColor: 'transparent' }} />
         </div>
       </AppShell>
     );
@@ -102,23 +102,21 @@ export default function DashboardPage() {
 
   return (
     <AppShell>
-      {/* Fridge Summary */}
       <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-3">
-          <Refrigerator className="w-6 h-6 text-fresh-500" />
+        <div className="flex items-center gap-2.5">
+          <Refrigerator className="w-5 h-5" style={{ color: 'var(--text-secondary)' }} />
           <div>
-            <h2 className="font-bold text-lg">Mon Frigo</h2>
-            <p className="text-gray-500 text-xs">{fridgeItems.length} ingrédient{fridgeItems.length !== 1 ? 's' : ''}</p>
+            <h2 className="font-semibold text-base">Mon Frigo</h2>
+            <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{fridgeItems.length} ingrédient{fridgeItems.length !== 1 ? 's' : ''}</p>
           </div>
         </div>
-        <button onClick={() => setShowAdd(!showAdd)} className="w-10 h-10 bg-fresh-500 rounded-xl flex items-center justify-center text-dark-900 active:scale-90 transition-transform">
-          <Plus className="w-5 h-5" />
+        <button onClick={() => setShowAdd(!showAdd)} className="w-9 h-9 rounded-lg flex items-center justify-center transition-colors" style={{ backgroundColor: 'var(--accent)', color: 'var(--accent-text)' }}>
+          <Plus className="w-4 h-4" />
         </button>
       </div>
 
-      {/* Add ingredient */}
       {showAdd && (
-        <div className="glass-card p-4 mb-4 fade-in">
+        <div className="card p-3.5 mb-4 fade-in">
           <input
             type="text"
             placeholder="Chercher un ingrédient..."
@@ -128,12 +126,12 @@ export default function DashboardPage() {
             autoFocus
           />
           {suggestions.length > 0 && (
-            <div className="space-y-1 max-h-40 overflow-y-auto">
+            <div className="space-y-0.5 max-h-40 overflow-y-auto">
               {suggestions.map(s => (
                 <button
                   key={s.id}
                   onClick={() => addToFridge(s.id)}
-                  className="w-full text-left px-3 py-2 hover:bg-dark-600 rounded-lg text-sm flex items-center gap-2 transition-colors"
+                  className="w-full text-left px-3 py-2 rounded-md text-sm flex items-center gap-2 transition-colors hover:bg-[var(--bg-inset)]"
                 >
                   <span>{s.emoji}</span> {s.name}
                 </button>
@@ -143,35 +141,32 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* Fridge Items */}
       {fridgeItems.length > 0 && (
-        <div className="flex flex-wrap gap-2 mb-6">
+        <div className="flex flex-wrap gap-1.5 mb-5">
           {fridgeItems.map(item => (
-            <div key={item.id} className="flex items-center gap-1 bg-dark-700 rounded-full pl-3 pr-1 py-1 text-sm group">
-              <span>{item.ingredient.emoji}</span>
-              <span className="text-cream/80">{item.ingredient.name}</span>
-              <button onClick={() => removeFromFridge(item.id)} className="w-6 h-6 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                <X className="w-3 h-3 text-gray-500 hover:text-red-400" />
+            <div key={item.id} className="flex items-center gap-1.5 rounded-md pl-2.5 pr-1 py-1 text-sm group" style={{ backgroundColor: 'var(--bg-inset)', border: '1px solid var(--border-subtle)' }}>
+              <span className="text-xs">{item.ingredient.emoji}</span>
+              <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>{item.ingredient.name}</span>
+              <button onClick={() => removeFromFridge(item.id)} className="w-5 h-5 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                <X className="w-3 h-3" style={{ color: 'var(--text-muted)' }} />
               </button>
             </div>
           ))}
         </div>
       )}
 
-      {/* Expiring Soon Alert */}
       {expiringSoon.length > 0 && (
-        <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-xl p-3 mb-6 flex items-start gap-3 fade-in">
-          <AlertTriangle className="w-5 h-5 text-yellow-500 shrink-0 mt-0.5" />
+        <div className="rounded-lg p-3 mb-5 flex items-start gap-2.5 fade-in" style={{ backgroundColor: 'rgba(234,179,8,0.06)', border: '1px solid rgba(234,179,8,0.15)' }}>
+          <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
           <div>
-            <p className="text-sm font-medium text-yellow-400">Expire bientôt!</p>
-            <p className="text-xs text-gray-400">
-              {expiringSoon.map(i => i.ingredient.name).join(', ')} — utilise-les vite!
+            <p className="text-sm font-medium text-amber-600 dark:text-amber-400">Expire bientôt</p>
+            <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
+              {expiringSoon.map(i => i.ingredient.name).join(', ')}
             </p>
           </div>
         </div>
       )}
 
-      {/* AI Suggest */}
       {fridgeItems.length > 0 && (
         <button
           onClick={async () => {
@@ -186,53 +181,51 @@ export default function DashboardPage() {
             finally { setAiLoading(false); }
           }}
           disabled={aiLoading}
-          className="w-full glass-card p-4 mb-6 flex items-center gap-3 hover:border-fresh-500/30 transition-all disabled:opacity-50"
+          className="w-full card p-3.5 mb-5 flex items-center gap-3 hover:shadow-sm transition-all disabled:opacity-50 text-left"
         >
-          {aiLoading ? <Loader2 className="w-6 h-6 text-fresh-500 animate-spin" /> : <Wand2 className="w-6 h-6 text-fresh-500" />}
-          <div className="text-left">
-            <p className="font-semibold text-sm">{aiLoading ? 'L\'IA cherche des recettes...' : 'Invente-moi des recettes!'}</p>
-            <p className="text-[10px] text-gray-500">L&apos;IA génère de nouvelles recettes avec tes ingrédients</p>
+          {aiLoading ? <Loader2 className="w-5 h-5 animate-spin" style={{ color: 'var(--text-muted)' }} /> : <Wand2 className="w-5 h-5" style={{ color: 'var(--text-secondary)' }} />}
+          <div>
+            <p className="font-medium text-sm">{aiLoading ? 'Génération en cours...' : 'Suggérer des recettes'}</p>
+            <p className="text-[11px]" style={{ color: 'var(--text-muted)' }}>L&apos;IA crée de nouvelles recettes avec tes ingrédients</p>
           </div>
-          <Sparkles className="w-4 h-4 text-fresh-400 ml-auto" />
         </button>
       )}
       {aiError && (
-        <div className="bg-red-500/10 border border-red-500/30 rounded-xl px-4 py-3 text-red-400 text-sm mb-4">
+        <div className="rounded-lg px-3.5 py-2.5 text-sm mb-4 text-red-600 dark:text-red-400" style={{ backgroundColor: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)' }}>
           {aiError}
         </div>
       )}
 
-      {/* Recipes */}
-      <div className="flex items-center gap-2 mb-3">
-        <ChefHat className="w-5 h-5 text-fresh-500" />
-        <h2 className="font-bold">
-          {filteredRecipes.length} recette{filteredRecipes.length !== 1 ? 's' : ''} trouvée{filteredRecipes.length !== 1 ? 's' : ''}
+      <div className="flex items-center gap-2 mb-2">
+        <ChefHat className="w-4 h-4" style={{ color: 'var(--text-secondary)' }} />
+        <h2 className="font-semibold text-sm">
+          {filteredRecipes.length} recette{filteredRecipes.length !== 1 ? 's' : ''}
         </h2>
-        <Sparkles className="w-4 h-4 text-fresh-400" />
       </div>
-      <p className="text-gray-500 text-xs mb-4">Avec tes ingrédients disponibles</p>
+      <p className="text-xs mb-3" style={{ color: 'var(--text-muted)' }}>Avec tes ingrédients disponibles</p>
 
-      {/* Filters */}
-      <div className="flex gap-2 mb-4 overflow-x-auto pb-2 scrollbar-none">
+      <div className="flex gap-1.5 mb-4 overflow-x-auto pb-1 scrollbar-none">
         {filters.map(f => (
           <button
             key={f}
             onClick={() => setFilter(f)}
-            className={`whitespace-nowrap px-4 py-2 rounded-full text-sm transition-all ${
-              filter === f ? 'bg-fresh-500 text-dark-900 font-semibold' : 'bg-dark-700 text-gray-400 hover:bg-dark-600'
+            className={`whitespace-nowrap px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
+              filter === f ? 'text-[var(--accent-text)]' : ''
             }`}
+            style={filter === f
+              ? { backgroundColor: 'var(--accent)', color: 'var(--accent-text)' }
+              : { backgroundColor: 'var(--bg-inset)', color: 'var(--text-secondary)', border: '1px solid var(--border-subtle)' }}
           >
             {f}
           </button>
         ))}
       </div>
 
-      {/* Recipe List */}
-      <div className="space-y-3">
+      <div className="space-y-2">
         {filteredRecipes.length === 0 ? (
-          <div className="text-center py-12 text-gray-500">
-            <ChefHat className="w-12 h-12 mx-auto mb-3 opacity-30" />
-            <p className="text-sm">Ajoute des ingrédients pour voir les recettes!</p>
+          <div className="text-center py-12">
+            <ChefHat className="w-10 h-10 mx-auto mb-3" style={{ color: 'var(--text-muted)', opacity: 0.4 }} />
+            <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Ajoute des ingrédients pour voir les recettes</p>
           </div>
         ) : (
           filteredRecipes.map(r => (

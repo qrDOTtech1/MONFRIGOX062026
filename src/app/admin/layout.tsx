@@ -8,7 +8,7 @@ const navItems = [
   { href: '/admin', icon: BarChart3, label: 'Dashboard' },
   { href: '/admin/users', icon: Users, label: 'Utilisateurs' },
   { href: '/admin/recipes', icon: ChefHat, label: 'Recettes' },
-  { href: '/admin/config', icon: Settings, label: 'Configuration' },
+  { href: '/admin/config', icon: Settings, label: 'Config' },
 ];
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -17,21 +17,23 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   return (
     <div className="min-h-screen">
-      <header className="bg-dark-800/90 backdrop-blur-lg border-b border-dark-600/50 sticky top-0 z-50">
+      <header className="sticky top-0 z-50" style={{ backgroundColor: 'var(--bg-raised)', borderBottom: '1px solid var(--border)' }}>
         <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <button onClick={() => router.push('/dashboard')} className="p-2 hover:bg-dark-700 rounded-lg transition-colors">
-              <ArrowLeft className="w-5 h-5 text-gray-400" />
+          <div className="flex items-center gap-2.5">
+            <button onClick={() => router.push('/dashboard')} className="p-2 rounded-lg transition-colors hover:bg-[var(--bg-inset)]">
+              <ArrowLeft className="w-4 h-4" style={{ color: 'var(--text-muted)' }} />
             </button>
-            <Shield className="w-5 h-5 text-fresh-500" />
-            <span className="font-bold">Admin Portal</span>
+            <Shield className="w-4 h-4" style={{ color: 'var(--text-secondary)' }} />
+            <span className="font-semibold text-sm">Admin</span>
           </div>
-          <nav className="flex gap-1">
+          <nav className="flex gap-0.5">
             {navItems.map(({ href, icon: Icon, label }) => {
               const active = pathname === href;
               return (
-                <Link key={href} href={href} className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors ${active ? 'bg-fresh-500/20 text-fresh-400' : 'text-gray-400 hover:bg-dark-700'}`}>
-                  <Icon className="w-4 h-4" />
+                <Link key={href} href={href} className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors ${active ? '' : ''}`}
+                  style={active ? { backgroundColor: 'var(--bg-inset)', color: 'var(--text)' } : { color: 'var(--text-muted)' }}
+                >
+                  <Icon className="w-3.5 h-3.5" />
                   <span className="hidden sm:inline">{label}</span>
                 </Link>
               );

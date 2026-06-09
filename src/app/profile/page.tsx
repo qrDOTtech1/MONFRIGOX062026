@@ -3,7 +3,8 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import AppShell from '@/components/AppShell';
-import { UserCircle, LogOut, Shield, ChefHat, Heart, ShoppingCart, Refrigerator } from 'lucide-react';
+import { useTheme } from '@/components/ThemeProvider';
+import { UserCircle, LogOut, Shield, Heart, ShoppingCart, Refrigerator, Sun, Moon } from 'lucide-react';
 
 interface User {
   id: string;
@@ -21,6 +22,7 @@ interface Stats {
 
 export default function ProfilePage() {
   const router = useRouter();
+  const { theme, toggle } = useTheme();
   const [user, setUser] = useState<User | null>(null);
   const [stats, setStats] = useState<Stats>({ fridgeCount: 0, favCount: 0, listCount: 0 });
 
@@ -42,60 +44,70 @@ export default function ProfilePage() {
 
   return (
     <AppShell>
-      <div className="flex items-center gap-3 mb-6">
-        <UserCircle className="w-6 h-6 text-fresh-500" />
-        <h1 className="text-xl font-bold">Mon profil</h1>
+      <div className="flex items-center gap-2.5 mb-6">
+        <UserCircle className="w-5 h-5" style={{ color: 'var(--text-secondary)' }} />
+        <h1 className="text-lg font-semibold">Mon profil</h1>
       </div>
 
       {user && (
         <>
-          <div className="glass-card p-6 text-center mb-6">
-            <div className="w-20 h-20 bg-fresh-500/20 rounded-full flex items-center justify-center mx-auto mb-3">
-              <span className="text-3xl font-bold text-fresh-500">{user.name.charAt(0).toUpperCase()}</span>
+          <div className="card p-5 text-center mb-5">
+            <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-3" style={{ backgroundColor: 'var(--bg-inset)' }}>
+              <span className="text-2xl font-semibold" style={{ color: 'var(--text-secondary)' }}>{user.name.charAt(0).toUpperCase()}</span>
             </div>
-            <h2 className="text-lg font-bold">{user.name}</h2>
-            <p className="text-gray-500 text-sm">{user.email}</p>
+            <h2 className="text-base font-semibold">{user.name}</h2>
+            <p className="text-sm" style={{ color: 'var(--text-muted)' }}>{user.email}</p>
             {user.role === 'ADMIN' && (
-              <span className="inline-flex items-center gap-1 mt-2 badge bg-fresh-500/20 text-fresh-400">
+              <span className="inline-flex items-center gap-1 mt-2 badge" style={{ backgroundColor: 'var(--bg-inset)', color: 'var(--text-secondary)' }}>
                 <Shield className="w-3 h-3" /> Admin
               </span>
             )}
-            <p className="text-gray-600 text-xs mt-2">
+            <p className="text-xs mt-2" style={{ color: 'var(--text-muted)' }}>
               Membre depuis {new Date(user.createdAt).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })}
             </p>
           </div>
 
-          <div className="grid grid-cols-3 gap-3 mb-6">
-            <div className="glass-card p-4 text-center">
-              <Refrigerator className="w-5 h-5 text-fresh-500 mx-auto mb-1" />
-              <p className="text-lg font-bold">{stats.fridgeCount}</p>
-              <p className="text-[10px] text-gray-500">Ingrédients</p>
+          <div className="grid grid-cols-3 gap-2 mb-5">
+            <div className="card p-3.5 text-center">
+              <Refrigerator className="w-4 h-4 mx-auto mb-1" style={{ color: 'var(--text-muted)' }} />
+              <p className="text-base font-semibold">{stats.fridgeCount}</p>
+              <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>Ingrédients</p>
             </div>
-            <div className="glass-card p-4 text-center">
-              <Heart className="w-5 h-5 text-red-400 mx-auto mb-1" />
-              <p className="text-lg font-bold">{stats.favCount}</p>
-              <p className="text-[10px] text-gray-500">Favoris</p>
+            <div className="card p-3.5 text-center">
+              <Heart className="w-4 h-4 mx-auto mb-1 text-red-400" />
+              <p className="text-base font-semibold">{stats.favCount}</p>
+              <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>Favoris</p>
             </div>
-            <div className="glass-card p-4 text-center">
-              <ShoppingCart className="w-5 h-5 text-yellow-400 mx-auto mb-1" />
-              <p className="text-lg font-bold">{stats.listCount}</p>
-              <p className="text-[10px] text-gray-500">Listes</p>
+            <div className="card p-3.5 text-center">
+              <ShoppingCart className="w-4 h-4 mx-auto mb-1 text-amber-400" />
+              <p className="text-base font-semibold">{stats.listCount}</p>
+              <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>Listes</p>
             </div>
           </div>
 
-          {user.role === 'ADMIN' && (
-            <button onClick={() => router.push('/admin')} className="btn-secondary w-full mb-3 flex items-center justify-center gap-2">
-              <Shield className="w-4 h-4" /> Portail Admin
+          <div className="space-y-2">
+            <button
+              onClick={toggle}
+              className="btn-secondary w-full flex items-center justify-center gap-2"
+            >
+              {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+              {theme === 'dark' ? 'Mode clair' : 'Mode sombre'}
             </button>
-          )}
 
-          <button onClick={logout} className="btn-secondary w-full mb-3 flex items-center justify-center gap-2">
-            <LogOut className="w-4 h-4" /> Se déconnecter
-          </button>
+            {user.role === 'ADMIN' && (
+              <button onClick={() => router.push('/admin')} className="btn-secondary w-full flex items-center justify-center gap-2">
+                <Shield className="w-4 h-4" /> Portail Admin
+              </button>
+            )}
 
-          <button onClick={deleteAccount} className="w-full py-3 text-sm text-red-400 hover:text-red-300 transition-colors">
-            Supprimer mon compte
-          </button>
+            <button onClick={logout} className="btn-secondary w-full flex items-center justify-center gap-2">
+              <LogOut className="w-4 h-4" /> Se déconnecter
+            </button>
+
+            <button onClick={deleteAccount} className="w-full py-3 text-sm text-red-500 hover:text-red-400 transition-colors">
+              Supprimer mon compte
+            </button>
+          </div>
         </>
       )}
     </AppShell>

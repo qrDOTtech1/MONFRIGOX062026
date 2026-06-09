@@ -35,7 +35,7 @@ export default function FavoritesPage() {
     return (
       <AppShell>
         <div className="flex items-center justify-center h-[60vh]">
-          <div className="w-10 h-10 border-2 border-fresh-500 border-t-transparent rounded-full animate-spin" />
+          <div className="w-8 h-8 border-2 border-t-transparent rounded-full animate-spin" style={{ borderColor: 'var(--border)', borderTopColor: 'transparent' }} />
         </div>
       </AppShell>
     );
@@ -43,19 +43,19 @@ export default function FavoritesPage() {
 
   return (
     <AppShell>
-      <div className="flex items-center gap-3 mb-6">
-        <Heart className="w-6 h-6 text-fresh-500" />
-        <h1 className="text-xl font-bold">Mes favoris</h1>
+      <div className="flex items-center gap-2.5 mb-6">
+        <Heart className="w-5 h-5" style={{ color: 'var(--text-secondary)' }} />
+        <h1 className="text-lg font-semibold">Mes favoris</h1>
       </div>
 
       {recipes.length === 0 ? (
         <div className="text-center py-16">
-          <Heart className="w-12 h-12 mx-auto mb-3 text-gray-600" />
-          <p className="text-gray-500">Aucun favori pour l&apos;instant</p>
-          <p className="text-gray-600 text-xs mt-1">Ajoute des recettes en favoris!</p>
+          <Heart className="w-10 h-10 mx-auto mb-3" style={{ color: 'var(--text-muted)', opacity: 0.4 }} />
+          <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Aucun favori pour l&apos;instant</p>
+          <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>Ajoute des recettes en favoris</p>
         </div>
       ) : (
-        <div className="space-y-3">
+        <div className="space-y-2">
           {recipes.map(r => (
             <RecipeCard
               key={r.id}

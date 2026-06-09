@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { Refrigerator, ScanLine, ChefHat, ShoppingCart, Sparkles, Leaf } from 'lucide-react';
+import { Refrigerator, ScanLine, ChefHat, ShoppingCart, Leaf } from 'lucide-react';
 
 const features = [
   { icon: ScanLine, title: 'Scan intelligent', desc: 'Photographie ton frigo, l\'IA identifie tes ingrédients' },
@@ -14,52 +14,49 @@ export default function LandingPage() {
   return (
     <div className="min-h-screen flex flex-col">
       <header className="flex items-center justify-between px-6 py-4">
-        <div className="flex items-center gap-2">
-          <Refrigerator className="w-8 h-8 text-fresh-500" />
-          <span className="text-xl font-bold">Mon Frigo</span>
+        <div className="flex items-center gap-2.5">
+          <Refrigerator className="w-6 h-6" />
+          <span className="text-lg font-semibold tracking-tight">Mon Frigo</span>
         </div>
-        <div className="flex gap-3">
+        <div className="flex gap-2">
           <Link href="/login" className="btn-secondary !px-4 !py-2 text-sm">Connexion</Link>
           <Link href="/register" className="btn-primary !px-4 !py-2 text-sm">S&apos;inscrire</Link>
         </div>
       </header>
 
       <main className="flex-1 flex flex-col items-center justify-center px-6 text-center">
-        <div className="relative mb-8">
-          <div className="w-24 h-24 bg-fresh-500/20 rounded-3xl flex items-center justify-center pulse-green">
-            <Refrigerator className="w-12 h-12 text-fresh-500" />
-          </div>
-          <Sparkles className="w-6 h-6 text-fresh-400 absolute -top-2 -right-2 animate-pulse" />
+        <div className="w-16 h-16 rounded-2xl flex items-center justify-center mb-8" style={{ backgroundColor: 'var(--bg-inset)', border: '1px solid var(--border)' }}>
+          <Refrigerator className="w-8 h-8" style={{ color: 'var(--text-secondary)' }} />
         </div>
 
-        <h1 className="text-4xl md:text-5xl font-extrabold mb-4 leading-tight">
+        <h1 className="text-3xl md:text-4xl font-bold mb-4 leading-tight tracking-tight">
           Ton frigo,<br />
-          <span className="text-fresh-500">ton chef personnel</span>
+          ton chef personnel.
         </h1>
 
-        <p className="text-gray-400 text-lg mb-8 max-w-md">
+        <p className="text-base mb-8 max-w-md" style={{ color: 'var(--text-secondary)' }}>
           Scanne tes ingrédients, découvre des recettes parfaites
           et ne gaspille plus jamais rien.
         </p>
 
-        <Link href="/register" className="btn-primary text-lg !px-8 !py-4 mb-4">
+        <Link href="/register" className="btn-primary text-base !px-8 !py-3 mb-3">
           Commencer gratuitement
         </Link>
-        <p className="text-gray-600 text-sm">Pas de carte bancaire requise</p>
+        <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Pas de carte bancaire requise</p>
 
-        <div className="grid grid-cols-2 gap-4 mt-16 max-w-lg w-full">
+        <div className="grid grid-cols-2 gap-3 mt-16 max-w-lg w-full">
           {features.map((f) => (
-            <div key={f.title} className="glass-card p-4 text-left">
-              <f.icon className="w-8 h-8 text-fresh-500 mb-3" />
-              <h3 className="font-semibold text-sm mb-1">{f.title}</h3>
-              <p className="text-gray-500 text-xs">{f.desc}</p>
+            <div key={f.title} className="card p-4 text-left">
+              <f.icon className="w-5 h-5 mb-3" style={{ color: 'var(--text-secondary)' }} />
+              <h3 className="font-medium text-sm mb-1">{f.title}</h3>
+              <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{f.desc}</p>
             </div>
           ))}
         </div>
       </main>
 
-      <footer className="text-center text-gray-600 text-xs py-6">
-        Mon Frigo &copy; 2026 &mdash; Cuisine intelligente, z&eacute;ro gaspi
+      <footer className="text-center text-xs py-6" style={{ color: 'var(--text-muted)' }}>
+        Mon Frigo &copy; 2026
       </footer>
     </div>
   );

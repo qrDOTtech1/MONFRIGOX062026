@@ -106,30 +106,30 @@ export default function ScanPage() {
 
   return (
     <AppShell>
-      <div className="flex items-center gap-3 mb-6">
-        <ScanLine className="w-6 h-6 text-fresh-500" />
-        <h1 className="text-xl font-bold">Scanner mon frigo</h1>
+      <div className="flex items-center gap-2.5 mb-6">
+        <ScanLine className="w-5 h-5" style={{ color: 'var(--text-secondary)' }} />
+        <h1 className="text-lg font-semibold">Scanner mon frigo</h1>
       </div>
 
       {!image && !cameraActive && (
-        <div className="space-y-4">
-          <button onClick={startCamera} className="glass-card w-full p-8 flex flex-col items-center gap-4 hover:border-fresh-500/30 transition-all">
-            <div className="w-16 h-16 bg-fresh-500/20 rounded-2xl flex items-center justify-center">
-              <Camera className="w-8 h-8 text-fresh-500" />
+        <div className="space-y-3">
+          <button onClick={startCamera} className="card w-full p-6 flex flex-col items-center gap-3 hover:shadow-sm transition-all">
+            <div className="w-12 h-12 rounded-lg flex items-center justify-center" style={{ backgroundColor: 'var(--bg-inset)' }}>
+              <Camera className="w-6 h-6" style={{ color: 'var(--text-secondary)' }} />
             </div>
             <div className="text-center">
-              <p className="font-semibold">Prendre une photo</p>
-              <p className="text-gray-500 text-xs mt-1">Ouvre la caméra pour scanner ton frigo</p>
+              <p className="font-medium text-sm">Prendre une photo</p>
+              <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>Ouvre la caméra pour scanner ton frigo</p>
             </div>
           </button>
 
-          <button onClick={() => fileRef.current?.click()} className="glass-card w-full p-8 flex flex-col items-center gap-4 hover:border-fresh-500/30 transition-all">
-            <div className="w-16 h-16 bg-dark-600 rounded-2xl flex items-center justify-center">
-              <Upload className="w-8 h-8 text-gray-400" />
+          <button onClick={() => fileRef.current?.click()} className="card w-full p-6 flex flex-col items-center gap-3 hover:shadow-sm transition-all">
+            <div className="w-12 h-12 rounded-lg flex items-center justify-center" style={{ backgroundColor: 'var(--bg-inset)' }}>
+              <Upload className="w-6 h-6" style={{ color: 'var(--text-muted)' }} />
             </div>
             <div className="text-center">
-              <p className="font-semibold">Importer une image</p>
-              <p className="text-gray-500 text-xs mt-1">Depuis ta galerie ou tes fichiers</p>
+              <p className="font-medium text-sm">Importer une image</p>
+              <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>Depuis ta galerie ou tes fichiers</p>
             </div>
           </button>
 
@@ -138,9 +138,9 @@ export default function ScanPage() {
       )}
 
       {cameraActive && (
-        <div className="relative rounded-2xl overflow-hidden mb-4">
-          <video ref={videoRef} autoPlay playsInline className="w-full rounded-2xl" />
-          <div className="absolute bottom-4 left-0 right-0 flex justify-center gap-4">
+        <div className="relative rounded-xl overflow-hidden mb-4">
+          <video ref={videoRef} autoPlay playsInline className="w-full rounded-xl" />
+          <div className="absolute bottom-4 left-0 right-0 flex justify-center gap-3">
             <button onClick={stopCamera} className="btn-secondary !py-2 !px-4 text-sm">Annuler</button>
             <button onClick={capturePhoto} className="btn-primary !py-2 !px-4 text-sm">Capturer</button>
           </div>
@@ -149,11 +149,11 @@ export default function ScanPage() {
 
       {image && (
         <div className="mb-4">
-          <img src={image} alt="Scan" className="w-full rounded-2xl mb-4" />
+          <img src={image} alt="Scan" className="w-full rounded-xl mb-4" />
           {scanning && (
-            <div className="flex items-center justify-center gap-3 py-6">
-              <Loader2 className="w-6 h-6 text-fresh-500 animate-spin" />
-              <p className="text-gray-400">Analyse en cours...</p>
+            <div className="flex items-center justify-center gap-2.5 py-6">
+              <Loader2 className="w-5 h-5 animate-spin" style={{ color: 'var(--text-muted)' }} />
+              <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Analyse en cours...</p>
             </div>
           )}
         </div>
@@ -162,23 +162,23 @@ export default function ScanPage() {
       {results.length > 0 && (
         <div className="fade-in">
           <div className="flex items-center justify-between mb-3">
-            <h2 className="font-semibold">{results.length} ingrédient{results.length > 1 ? 's' : ''} détecté{results.length > 1 ? 's' : ''}</h2>
-            <button onClick={addAll} className="btn-primary !py-2 !px-4 text-sm">Tout ajouter</button>
+            <h2 className="font-medium text-sm">{results.length} ingrédient{results.length > 1 ? 's' : ''} détecté{results.length > 1 ? 's' : ''}</h2>
+            <button onClick={addAll} className="btn-primary !py-1.5 !px-3 text-xs">Tout ajouter</button>
           </div>
-          <div className="space-y-2">
+          <div className="space-y-1.5">
             {results.map((item, i) => (
-              <div key={i} className="glass-card p-3 flex items-center justify-between">
+              <div key={i} className="card p-3 flex items-center justify-between">
                 <div>
                   <p className="font-medium text-sm">{item.name}</p>
-                  <p className="text-xs text-gray-500">Confiance: {Math.round(item.confidence * 100)}%</p>
+                  <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Confiance: {Math.round(item.confidence * 100)}%</p>
                 </div>
                 {added.has(item.name) ? (
-                  <div className="w-8 h-8 bg-fresh-500/20 rounded-lg flex items-center justify-center">
-                    <Check className="w-4 h-4 text-fresh-500" />
+                  <div className="w-7 h-7 rounded-md flex items-center justify-center bg-emerald-500/10">
+                    <Check className="w-4 h-4 text-emerald-500" />
                   </div>
                 ) : (
-                  <button onClick={() => addItem(item)} className="w-8 h-8 bg-dark-600 hover:bg-fresh-500 rounded-lg flex items-center justify-center transition-colors group">
-                    <Plus className="w-4 h-4 text-gray-400 group-hover:text-dark-900" />
+                  <button onClick={() => addItem(item)} className="w-7 h-7 rounded-md flex items-center justify-center transition-colors hover:bg-[var(--bg-inset)]" style={{ border: '1px solid var(--border)' }}>
+                    <Plus className="w-3.5 h-3.5" style={{ color: 'var(--text-muted)' }} />
                   </button>
                 )}
               </div>
