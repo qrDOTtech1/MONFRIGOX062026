@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import AppShell from '@/components/AppShell';
-import { ArrowLeft, Clock, Users, Heart, ShoppingCart, Check, X } from 'lucide-react';
+import { ArrowLeft, Clock, Users, Heart, ShoppingCart, Check, X, ChefHat } from 'lucide-react';
 
 interface Recipe {
   id: string;
@@ -97,6 +97,13 @@ export default function RecipeDetailPage() {
           <span className="badge bg-dark-600 text-gray-300"><Users className="w-3 h-3 mr-1" />{recipe.servings} pers.</span>
           <span className="badge bg-dark-600 text-gray-300">{recipe.cuisine}</span>
         </div>
+
+        <button
+          onClick={() => router.push(`/recipes/${recipe.id}/cook`)}
+          className="btn-primary w-full flex items-center justify-center gap-2 mb-3 !py-4 text-lg"
+        >
+          <ChefHat className="w-5 h-5" /> Cuisiner cette recette
+        </button>
 
         <div className="flex gap-3">
           <button onClick={toggleFav} className={`btn-secondary flex items-center gap-2 flex-1 justify-center ${recipe.isFavorite ? '!border-red-500/50' : ''}`}>

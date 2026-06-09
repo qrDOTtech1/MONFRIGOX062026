@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import AppShell from '@/components/AppShell';
 import RecipeCard from '@/components/RecipeCard';
-import { Refrigerator, Plus, X, AlertTriangle, ChefHat, Sparkles } from 'lucide-react';
+import { Refrigerator, Plus, X, AlertTriangle, ChefHat, Sparkles, Wand2, Loader2 } from 'lucide-react';
 
 interface FridgeItem {
   id: string;
@@ -32,6 +32,8 @@ export default function DashboardPage() {
   const [searchIngredient, setSearchIngredient] = useState('');
   const [suggestions, setSuggestions] = useState<Array<{ id: string; name: string; emoji: string }>>([]);
   const [filter, setFilter] = useState('Tous');
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiError, setAiError] = useState('');
   const filters = ['Tous', 'Facile', 'Street Food', '< 20 min'];
 
   const loadData = useCallback(async () => {
@@ -166,6 +168,37 @@ export default function DashboardPage() {
               {expiringSoon.map(i => i.ingredient.name).join(', ')} — utilise-les vite!
             </p>
           </div>
+        </div>
+      )}
+
+      {/* AI Suggest */}
+      {fridgeItems.length > 0 && (
+        <button
+          onClick={async () => {
+            setAiLoading(true);
+            setAiError('');
+            try {
+              const res = await fetch('/api/ai/suggest', { method: 'POST' });
+              const data = await res.json();
+              if (!res.ok) setAiError(data.error);
+              else loadData();
+            } catch { setAiError('Erreur réseau'); }
+            finally { setAiLoading(false); }
+          }}
+          disabled={aiLoading}
+          className="w-full glass-card p-4 mb-6 flex items-center gap-3 hover:border-fresh-500/30 transition-all disabled:opacity-50"
+        >
+          {aiLoading ? <Loader2 className="w-6 h-6 text-fresh-500 animate-spin" /> : <Wand2 className="w-6 h-6 text-fresh-500" />}
+          <div className="text-left">
+            <p className="font-semibold text-sm">{aiLoading ? 'L\'IA cherche des recettes...' : 'Invente-moi des recettes!'}</p>
+            <p className="text-[10px] text-gray-500">L&apos;IA génère de nouvelles recettes avec tes ingrédients</p>
+          </div>
+          <Sparkles className="w-4 h-4 text-fresh-400 ml-auto" />
+        </button>
+      )}
+      {aiError && (
+        <div className="bg-red-500/10 border border-red-500/30 rounded-xl px-4 py-3 text-red-400 text-sm mb-4">
+          {aiError}
         </div>
       )}
 
