@@ -7,7 +7,9 @@ export async function GET() {
 
   const recipes = await prisma.recipe.findMany({
     select: {
-      id: true, name: true, difficulty: true, prepTime: true, cuisine: true,
+      id: true, name: true, description: true, instructions: true,
+      difficulty: true, prepTime: true, cuisine: true, servings: true,
+      calories: true, proteins: true, carbs: true, fat: true, fiber: true,
       _count: { select: { ingredients: true, favorites: true } },
     },
     orderBy: { name: 'asc' },

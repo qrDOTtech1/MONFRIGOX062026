@@ -79,7 +79,7 @@ model Recipe {
   cuisine      String
   imageUrl     String    @default("")
   servings     Int       @default(4)
-  // Nutrition pour la recette complète (par portion)
+  // Nutrition par portion
   calories     Int?
   protein      Float?
   fat          Float?
@@ -88,7 +88,7 @@ model Recipe {
   salt         Float?
   nutriScore   String    @default("")  // A, B, C, D, E ou vide
   // Source externe
-  externalId   String?   // id TheMealDB ou Spoonacular
+  externalId   String?
   externalSrc  String    @default("")  // "mealdb", "spoonacular", ""
   // Catégories spéciales
   kidFriendly  Boolean   @default(false)

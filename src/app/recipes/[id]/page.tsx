@@ -1,9 +1,12 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import AppShell from '@/components/AppShell';
-import { ArrowLeft, Clock, Users, Heart, ShoppingCart, Check, X, ChefHat, Minus, Plus, Flame, Wheat, Droplets, Beef } from 'lucide-react';
+import {
+  ArrowLeft, Clock, Users, Heart, ShoppingCart, Check, X, ChefHat,
+  Minus, Plus, Flame, Wheat, Droplets, Beef, Sparkles,
+} from 'lucide-react';
 
 interface Recipe {
   id: string;
@@ -56,6 +59,8 @@ export default function RecipeDetailPage() {
   const [recipe, setRecipe] = useState<Recipe | null>(null);
   const [loading, setLoading] = useState(true);
   const [servings, setServings] = useState<number>(4);
+  const [enriching, setEnriching] = useState(false);
+  const enrichTriggered = useRef(false);
 
   useEffect(() => {
     fetch(`/api/recipes/${id}`)
@@ -66,6 +71,23 @@ export default function RecipeDetailPage() {
         setLoading(false);
       });
   }, [id]);
+
+  // Auto-enrichissement : si la recette n'a pas de nutrition → l'IA traduit + calcule en arrière-plan
+  useEffect(() => {
+    if (!recipe || recipe.calories !== null || enrichTriggered.current) return;
+    enrichTriggered.current = true;
+    setEnriching(true);
+
+    fetch(`/api/recipes/${id}/enrich`, { method: 'POST' })
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (data?.recipe) {
+          setRecipe(prev => prev ? { ...prev, ...data.recipe } : prev);
+        }
+      })
+      .catch(() => {})
+      .finally(() => setEnriching(false));
+  }, [recipe, id]);
 
   const ratio = recipe ? servings / recipe.servings : 1;
 
@@ -120,8 +142,6 @@ export default function RecipeDetailPage() {
 
   const diffColors: Record<string, string> = { FACILE: 'badge-easy', MOYEN: 'badge-medium', DIFFICILE: 'badge-hard' };
   const diffLabels: Record<string, string> = { FACILE: 'Facile', MOYEN: 'Moyen', DIFFICILE: 'Difficile' };
-
-  const hasNutrition = recipe.calories !== null;
 
   return (
     <AppShell>
@@ -199,43 +219,65 @@ export default function RecipeDetailPage() {
         </div>
       </div>
 
-      {/* Nutrition / Macros */}
+      {/* Valeurs nutritionnelles */}
       <div className="card p-4 mb-3">
-        <h2 className="font-medium text-sm mb-3">Valeurs nutritionnelles <span className="font-normal text-xs" style={{ color: 'var(--text-muted)' }}>(par portion)</span></h2>
-        {hasNutrition ? (
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="font-medium text-sm">
+            Valeurs nutritionnelles{' '}
+            <span className="font-normal text-xs" style={{ color: 'var(--text-muted)' }}>(par portion)</span>
+          </h2>
+          {enriching && (
+            <span className="flex items-center gap-1 text-[10px]" style={{ color: 'var(--text-muted)' }}>
+              <Sparkles className="w-3 h-3 animate-pulse" /> calcul en cours…
+            </span>
+          )}
+        </div>
+
+        {recipe.calories !== null ? (
           <>
             <div className="grid grid-cols-4 gap-2 mb-3">
               <div className="text-center p-2 rounded-lg" style={{ backgroundColor: 'var(--bg-inset)' }}>
                 <Flame className="w-4 h-4 mx-auto mb-1 text-orange-500" />
-                <p className="text-sm font-semibold">{recipe.calories ? Math.round(recipe.calories) : '-'}</p>
+                <p className="text-sm font-semibold">{Math.round(recipe.calories)}</p>
                 <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>kcal</p>
               </div>
               <div className="text-center p-2 rounded-lg" style={{ backgroundColor: 'var(--bg-inset)' }}>
                 <Beef className="w-4 h-4 mx-auto mb-1 text-red-500" />
-                <p className="text-sm font-semibold">{recipe.protein ? recipe.protein.toFixed(1) : '-'}g</p>
+                <p className="text-sm font-semibold">{recipe.protein != null ? recipe.protein.toFixed(1) : '–'}g</p>
                 <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>Protéines</p>
               </div>
               <div className="text-center p-2 rounded-lg" style={{ backgroundColor: 'var(--bg-inset)' }}>
                 <Wheat className="w-4 h-4 mx-auto mb-1 text-amber-500" />
-                <p className="text-sm font-semibold">{recipe.carbs ? recipe.carbs.toFixed(1) : '-'}g</p>
+                <p className="text-sm font-semibold">{recipe.carbs != null ? recipe.carbs.toFixed(1) : '–'}g</p>
                 <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>Glucides</p>
               </div>
               <div className="text-center p-2 rounded-lg" style={{ backgroundColor: 'var(--bg-inset)' }}>
                 <Droplets className="w-4 h-4 mx-auto mb-1 text-yellow-500" />
-                <p className="text-sm font-semibold">{recipe.fat ? recipe.fat.toFixed(1) : '-'}g</p>
+                <p className="text-sm font-semibold">{recipe.fat != null ? recipe.fat.toFixed(1) : '–'}g</p>
                 <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>Lipides</p>
               </div>
             </div>
-            {(recipe.fiber !== null || recipe.salt !== null) && (
+            {(recipe.fiber != null || recipe.salt != null) && (
               <div className="flex gap-4 text-xs justify-center" style={{ color: 'var(--text-muted)' }}>
-                {recipe.fiber !== null && <span>Fibres: {recipe.fiber.toFixed(1)}g</span>}
-                {recipe.salt !== null && <span>Sel: {recipe.salt.toFixed(1)}g</span>}
+                {recipe.fiber != null && <span>Fibres : {recipe.fiber.toFixed(1)}g</span>}
+                {recipe.salt != null && <span>Sel : {recipe.salt.toFixed(1)}g</span>}
               </div>
             )}
           </>
+        ) : enriching ? (
+          /* Skeleton pendant le calcul IA */
+          <div className="grid grid-cols-4 gap-2">
+            {[...Array(4)].map((_, i) => (
+              <div key={i} className="rounded-lg p-2 text-center" style={{ backgroundColor: 'var(--bg-inset)' }}>
+                <div className="w-4 h-4 rounded mx-auto mb-1 animate-pulse" style={{ backgroundColor: 'var(--border)' }} />
+                <div className="h-4 w-8 mx-auto rounded animate-pulse mb-1" style={{ backgroundColor: 'var(--border)' }} />
+                <div className="h-2.5 w-10 mx-auto rounded animate-pulse" style={{ backgroundColor: 'var(--border)' }} />
+              </div>
+            ))}
+          </div>
         ) : (
-          <p className="text-xs text-center py-3" style={{ color: 'var(--text-muted)' }}>
-            Données nutritionnelles non disponibles. L&apos;admin peut les calculer via Admin &rarr; DB &amp; Import.
+          <p className="text-xs text-center py-2" style={{ color: 'var(--text-muted)' }}>
+            Aucune donnée — l&apos;IA calculera automatiquement à la prochaine visite.
           </p>
         )}
       </div>
@@ -270,7 +312,14 @@ export default function RecipeDetailPage() {
 
       {/* Préparation */}
       <div className="card p-4">
-        <h2 className="font-medium text-sm mb-3">Préparation</h2>
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="font-medium text-sm">Préparation</h2>
+          {enriching && (
+            <span className="flex items-center gap-1 text-[10px]" style={{ color: 'var(--text-muted)' }}>
+              <Sparkles className="w-3 h-3 animate-pulse" /> traduction en cours…
+            </span>
+          )}
+        </div>
         <div className="space-y-3">
           {parseSteps(recipe.instructions).map((step, i) => (
             <div key={i} className="flex gap-3">

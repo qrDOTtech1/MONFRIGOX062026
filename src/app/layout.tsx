@@ -6,7 +6,13 @@ export const metadata: Metadata = {
   title: 'Mon Frigo',
   description: 'Scanne ton frigo, trouve des recettes, réduis le gaspillage.',
   manifest: '/manifest.json',
-  icons: { icon: '/favicon.svg' },
+  icons: {
+    icon: [
+      { url: '/favicon.svg', type: 'image/svg+xml' },
+      { url: '/icon.png', sizes: '192x192', type: 'image/png' },
+    ],
+    apple: '/icon.png',
+  },
 };
 
 export const viewport: Viewport = {
