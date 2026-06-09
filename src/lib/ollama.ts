@@ -169,6 +169,115 @@ export async function translateRecipe(recipe: { name: string; description: strin
   return { name, description, instructions };
 }
 
+// Traduction des unités anglaises → françaises
+const UNIT_MAP: Record<string, string> = {
+  'cup': 'tasse', 'cups': 'tasses',
+  'tbsp': 'c.à.s.', 'tbs': 'c.à.s.', 'tablespoon': 'c.à.s.', 'tablespoons': 'c.à.s.',
+  'tsp': 'c.à.c.', 'teaspoon': 'c.à.c.', 'teaspoons': 'c.à.c.',
+  'oz': 'g', 'ounce': 'g', 'ounces': 'g',
+  'lb': 'g', 'lbs': 'g', 'pound': 'g', 'pounds': 'g',
+  'clove': 'gousse', 'cloves': 'gousses',
+  'pinch': 'pincée', 'pinches': 'pincées',
+  'slice': 'tranche', 'slices': 'tranches',
+  'piece': 'morceau', 'pieces': 'morceaux',
+  'bunch': 'botte', 'bunches': 'bottes',
+  'sprig': 'brin', 'sprigs': 'brins',
+  'handful': 'poignée', 'handfuls': 'poignées',
+  'dash': 'trait', 'dashes': 'traits',
+  'can': 'boîte', 'cans': 'boîtes',
+  'packet': 'sachet', 'packets': 'sachets',
+  'stick': 'bâton', 'sticks': 'bâtons',
+  'leaf': 'feuille', 'leaves': 'feuilles',
+  'large': 'gros', 'medium': 'moyen', 'small': 'petit',
+  'to taste': 'à goût', 'to serve': 'pour servir',
+};
+
+export function translateUnit(unit: string): string {
+  if (!unit) return 'unité';
+  const lower = unit.toLowerCase().trim();
+  // Direct match
+  if (UNIT_MAP[lower]) return UNIT_MAP[lower];
+  // Partial match — check if unit starts with a known EN word
+  for (const [en, fr] of Object.entries(UNIT_MAP)) {
+    if (lower.startsWith(en + ' ') || lower === en) {
+      return lower.replace(new RegExp('^' + en, 'i'), fr);
+    }
+  }
+  // Convert oz to grams (1 oz ≈ 28g), lb to grams (1 lb ≈ 454g)
+  return unit;
+}
+
+// Convertir les quantités oz/lb en grammes
+export function convertToMetric(quantity: number, unit: string): { quantity: number; unit: string } {
+  const lower = unit.toLowerCase().trim();
+  if (['oz', 'ounce', 'ounces'].includes(lower)) {
+    return { quantity: Math.round(quantity * 28), unit: 'g' };
+  }
+  if (['lb', 'lbs', 'pound', 'pounds'].includes(lower)) {
+    return { quantity: Math.round(quantity * 454), unit: 'g' };
+  }
+  return { quantity, unit: translateUnit(unit) };
+}
+
+export interface NutritionEstimate {
+  calories: number;
+  protein: number;
+  fat: number;
+  carbs: number;
+  fiber: number;
+  salt: number;
+  nutriScore: string;
+  kidFriendly: boolean;
+  babyFriendly: boolean;
+}
+
+export async function estimateNutrition(
+  recipeName: string,
+  ingredients: Array<{ name: string; quantity: number; unit: string }>,
+  servings: number,
+): Promise<NutritionEstimate> {
+  const ingList = ingredients.map(i => `${i.quantity} ${i.unit} ${i.name}`).join(', ');
+
+  const response = await chatCompletion([
+    {
+      role: 'system',
+      content: `Tu es un nutritionniste expert. Estime les valeurs nutritionnelles PAR PORTION d'une recette.
+Réponds UNIQUEMENT en JSON valide avec ce format exact:
+{"calories": 350, "protein": 25.0, "fat": 12.0, "carbs": 40.0, "fiber": 5.0, "salt": 1.2, "nutriScore": "B", "kidFriendly": true, "babyFriendly": false}
+
+Règles:
+- calories: entier (kcal par portion)
+- protein, fat, carbs, fiber, salt: float (grammes par portion)
+- nutriScore: "A", "B", "C", "D" ou "E" selon la qualité nutritionnelle
+- kidFriendly: true si adapté aux enfants de 3+ ans (pas trop épicé, pas d'alcool)
+- babyFriendly: true si adapté aux bébés 6-12 mois (pas de sel, pas de miel, textures simples)
+- Sois réaliste dans tes estimations basées sur les ingrédients fournis.`,
+    },
+    {
+      role: 'user',
+      content: `Recette: "${recipeName}" pour ${servings} personnes\nIngrédients: ${ingList}`,
+    },
+  ], { temperature: 0.2 });
+
+  const text = response.message?.content?.trim() || '';
+  // Extract JSON from response
+  const jsonMatch = text.match(/\{[\s\S]*\}/);
+  if (!jsonMatch) throw new Error('No JSON in AI response');
+  const parsed = JSON.parse(jsonMatch[0]);
+
+  return {
+    calories: Math.round(parsed.calories || 0),
+    protein: parseFloat(parsed.protein) || 0,
+    fat: parseFloat(parsed.fat) || 0,
+    carbs: parseFloat(parsed.carbs) || 0,
+    fiber: parseFloat(parsed.fiber) || 0,
+    salt: parseFloat(parsed.salt) || 0,
+    nutriScore: ['A', 'B', 'C', 'D', 'E'].includes(parsed.nutriScore) ? parsed.nutriScore : '',
+    kidFriendly: !!parsed.kidFriendly,
+    babyFriendly: !!parsed.babyFriendly,
+  };
+}
+
 export async function generateShoppingList(recipeName: string, availableIngredients: string[]) {
   return chatCompletion([
     {

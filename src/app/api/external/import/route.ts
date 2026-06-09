@@ -10,7 +10,7 @@ import {
   type MealDBRecipe,
   type SpoonacularRecipe,
 } from '@/lib/food-apis';
-import { translateRecipe, translateToFrench } from '@/lib/ollama';
+import { translateRecipe, translateToFrench, convertToMetric, estimateNutrition } from '@/lib/ollama';
 
 /**
  * POST /api/external/import
@@ -92,7 +92,7 @@ export async function POST(req: NextRequest) {
               data: { name: ingNameFr, category: 'Importé', emoji: '🥘' },
             });
           }
-          // Parse quantity from measure
+          // Parse quantity from measure + convert to metric FR
           let quantity = 1;
           let unit = ing.measure || 'unité';
           const numMatch = ing.measure.match(/([\d.]+)/);
@@ -100,15 +100,43 @@ export async function POST(req: NextRequest) {
             quantity = parseFloat(numMatch[1]);
             unit = ing.measure.replace(numMatch[0], '').trim() || 'unité';
           }
+          const metric = convertToMetric(quantity, unit);
           await prisma.recipeIngredient.create({
             data: {
               recipeId: recipe.id,
               ingredientId: ingredient.id,
-              quantity,
-              unit,
+              quantity: metric.quantity,
+              unit: metric.unit,
             },
           }).catch(() => {}); // ignore duplicate
         }
+
+        // Estimer nutrition via IA
+        try {
+          const nutrition = await estimateNutrition(
+            trName,
+            meal.ingredients.map(i => {
+              const n = i.measure.match(/([\d.]+)/);
+              return { name: i.name, quantity: n ? parseFloat(n[1]) : 1, unit: i.measure };
+            }),
+            4,
+          );
+          await prisma.recipe.update({
+            where: { id: recipe.id },
+            data: {
+              calories: nutrition.calories,
+              protein: nutrition.protein,
+              fat: nutrition.fat,
+              carbs: nutrition.carbs,
+              fiber: nutrition.fiber,
+              salt: nutrition.salt,
+              nutriScore: nutrition.nutriScore,
+              kidFriendly: nutrition.kidFriendly,
+              babyFriendly: nutrition.babyFriendly,
+            },
+          });
+        } catch { /* nutrition estimation failed — no big deal */ }
+
         imported++;
       }
     }
@@ -167,15 +195,40 @@ export async function POST(req: NextRequest) {
               data: { name: ingNameFr, category: 'Importé', emoji: '🥘' },
             });
           }
+          const metric = convertToMetric(ing.amount || 1, ing.unit || 'unité');
           await prisma.recipeIngredient.create({
             data: {
               recipeId: recipe.id,
               ingredientId: ingredient.id,
-              quantity: ing.amount || 1,
-              unit: ing.unit || 'unité',
+              quantity: metric.quantity,
+              unit: metric.unit,
             },
           }).catch(() => {});
         }
+
+        // Estimer nutrition via IA
+        try {
+          const nutrition = await estimateNutrition(
+            trName,
+            sr.ingredients.map(i => ({ name: i.name, quantity: i.amount || 1, unit: i.unit || '' })),
+            sr.servings || 4,
+          );
+          await prisma.recipe.update({
+            where: { id: recipe.id },
+            data: {
+              calories: nutrition.calories,
+              protein: nutrition.protein,
+              fat: nutrition.fat,
+              carbs: nutrition.carbs,
+              fiber: nutrition.fiber,
+              salt: nutrition.salt,
+              nutriScore: nutrition.nutriScore,
+              kidFriendly: nutrition.kidFriendly,
+              babyFriendly: nutrition.babyFriendly,
+            },
+          });
+        } catch { /* nutrition estimation failed */ }
+
         imported++;
       }
     }

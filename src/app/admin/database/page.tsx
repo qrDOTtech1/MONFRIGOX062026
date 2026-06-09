@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Database, RefreshCw, Download, Check, AlertTriangle, Server, Loader2, ChefHat, Utensils, Zap, Play, X, Languages } from 'lucide-react';
+import { Database, RefreshCw, Download, Check, AlertTriangle, Server, Loader2, ChefHat, Utensils, Zap, Play, X, Languages, Flame } from 'lucide-react';
 
 interface DbStatus {
   connected: boolean;
@@ -39,9 +39,11 @@ export default function AdminDatabasePage() {
   const [spoonResult, setSpoonResult] = useState<ImportResult | null>(null);
   const [spoonError, setSpoonError] = useState('');
 
-  // Translate
+  // Translate & Nutrition
   const [translating, setTranslating] = useState(false);
-  const [translateResult, setTranslateResult] = useState<{ translated: number; failed: number; total: number } | null>(null);
+  const [translateResult, setTranslateResult] = useState<{ translated: number; nutritionAdded: number; failed: number; total: number } | null>(null);
+  const [enriching, setEnriching] = useState(false);
+  const [enrichResult, setEnrichResult] = useState<{ nutritionAdded: number; failed: number; total: number } | null>(null);
 
   // Logs
   const [logs, setLogs] = useState<string[]>([]);
@@ -119,23 +121,49 @@ export default function AdminDatabasePage() {
   async function translateRecipes() {
     setTranslating(true);
     setTranslateResult(null);
-    log('Traduction des recettes anglaises en français via IA...');
+    log('Traduction + enrichissement des recettes via IA... (peut prendre plusieurs minutes)');
     try {
       const res = await fetch('/api/admin/translate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'all' }),
       });
       const data = await res.json();
       if (res.ok) {
         setTranslateResult(data);
-        log(`Traduction: ${data.translated} traduites, ${data.failed} échouées sur ${data.total}`);
+        log(`Traduction: ${data.translated} traduites, ${data.nutritionAdded} nutrition ajoutée, ${data.failed} échouées`);
+        loadStatus();
       } else {
-        log(`Traduction erreur: ${data.error}`);
+        log(`Erreur: ${data.error}`);
       }
     } catch (e: any) {
-      log(`Traduction erreur: ${e.message}`);
+      log(`Erreur: ${e.message}`);
     } finally {
       setTranslating(false);
+    }
+  }
+
+  async function enrichNutrition() {
+    setEnriching(true);
+    setEnrichResult(null);
+    log('Calcul des valeurs nutritionnelles via IA...');
+    try {
+      const res = await fetch('/api/admin/translate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'nutrition' }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setEnrichResult(data);
+        log(`Nutrition: ${data.nutritionAdded} recettes enrichies, ${data.failed} échouées`);
+      } else {
+        log(`Erreur: ${data.error}`);
+      }
+    } catch (e: any) {
+      log(`Erreur: ${e.message}`);
+    } finally {
+      setEnriching(false);
     }
   }
 
@@ -301,27 +329,49 @@ export default function AdminDatabasePage() {
         )}
       </div>
 
-      {/* === TRADUCTION FR === */}
+      {/* === TRADUCTION FR + NUTRITION === */}
       <div className="card p-5">
         <div className="flex items-center gap-2.5 mb-1">
           <Languages className="w-4 h-4 text-blue-500" />
-          <h2 className="font-medium">Traduire les recettes en français</h2>
+          <h2 className="font-medium">Traduire & Enrichir les recettes</h2>
         </div>
         <p className="text-xs mb-4" style={{ color: 'var(--text-muted)' }}>
-          Détecte les recettes importées en anglais et les traduit automatiquement en français via Ollama IA (nom, description, instructions, ingrédients).
+          Traduit les recettes anglaises en français (nom, description, instructions, ingrédients, unités) et calcule les valeurs nutritionnelles manquantes (calories, macros, NutriScore, badges enfants) via Ollama IA.
         </p>
-        <button
-          onClick={translateRecipes}
-          disabled={translating}
-          className="btn-primary flex items-center gap-2 disabled:opacity-40"
-        >
-          {translating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Languages className="w-4 h-4" />}
-          {translating ? 'Traduction en cours... (peut prendre plusieurs minutes)' : 'Traduire en français'}
-        </button>
+
+        <div className="flex gap-2 flex-wrap">
+          <button
+            onClick={translateRecipes}
+            disabled={translating || enriching}
+            className="btn-primary flex items-center gap-2 disabled:opacity-40"
+          >
+            {translating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Languages className="w-4 h-4" />}
+            {translating ? 'En cours...' : 'Traduire + Nutrition (tout)'}
+          </button>
+          <button
+            onClick={enrichNutrition}
+            disabled={enriching || translating}
+            className="btn-secondary flex items-center gap-2 disabled:opacity-40"
+          >
+            {enriching ? <Loader2 className="w-4 h-4 animate-spin" /> : <Flame className="w-4 h-4 text-orange-500" />}
+            {enriching ? 'Calcul en cours...' : 'Nutrition seule'}
+          </button>
+        </div>
+
+        <p className="text-[10px] mt-2" style={{ color: 'var(--text-muted)' }}>
+          ⏱️ Peut prendre plusieurs minutes selon le nombre de recettes. Chaque recette nécessite un appel IA.
+        </p>
+
         {translateResult && (
           <div className="mt-3 rounded-lg px-3.5 py-2.5 text-sm text-emerald-600 dark:text-emerald-400" style={{ backgroundColor: 'rgba(16,185,129,0.06)', border: '1px solid rgba(16,185,129,0.15)' }}>
             <Check className="w-4 h-4 inline mr-1" />
-            {translateResult.translated} recettes traduites{translateResult.failed > 0 ? `, ${translateResult.failed} échouées` : ''} sur {translateResult.total} importées
+            {translateResult.translated} traduites, {translateResult.nutritionAdded} nutrition ajoutée{translateResult.failed > 0 ? `, ${translateResult.failed} échouées` : ''}
+          </div>
+        )}
+        {enrichResult && (
+          <div className="mt-2 rounded-lg px-3.5 py-2.5 text-sm text-emerald-600 dark:text-emerald-400" style={{ backgroundColor: 'rgba(16,185,129,0.06)', border: '1px solid rgba(16,185,129,0.15)' }}>
+            <Check className="w-4 h-4 inline mr-1" />
+            {enrichResult.nutritionAdded} recettes enrichies (nutrition){enrichResult.failed > 0 ? `, ${enrichResult.failed} échouées` : ''}
           </div>
         )}
       </div>

@@ -200,39 +200,45 @@ export default function RecipeDetailPage() {
       </div>
 
       {/* Nutrition / Macros */}
-      {hasNutrition && (
-        <div className="card p-4 mb-3">
-          <h2 className="font-medium text-sm mb-3">Valeurs nutritionnelles <span className="font-normal text-xs" style={{ color: 'var(--text-muted)' }}>(par portion)</span></h2>
-          <div className="grid grid-cols-4 gap-2 mb-3">
-            <div className="text-center p-2 rounded-lg" style={{ backgroundColor: 'var(--bg-inset)' }}>
-              <Flame className="w-4 h-4 mx-auto mb-1 text-orange-500" />
-              <p className="text-sm font-semibold">{recipe.calories ? Math.round(recipe.calories * ratio / servings * recipe.servings) : '-'}</p>
-              <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>kcal</p>
+      <div className="card p-4 mb-3">
+        <h2 className="font-medium text-sm mb-3">Valeurs nutritionnelles <span className="font-normal text-xs" style={{ color: 'var(--text-muted)' }}>(par portion)</span></h2>
+        {hasNutrition ? (
+          <>
+            <div className="grid grid-cols-4 gap-2 mb-3">
+              <div className="text-center p-2 rounded-lg" style={{ backgroundColor: 'var(--bg-inset)' }}>
+                <Flame className="w-4 h-4 mx-auto mb-1 text-orange-500" />
+                <p className="text-sm font-semibold">{recipe.calories ? Math.round(recipe.calories) : '-'}</p>
+                <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>kcal</p>
+              </div>
+              <div className="text-center p-2 rounded-lg" style={{ backgroundColor: 'var(--bg-inset)' }}>
+                <Beef className="w-4 h-4 mx-auto mb-1 text-red-500" />
+                <p className="text-sm font-semibold">{recipe.protein ? recipe.protein.toFixed(1) : '-'}g</p>
+                <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>Protéines</p>
+              </div>
+              <div className="text-center p-2 rounded-lg" style={{ backgroundColor: 'var(--bg-inset)' }}>
+                <Wheat className="w-4 h-4 mx-auto mb-1 text-amber-500" />
+                <p className="text-sm font-semibold">{recipe.carbs ? recipe.carbs.toFixed(1) : '-'}g</p>
+                <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>Glucides</p>
+              </div>
+              <div className="text-center p-2 rounded-lg" style={{ backgroundColor: 'var(--bg-inset)' }}>
+                <Droplets className="w-4 h-4 mx-auto mb-1 text-yellow-500" />
+                <p className="text-sm font-semibold">{recipe.fat ? recipe.fat.toFixed(1) : '-'}g</p>
+                <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>Lipides</p>
+              </div>
             </div>
-            <div className="text-center p-2 rounded-lg" style={{ backgroundColor: 'var(--bg-inset)' }}>
-              <Beef className="w-4 h-4 mx-auto mb-1 text-red-500" />
-              <p className="text-sm font-semibold">{recipe.protein ? (recipe.protein * ratio / servings * recipe.servings).toFixed(1) : '-'}g</p>
-              <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>Protéines</p>
-            </div>
-            <div className="text-center p-2 rounded-lg" style={{ backgroundColor: 'var(--bg-inset)' }}>
-              <Wheat className="w-4 h-4 mx-auto mb-1 text-amber-500" />
-              <p className="text-sm font-semibold">{recipe.carbs ? (recipe.carbs * ratio / servings * recipe.servings).toFixed(1) : '-'}g</p>
-              <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>Glucides</p>
-            </div>
-            <div className="text-center p-2 rounded-lg" style={{ backgroundColor: 'var(--bg-inset)' }}>
-              <Droplets className="w-4 h-4 mx-auto mb-1 text-yellow-500" />
-              <p className="text-sm font-semibold">{recipe.fat ? (recipe.fat * ratio / servings * recipe.servings).toFixed(1) : '-'}g</p>
-              <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>Lipides</p>
-            </div>
-          </div>
-          {(recipe.fiber !== null || recipe.salt !== null) && (
-            <div className="flex gap-4 text-xs justify-center" style={{ color: 'var(--text-muted)' }}>
-              {recipe.fiber !== null && <span>Fibres: {recipe.fiber.toFixed(1)}g</span>}
-              {recipe.salt !== null && <span>Sel: {recipe.salt.toFixed(1)}g</span>}
-            </div>
-          )}
-        </div>
-      )}
+            {(recipe.fiber !== null || recipe.salt !== null) && (
+              <div className="flex gap-4 text-xs justify-center" style={{ color: 'var(--text-muted)' }}>
+                {recipe.fiber !== null && <span>Fibres: {recipe.fiber.toFixed(1)}g</span>}
+                {recipe.salt !== null && <span>Sel: {recipe.salt.toFixed(1)}g</span>}
+              </div>
+            )}
+          </>
+        ) : (
+          <p className="text-xs text-center py-3" style={{ color: 'var(--text-muted)' }}>
+            Données nutritionnelles non disponibles. L&apos;admin peut les calculer via Admin &rarr; DB &amp; Import.
+          </p>
+        )}
+      </div>
 
       {/* Ingrédients avec grammages ajustés */}
       <div className="card p-4 mb-3">
