@@ -127,7 +127,8 @@ export async function suggestRecipes(ingredients: string[]) {
       role: 'system',
       content: `Tu es un chef cuisinier expert. Tu suggères des recettes basées sur les ingrédients disponibles.
 Réponds UNIQUEMENT en JSON valide avec ce format:
-[{"name": "Nom", "description": "Description courte", "difficulty": "FACILE|MOYEN|DIFFICILE", "prepTime": 20, "cuisine": "FR", "ingredients": ["ingredient1", "ingredient2"], "instructions": "Étape 1...\\nÉtape 2..."}]
+[{"name": "Nom", "description": "Description courte", "difficulty": "FACILE|MOYEN|DIFFICILE", "prepTime": 20, "cuisine": "FR", "ingredients": ["ingredient1", "ingredient2"], "instructions": "Première étape.\\nDeuxième étape.\\nTroisième étape."}]
+IMPORTANT pour "instructions": fournis au minimum 3 étapes, chaque étape sur sa propre ligne séparée par un vrai saut de ligne \\n. N'utilise PAS de numéros ("1.", "2.") en début d'étape.
 Suggère 3-5 recettes. Privilégie les recettes qui utilisent un maximum des ingrédients listés.`,
     },
     {

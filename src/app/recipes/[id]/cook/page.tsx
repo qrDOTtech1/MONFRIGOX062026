@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { ArrowLeft, ArrowRight, ChefHat, Clock, X, Timer, Check, Users } from 'lucide-react';
+import { ArrowLeft, ArrowRight, ChefHat, Clock, X, Timer, Check, Users, Camera } from 'lucide-react';
 
 interface Recipe {
   id: string;
@@ -19,6 +19,40 @@ interface Recipe {
   instructions: string;
 }
 
+// Découpe les instructions en étapes, peu importe le format reçu
+// (sauts de ligne, listes numérotées "1.", puces, ou un seul paragraphe).
+function parseSteps(raw: string): string[] {
+  if (!raw) return [];
+  let text = raw.trim();
+
+  // 1) Sauts de ligne réels OU littéraux ("\n" stocké en texte)
+  let parts = text.split(/\r?\n|\\n/).map(s => s.trim()).filter(Boolean);
+  if (parts.length > 1) return cleanSteps(parts);
+
+  // 2) Listes numérotées : "1. ...", "2) ...", "Étape 3 :"
+  parts = text
+    .split(/(?=(?:\d+[\.\)]\s)|(?:étape\s*\d+\s*[:.\-]?\s))/i)
+    .map(s => s.trim())
+    .filter(Boolean);
+  if (parts.length > 1) return cleanSteps(parts);
+
+  // 3) Dernier recours : découpe par phrases
+  parts = text
+    .split(/(?<=[.!?])\s+(?=[A-ZÀ-ÖÀ-Ý])/)
+    .map(s => s.trim())
+    .filter(Boolean);
+  if (parts.length > 1) return cleanSteps(parts);
+
+  return [text];
+}
+
+// Retire les préfixes de numérotation ("1.", "2)", "Étape 1 :", "- ")
+function cleanSteps(steps: string[]): string[] {
+  return steps
+    .map(s => s.replace(/^\s*(?:étape\s*\d+\s*[:.\-]?\s*|\d+[\.\)]\s*|[-•*]\s*)/i, '').trim())
+    .filter(Boolean);
+}
+
 export default function CookModePage() {
   const { id } = useParams();
   const router = useRouter();
@@ -30,6 +64,7 @@ export default function CookModePage() {
   const [timerRunning, setTimerRunning] = useState(false);
   const [timerSeconds, setTimerSeconds] = useState(0);
   const [done, setDone] = useState(false);
+  const [resultPhoto, setResultPhoto] = useState<string | null>(null);
 
   useEffect(() => {
     fetch(`/api/recipes/${id}`)
@@ -37,8 +72,7 @@ export default function CookModePage() {
       .then(data => {
         if (data) {
           setRecipe(data);
-          const parsed = data.instructions.split('\n').filter((s: string) => s.trim());
-          setSteps(parsed);
+          setSteps(parseSteps(data.instructions));
         }
       });
   }, [id]);
@@ -130,14 +164,42 @@ export default function CookModePage() {
   if (done) {
     return (
       <div className="fixed inset-0 flex items-center justify-center z-50 px-6" style={{ backgroundColor: 'var(--bg)' }}>
-        <div className="text-center fade-in">
+        <div className="text-center fade-in w-full max-w-sm">
           <div className="text-5xl mb-5">🎉</div>
           <h1 className="text-2xl font-semibold mb-2">Bon appétit!</h1>
           <p className="text-sm mb-1" style={{ color: 'var(--text-secondary)' }}>{recipe.name} est prêt</p>
-          <p className="text-xs mb-8" style={{ color: 'var(--text-muted)' }}>Pour {recipe.servings} personne{recipe.servings > 1 ? 's' : ''}</p>
+          <p className="text-xs mb-6" style={{ color: 'var(--text-muted)' }}>Pour {recipe.servings} personne{recipe.servings > 1 ? 's' : ''}</p>
+
+          {/* Photo du résultat final */}
+          {resultPhoto ? (
+            <div className="mb-6">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={resultPhoto} alt="Ton plat" className="w-full rounded-xl mb-2" style={{ border: '1px solid var(--border)' }} />
+              <button onClick={() => setResultPhoto(null)} className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                Changer la photo
+              </button>
+            </div>
+          ) : (
+            <label className="card flex flex-col items-center justify-center gap-2 py-8 mb-6 cursor-pointer transition-colors hover:bg-[var(--bg-inset)]">
+              <Camera className="w-7 h-7" style={{ color: 'var(--text-muted)' }} />
+              <span className="text-sm font-medium">Prends ton plat en photo</span>
+              <span className="text-xs" style={{ color: 'var(--text-muted)' }}>Immortalise le résultat 📸</span>
+              <input
+                type="file"
+                accept="image/*"
+                capture="environment"
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) setResultPhoto(URL.createObjectURL(file));
+                }}
+              />
+            </label>
+          )}
+
           <div className="flex gap-2 justify-center">
             <button onClick={() => router.push('/dashboard')} className="btn-secondary">Retour</button>
-            <button onClick={() => { setStep(-1); setDone(false); }} className="btn-primary">Refaire</button>
+            <button onClick={() => { setStep(-1); setDone(false); setResultPhoto(null); }} className="btn-primary">Refaire</button>
           </div>
         </div>
       </div>
