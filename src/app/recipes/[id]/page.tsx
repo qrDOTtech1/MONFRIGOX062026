@@ -23,6 +23,20 @@ interface Recipe {
   isFavorite: boolean;
 }
 
+function parseSteps(raw: string): string[] {
+  if (!raw) return [];
+  const text = raw.trim();
+  let parts = text.split(/\r?\n|\\n/).map(s => s.trim()).filter(Boolean);
+  if (parts.length > 1) return clean(parts);
+  parts = text.split(/(?=(?:\d+[\.\)]\s)|(?:étape\s*\d+\s*[:.\-]?\s))/i).map(s => s.trim()).filter(Boolean);
+  if (parts.length > 1) return clean(parts);
+  parts = text.split(/(?<=[.!?])\s+(?=[A-ZÀ-ÖÙ-Ý])/).map(s => s.trim()).filter(Boolean);
+  return parts.length > 1 ? clean(parts) : [text];
+}
+function clean(steps: string[]): string[] {
+  return steps.map(s => s.replace(/^\s*(?:étape\s*\d+\s*[:.\-]?\s*|\d+[\.\)]\s*|[-•*]\s*)/i, '').trim()).filter(Boolean);
+}
+
 export default function RecipeDetailPage() {
   const { id } = useParams();
   const router = useRouter();
@@ -146,7 +160,7 @@ export default function RecipeDetailPage() {
       <div className="card p-4">
         <h2 className="font-medium text-sm mb-3">Préparation</h2>
         <div className="space-y-3">
-          {recipe.instructions.split('\n').filter(Boolean).map((step, i) => (
+          {parseSteps(recipe.instructions).map((step, i) => (
             <div key={i} className="flex gap-3">
               <div className="w-6 h-6 rounded-md flex items-center justify-center shrink-0 text-xs font-semibold" style={{ backgroundColor: 'var(--bg-inset)', color: 'var(--text-secondary)' }}>
                 {i + 1}
