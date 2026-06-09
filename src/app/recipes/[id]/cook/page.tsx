@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { ArrowLeft, ArrowRight, ChefHat, Clock, X, Timer, Check, Users, Camera } from 'lucide-react';
+import { ArrowLeft, ArrowRight, ChefHat, Clock, X, Timer, Check, Users, Camera, Refrigerator, Loader2 } from 'lucide-react';
 
 interface Recipe {
   id: string;
@@ -65,6 +65,8 @@ export default function CookModePage() {
   const [timerSeconds, setTimerSeconds] = useState(0);
   const [done, setDone] = useState(false);
   const [resultPhoto, setResultPhoto] = useState<string | null>(null);
+  const [deducting, setDeducting] = useState(false);
+  const [deducted, setDeducted] = useState(false);
 
   useEffect(() => {
     fetch(`/api/recipes/${id}`)
@@ -197,9 +199,38 @@ export default function CookModePage() {
             </label>
           )}
 
+          {/* Déduction frigo */}
+          {!deducted ? (
+            <button
+              onClick={async () => {
+                setDeducting(true);
+                await fetch('/api/fridge/deduct', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ recipeId: recipe.id, servings: recipe.servings, baseServings: recipe.servings }),
+                });
+                setDeducting(false);
+                setDeducted(true);
+              }}
+              disabled={deducting}
+              className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-medium mb-4 transition-all disabled:opacity-50"
+              style={{ backgroundColor: 'var(--bg-inset)', border: '1px solid var(--border)', color: 'var(--text-secondary)' }}
+            >
+              {deducting
+                ? <><Loader2 className="w-4 h-4 animate-spin" /> Mise à jour du frigo…</>
+                : <><Refrigerator className="w-4 h-4" /> Retirer les ingrédients du frigo</>
+              }
+            </button>
+          ) : (
+            <div className="flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-medium mb-4 text-emerald-600 dark:text-emerald-400"
+              style={{ backgroundColor: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.2)' }}>
+              <Check className="w-4 h-4" /> Frigo mis à jour !
+            </div>
+          )}
+
           <div className="flex gap-2 justify-center">
-            <button onClick={() => router.push('/dashboard')} className="btn-secondary">Retour</button>
-            <button onClick={() => { setStep(-1); setDone(false); setResultPhoto(null); }} className="btn-primary">Refaire</button>
+            <button onClick={() => router.push('/fridge')} className="btn-secondary">Mon frigo</button>
+            <button onClick={() => { setStep(-1); setDone(false); setResultPhoto(null); setDeducted(false); }} className="btn-primary">Refaire</button>
           </div>
         </div>
       </div>
