@@ -8,29 +8,34 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
 
   const { id } = await params;
 
-  const userFridge = await prisma.fridgeItem.findMany({
-    where: { userId: user.id },
-    select: { ingredientId: true },
-  });
-  const fridgeIds = new Set(userFridge.map(f => f.ingredientId));
+  try {
+    const userFridge = await prisma.fridgeItem.findMany({
+      where: { userId: user.id },
+      select: { ingredientId: true },
+    });
+    const fridgeIds = new Set(userFridge.map(f => f.ingredientId));
 
-  const recipe = await prisma.recipe.findUnique({
-    where: { id },
-    include: {
-      ingredients: { include: { ingredient: true } },
-      favorites: { where: { userId: user.id } },
-    },
-  });
+    const recipe = await prisma.recipe.findUnique({
+      where: { id },
+      include: {
+        ingredients: { include: { ingredient: true } },
+        favorites: { where: { userId: user.id } },
+      },
+    });
 
-  if (!recipe) return NextResponse.json({ error: 'Recette introuvable' }, { status: 404 });
+    if (!recipe) return NextResponse.json({ error: 'Recette introuvable' }, { status: 404 });
 
-  return NextResponse.json({
-    ...recipe,
-    isFavorite: recipe.favorites.length > 0,
-    ingredients: recipe.ingredients.map(i => ({
-      ...i,
-      inFridge: fridgeIds.has(i.ingredientId),
-    })),
-    favorites: undefined,
-  });
+    return NextResponse.json({
+      ...recipe,
+      isFavorite: recipe.favorites.length > 0,
+      ingredients: recipe.ingredients.map(i => ({
+        ...i,
+        inFridge: fridgeIds.has(i.ingredientId),
+      })),
+      favorites: undefined,
+    });
+  } catch (err: any) {
+    console.error('Recipe fetch error:', err);
+    return NextResponse.json({ error: 'Erreur chargement recette' }, { status: 500 });
+  }
 }
