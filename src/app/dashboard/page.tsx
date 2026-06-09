@@ -3,7 +3,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import AppShell from '@/components/AppShell';
 import RecipeCard from '@/components/RecipeCard';
-import RecipeChat from '@/components/RecipeChat';
 import { Search, ChefHat, SlidersHorizontal } from 'lucide-react';
 
 interface Recipe {
@@ -159,9 +158,6 @@ export default function ExplorerPage() {
           )}
         </div>
       )}
-
-      {/* Chatbot flottant */}
-      <RecipeChat allRecipes={recipes} />
 
       {/* Résultats */}
       {filtered.length === 0 ? (
