@@ -220,7 +220,7 @@ export default function ShoppingPage() {
           <button key={id} onClick={() => setTab(id)}
             className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-sm font-medium transition-all"
             style={tab === id
-              ? { backgroundColor: 'var(--bg-card)', color: 'var(--accent)', boxShadow: '0 1px 3px rgba(0,0,0,.12)' }
+              ? { backgroundColor: 'var(--bg-raised)', color: 'var(--text)', boxShadow: '0 1px 3px rgba(0,0,0,.12)' }
               : { color: 'var(--text-muted)' }}>
             <Icon className="w-4 h-4" />
             {label}
@@ -240,7 +240,7 @@ export default function ShoppingPage() {
             <div className="text-center">
               <p className="text-sm font-semibold">{weekLabel}</p>
               {weekOffset === 0 && (
-                <p className="text-[10px] mt-0.5" style={{ color: 'var(--accent)' }}>Semaine actuelle</p>
+                <p className="text-[10px] mt-0.5 text-emerald-500">Semaine actuelle</p>
               )}
             </div>
             <button onClick={() => setWeekOffset(o => o + 1)}
@@ -252,10 +252,10 @@ export default function ShoppingPage() {
           {/* Stats bar */}
           {plannedCount > 0 && (
             <div className="flex items-center gap-2 px-3 py-2 rounded-lg mb-4 fade-in"
-              style={{ backgroundColor: 'rgba(var(--accent-rgb,99,102,241),0.07)', border: '1px solid rgba(var(--accent-rgb,99,102,241),0.15)' }}>
-              <Sparkles className="w-3.5 h-3.5" style={{ color: 'var(--accent)' }} />
+              style={{ backgroundColor: 'var(--bg-inset)', border: '1px solid var(--border)' }}>
+              <Sparkles className="w-3.5 h-3.5" style={{ color: 'var(--text-secondary)' }} />
               <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>
-                <span className="font-semibold" style={{ color: 'var(--accent)' }}>{plannedCount} repas</span> planifiés · cliquez &quot;Courses&quot; pour la liste
+                <span className="font-semibold">{plannedCount} repas</span> planifiés · génère ta liste dans &quot;Courses&quot;
               </p>
             </div>
           )}
@@ -277,9 +277,11 @@ export default function ShoppingPage() {
 
                     {/* Day header */}
                     <div className="flex items-center gap-2 px-3.5 py-2.5"
-                      style={{ borderBottom: '1px solid var(--border-subtle)', backgroundColor: today ? 'rgba(var(--accent-rgb,99,102,241),0.04)' : undefined }}>
-                      <div className={`w-7 h-7 rounded-full flex items-center justify-center text-sm font-bold ${today ? 'text-white' : ''}`}
-                        style={today ? { backgroundColor: 'var(--accent)' } : {}}>
+                      style={{ borderBottom: '1px solid var(--border-subtle)', backgroundColor: today ? 'var(--bg-inset)' : undefined }}>
+                      <div className="w-7 h-7 rounded-full flex items-center justify-center text-sm font-bold"
+                        style={today
+                          ? { backgroundColor: 'var(--accent)', color: 'var(--accent-text)' }
+                          : { color: 'var(--text)' }}>
                         {day.getDate()}
                       </div>
                       <div>
@@ -288,7 +290,12 @@ export default function ShoppingPage() {
                           {MONTHS_FR[day.getMonth()]}
                         </span>
                       </div>
-                      {today && <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full ml-auto" style={{ backgroundColor: 'var(--accent)', color: 'white' }}>Aujourd&apos;hui</span>}
+                      {today && (
+                        <span className="text-[9px] font-bold px-2 py-0.5 rounded-full ml-auto"
+                          style={{ backgroundColor: 'var(--accent)', color: 'var(--accent-text)' }}>
+                          Aujourd&apos;hui
+                        </span>
+                      )}
                       {past && !today && <span className="text-[9px] ml-auto" style={{ color: 'var(--text-muted)' }}>Passé</span>}
                     </div>
 
@@ -355,7 +362,7 @@ export default function ShoppingPage() {
             <div className="sticky bottom-24 pb-2">
               <button onClick={() => setTab('courses')}
                 className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl text-sm font-semibold shadow-lg transition-all active:scale-[0.98]"
-                style={{ background: 'linear-gradient(135deg,var(--accent),color-mix(in srgb,var(--accent),#000 20%))', color: 'white' }}>
+                style={{ backgroundColor: 'var(--accent)', color: 'var(--accent-text)' }}>
                 <ShoppingCart className="w-4 h-4" />
                 Voir la liste de courses
                 <span className="text-xs font-normal opacity-75">{plannedCount} repas planifiés</span>
@@ -381,7 +388,7 @@ export default function ShoppingPage() {
               <p className="text-xs mb-6" style={{ color: 'var(--text-muted)' }}>Ajoute des recettes à ton planning pour générer une liste de courses</p>
               <button onClick={() => setTab('plan')}
                 className="px-5 py-2.5 rounded-lg text-sm font-medium transition-all"
-                style={{ backgroundColor: 'var(--accent)', color: 'white' }}>
+                style={{ backgroundColor: 'var(--accent)', color: 'var(--accent-text)' }}>
                 Aller au planning
               </button>
             </div>
