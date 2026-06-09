@@ -33,6 +33,12 @@ model User {
   role          Role      @default(USER)
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
+  // Préférences alimentaires
+  allergens     String    @default("")  // JSON array: ["gluten","lactose",...]
+  dietMode      String    @default("")  // vegan, vegetarien, halal, casher, sans-porc, ""
+  kidMode       String    @default("")  // "", "enfant", "bebe"
+  kidAgeMonths  Int?                     // âge en mois si bébé/enfant
+  defaultServings Int     @default(4)
   fridgeItems   FridgeItem[]
   favorites     Favorite[]
   shoppingLists ShoppingList[]
@@ -73,6 +79,20 @@ model Recipe {
   cuisine      String
   imageUrl     String    @default("")
   servings     Int       @default(4)
+  // Nutrition pour la recette complète (par portion)
+  calories     Int?
+  protein      Float?
+  fat          Float?
+  carbs        Float?
+  fiber        Float?
+  salt         Float?
+  nutriScore   String    @default("")  // A, B, C, D, E ou vide
+  // Source externe
+  externalId   String?   // id TheMealDB ou Spoonacular
+  externalSrc  String    @default("")  // "mealdb", "spoonacular", ""
+  // Catégories spéciales
+  kidFriendly  Boolean   @default(false)
+  babyFriendly Boolean   @default(false)
   createdAt    DateTime  @default(now())
   ingredients  RecipeIngredient[]
   favorites    Favorite[]

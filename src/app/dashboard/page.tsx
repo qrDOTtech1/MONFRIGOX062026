@@ -199,10 +199,14 @@ export default function DashboardPage() {
       <div className="flex items-center gap-2 mb-2">
         <ChefHat className="w-4 h-4" style={{ color: 'var(--text-secondary)' }} />
         <h2 className="font-semibold text-sm">
-          {filteredRecipes.length} recette{filteredRecipes.length !== 1 ? 's' : ''}
+          {recipes.length} recette{recipes.length !== 1 ? 's' : ''} disponibles
         </h2>
       </div>
-      <p className="text-xs mb-3" style={{ color: 'var(--text-muted)' }}>Avec tes ingrédients disponibles</p>
+      <p className="text-xs mb-3" style={{ color: 'var(--text-muted)' }}>
+        {filteredRecipes.length === recipes.length
+          ? 'Triées par compatibilité avec tes ingrédients'
+          : `${filteredRecipes.length} après filtrage`}
+      </p>
 
       <div className="flex gap-1.5 mb-4 overflow-x-auto pb-1 scrollbar-none">
         {filters.map(f => (
