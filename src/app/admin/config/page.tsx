@@ -1,4 +1,4 @@
-// This is the admin configuration page for Ollama settings
+// This banner provides quick tips and a disclaimer about AI usage
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -122,7 +122,13 @@ export default function AdminConfigPage() {
 
   return (
     <div className="fade-in space-y-5">
-      <div className="flex items-center gap-2.5">
+      <div className="flex items-center gap-2.5"><div className="bg-white/10 p-4 rounded mb-4 flex-1" style={{backgroundColor:'rgba(255,255,255,0.08)'}}>
+<p className="text-sm text-white">
+• Vous pouvez ajouter plusieurs photos pour chaque recette (jpg/png, < 2 MB).<br/>
+• Vous pouvez gérer également un placard ou frigo avec le tableau de bord.<br/>
+• MonFrigo utilise l’IA, il peut parfois se tromper.
+</p>
+</div></div>
         <Settings className="w-5 h-5" style={{ color: 'var(--text-secondary)' }} />
         <h1 className="text-xl font-semibold">Configuration Ollama</h1>
       </div>
