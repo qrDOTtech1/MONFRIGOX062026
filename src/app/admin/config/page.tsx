@@ -1,3 +1,4 @@
+// This is the admin configuration page for Ollama settings
 'use client';
 
 import { useState, useEffect } from 'react';
