@@ -4,7 +4,49 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import AppShell from '@/components/AppShell';
 import { useTheme } from '@/components/ThemeProvider';
-import { UserCircle, LogOut, Shield, Heart, ShoppingCart, Refrigerator, Sun, Moon, Save, Check, AlertTriangle, Baby, Users, History, Sparkles, ChefHat, Zap, Crown, Star, Plus } from 'lucide-react';
+import { UserCircle, LogOut, Shield, Heart, ShoppingCart, Refrigerator, Sun, Moon, Save, Check, AlertTriangle, Baby, Users, History, Sparkles, ChefHat, Zap, Crown, Star, Plus, Loader2 } from 'lucide-react';
+
+// Bouton qui crée une Checkout Session Stripe et redirige
+function CheckoutButton({ priceId, label, sub, color, Icon, compact = false }:
+  { priceId: string; label: string; sub: string; color: string; Icon?: React.ElementType; compact?: boolean }) {
+  const [loading, setLoading] = useState(false);
+  async function go() {
+    setLoading(true);
+    const res = await fetch('/api/billing/checkout', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ priceId }),
+    });
+    const d = await res.json();
+    if (d.url) window.location.href = d.url;
+    else { alert(d.error || 'Erreur Stripe'); setLoading(false); }
+  }
+  const amber  = color === 'amber';
+  const purple = color === 'purple';
+  if (compact) return (
+    <button onClick={go} disabled={loading}
+      className="flex-1 py-2 rounded-lg text-center transition-all hover:scale-[1.02] disabled:opacity-50"
+      style={{ backgroundColor: 'var(--bg-inset)', border: '1px solid var(--border)' }}>
+      {loading ? <Loader2 className="w-3.5 h-3.5 animate-spin mx-auto" /> : <>
+        <p className="text-xs font-semibold">{label}</p>
+        <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>{sub}</p>
+      </>}
+    </button>
+  );
+  return (
+    <button onClick={go} disabled={loading}
+      className="flex flex-col items-center py-3 px-2 rounded-xl text-center transition-all hover:scale-[1.02] disabled:opacity-60"
+      style={{
+        backgroundColor: amber ? 'rgba(245,158,11,0.08)' : purple ? 'rgba(168,85,247,0.08)' : 'var(--bg-inset)',
+        border: `1.5px solid ${amber ? 'rgba(245,158,11,0.3)' : purple ? 'rgba(168,85,247,0.3)' : 'var(--border)'}`,
+      }}>
+      {loading
+        ? <Loader2 className="w-4 h-4 animate-spin mb-1" style={{ color: amber ? 'rgb(245,158,11)' : 'rgb(168,85,247)' }} />
+        : Icon && <Icon className={`w-4 h-4 mb-1 ${amber ? 'text-amber-500' : 'text-purple-500'}`} />}
+      <span className="text-xs font-semibold">{label}</span>
+      <span className={`text-[10px] ${amber ? 'text-amber-500' : 'text-purple-500'}`}>{sub}</span>
+    </button>
+  );
+}
 
 interface User {
   id: string;
@@ -77,7 +119,7 @@ export default function ProfilePage() {
     aiCallsWeek: number;
     limitWeekly: number;
     planExpiresAt: string | null;
-    links: Record<string, string>;
+    priceIds: Record<string, string>;
     prices: Record<string, string>;
   }
   const [billing, setBilling] = useState<BillingStatus | null>(null);
@@ -260,48 +302,21 @@ export default function ProfilePage() {
                 <div className="space-y-2">
                   <p className="text-xs font-medium mb-2" style={{ color: 'var(--text-muted)' }}>Passer à un plan payant :</p>
                   <div className="grid grid-cols-2 gap-2">
-                    {billing.links.premiumMonthly && (
-                      <a href={billing.links.premiumMonthly} target="_blank" rel="noreferrer"
-                        className="flex flex-col items-center py-3 px-2 rounded-xl text-center transition-all hover:scale-[1.02]"
-                        style={{ backgroundColor: 'rgba(245,158,11,0.08)', border: '1.5px solid rgba(245,158,11,0.3)' }}>
-                        <Star className="w-4 h-4 text-amber-500 mb-1" />
-                        <span className="text-xs font-semibold">Premium</span>
-                        <span className="text-[10px] text-amber-500">{billing.prices.premiumMonthly}/mois</span>
-                      </a>
-                    )}
-                    {billing.links.premiumAnnual && (
-                      <a href={billing.links.premiumAnnual} target="_blank" rel="noreferrer"
-                        className="flex flex-col items-center py-3 px-2 rounded-xl text-center transition-all hover:scale-[1.02]"
-                        style={{ backgroundColor: 'rgba(245,158,11,0.08)', border: '1.5px solid rgba(245,158,11,0.3)' }}>
-                        <Star className="w-4 h-4 text-amber-500 mb-1" />
-                        <span className="text-xs font-semibold">Premium annuel</span>
-                        <span className="text-[10px] text-amber-500">{billing.prices.premiumAnnual}/an</span>
-                      </a>
-                    )}
-                    {billing.links.vipMonthly && (
-                      <a href={billing.links.vipMonthly} target="_blank" rel="noreferrer"
-                        className="flex flex-col items-center py-3 px-2 rounded-xl text-center transition-all hover:scale-[1.02]"
-                        style={{ backgroundColor: 'rgba(168,85,247,0.08)', border: '1.5px solid rgba(168,85,247,0.3)' }}>
-                        <Crown className="w-4 h-4 text-purple-500 mb-1" />
-                        <span className="text-xs font-semibold">VIP Famille</span>
-                        <span className="text-[10px] text-purple-500">{billing.prices.vipMonthly}/mois</span>
-                      </a>
-                    )}
-                    {billing.links.vipAnnual && (
-                      <a href={billing.links.vipAnnual} target="_blank" rel="noreferrer"
-                        className="flex flex-col items-center py-3 px-2 rounded-xl text-center transition-all hover:scale-[1.02]"
-                        style={{ backgroundColor: 'rgba(168,85,247,0.08)', border: '1.5px solid rgba(168,85,247,0.3)' }}>
-                        <Crown className="w-4 h-4 text-purple-500 mb-1" />
-                        <span className="text-xs font-semibold">VIP annuel</span>
-                        <span className="text-[10px] text-purple-500">{billing.prices.vipAnnual}/an</span>
-                      </a>
-                    )}
+                    {[
+                      { k: 'premiumMonthly', label: 'Premium',        sub: billing.prices.premiumMonthly + '/mois', color: 'amber', Icon: Star },
+                      { k: 'premiumAnnual',  label: 'Premium annuel', sub: billing.prices.premiumAnnual  + '/an',   color: 'amber', Icon: Star },
+                      { k: 'vipMonthly',     label: 'VIP',            sub: billing.prices.vipMonthly     + '/mois', color: 'purple', Icon: Crown },
+                      { k: 'vipAnnual',      label: 'VIP annuel',     sub: billing.prices.vipAnnual      + '/an',   color: 'purple', Icon: Crown },
+                    ].filter(p => billing.priceIds[p.k]).map(p => (
+                      <CheckoutButton key={p.k} priceId={billing.priceIds[p.k]}
+                        label={p.label} sub={p.sub} color={p.color} Icon={p.Icon} />
+                    ))}
                   </div>
                 </div>
               )}
 
               {/* Acheter quota bonus */}
-              {(billing.links.quota50 || billing.links.quota200 || billing.links.quota500) && (
+              {(billing.priceIds.quota50 || billing.priceIds.quota200 || billing.priceIds.quota500) && (
                 <div className="mt-3 pt-3" style={{ borderTop: '1px solid var(--border-subtle)' }}>
                   <p className="text-[10px] font-medium mb-2" style={{ color: 'var(--text-muted)' }}>
                     <Plus className="w-3 h-3 inline mr-0.5" />
@@ -309,16 +324,12 @@ export default function ProfilePage() {
                   </p>
                   <div className="flex gap-2">
                     {[
-                      { k: 'quota50',  label: '50',  price: billing.prices.quota50 },
-                      { k: 'quota200', label: '200', price: billing.prices.quota200 },
-                      { k: 'quota500', label: '500', price: billing.prices.quota500 },
-                    ].filter(p => billing.links[p.k]).map(pack => (
-                      <a key={pack.k} href={billing.links[pack.k]} target="_blank" rel="noreferrer"
-                        className="flex-1 py-2 rounded-lg text-center transition-all hover:scale-[1.02]"
-                        style={{ backgroundColor: 'var(--bg-inset)', border: '1px solid var(--border)' }}>
-                        <p className="text-xs font-semibold">{pack.label} req.</p>
-                        <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>{pack.price}</p>
-                      </a>
+                      { k: 'quota50',  label: '50 req.',  price: billing.prices.quota50  },
+                      { k: 'quota200', label: '200 req.', price: billing.prices.quota200 },
+                      { k: 'quota500', label: '500 req.', price: billing.prices.quota500 },
+                    ].filter(p => billing.priceIds[p.k]).map(pack => (
+                      <CheckoutButton key={pack.k} priceId={billing.priceIds[pack.k]}
+                        label={pack.label} sub={pack.price} color="gray" compact />
                     ))}
                   </div>
                 </div>

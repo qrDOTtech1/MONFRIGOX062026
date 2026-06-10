@@ -7,10 +7,10 @@ export async function POST(req: NextRequest) {
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: 'Non autorisé' }, { status: 401 });
 
-  // Scan frigo IA réservé Premium/VIP (coût vision élevé)
-  const userRecord = await prisma.user.findUnique({ where: { id: user.id }, select: { plan: true, planExpiresAt: true } });
+  // Scan frigo IA réservé Premium/VIP (coût vision élevé) — ADMIN toujours autorisé
+  const userRecord = await prisma.user.findUnique({ where: { id: user.id }, select: { role: true, plan: true, planExpiresAt: true } });
   const plan = (userRecord?.planExpiresAt && userRecord.planExpiresAt < new Date()) ? 'FREE' : (userRecord?.plan || 'FREE');
-  if (plan === 'FREE') {
+  if (plan === 'FREE' && userRecord?.role !== 'ADMIN') {
     return NextResponse.json({
       error: 'Le scan IA est réservé aux abonnés Premium et VIP.',
       upgrade: true,

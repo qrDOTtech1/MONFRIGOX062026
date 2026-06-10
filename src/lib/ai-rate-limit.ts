@@ -43,12 +43,15 @@ export async function checkAndConsumeAI(userId: string): Promise<RateLimitResult
   const user = await prisma.user.findUnique({
     where: { id: userId },
     select: {
-      plan: true, planExpiresAt: true, extraQuota: true,
-      aiCallsToday: true, aiCallsTodayDate: true,   // semaine — PREMIUM/VIP
-      aiCallsMonth: true,                            // vie entière — FREE trial
+      role: true, plan: true, planExpiresAt: true, extraQuota: true,
+      aiCallsToday: true, aiCallsTodayDate: true,
+      aiCallsMonth: true,
     },
   });
   if (!user) return { allowed: false, remaining: 0, plan: 'FREE', reason: 'Utilisateur introuvable' };
+
+  // ADMIN : aucune limite, accès total
+  if (user.role === 'ADMIN') return { allowed: true, remaining: 999999, plan: 'ADMIN' };
 
   const plan = (user.planExpiresAt && user.planExpiresAt < new Date())
     ? 'FREE' : (user.plan as Plan) || 'FREE';
