@@ -134,11 +134,10 @@ function ScanPageInner() {
   const [barcodeResult, setBarcodeResult]   = useState<BarcodeResult | null>(null);
   const [barcodeError, setBarcodeError]     = useState('');
   const [barcodeAdded, setBarcodeAdded]     = useState(false);
-  const barVideoRef   = useRef<HTMLVideoElement>(null);
+  const barVideoRef    = useRef<HTMLVideoElement>(null);
   const [barCamera, setBarCamera] = useState(false);
   const [barStatus, setBarStatus] = useState('Pointe vers le code-barres');
-  const zxingReaderRef = useRef<import('@zxing/browser').BrowserMultiFormatReader | null>(null);
-  const barStreamRef   = useRef<MediaStream | null>(null);
+  const zxingControlsRef = useRef<import('@zxing/browser').IScannerControls | null>(null);
 
   // ── Photo helpers ──
   async function startCamera() {
@@ -223,12 +222,8 @@ function ScanPageInner() {
   }
 
   const stopBarcodeCamera = useCallback(() => {
-    if (zxingReaderRef.current) {
-      try { zxingReaderRef.current.stopContinuousDecode(); } catch { /* ignore */ }
-      zxingReaderRef.current = null;
-    }
-    barStreamRef.current?.getTracks().forEach(t => t.stop());
-    barStreamRef.current = null;
+    try { zxingControlsRef.current?.stop(); } catch { /* ignore */ }
+    zxingControlsRef.current = null;
     if (barVideoRef.current) barVideoRef.current.srcObject = null;
     setBarCamera(false);
     setBarStatus('Pointe vers le code-barres');
@@ -237,47 +232,29 @@ function ScanPageInner() {
   async function startBarcodeCamera() {
     setBarCamera(true);
     setBarStatus('Démarrage…');
-
     try {
-      // Obtenir le stream manuellement pour contrôler l'arrêt
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 } },
-      });
-      barStreamRef.current = stream;
-
-      if (barVideoRef.current) {
-        barVideoRef.current.srcObject = stream;
-      }
+      const { BrowserMultiFormatReader } = await import('@zxing/browser');
+      const reader = new BrowserMultiFormatReader();
 
       setBarStatus('Cherche un code-barres…');
 
-      // ZXing — fonctionne sur iOS Safari + Android Chrome
-      const { BrowserMultiFormatReader } = await import('@zxing/browser');
-      const reader = new BrowserMultiFormatReader();
-      zxingReaderRef.current = reader;
-
-      // Attendre que la vidéo soit prête
-      await new Promise<void>(resolve => {
-        if (!barVideoRef.current) { resolve(); return; }
-        if (barVideoRef.current.readyState >= 2) { resolve(); return; }
-        barVideoRef.current.onloadeddata = () => resolve();
-      });
-
-      if (!barVideoRef.current) return;
-
-      reader.decodeFromVideoElement(barVideoRef.current, (result, err) => {
-        if (result) {
-          const code = result.getText();
-          setBarStatus(`✓ Code détecté : ${code}`);
-          stopBarcodeCamera();
-          setBarcodeInput(code);
-          lookupBarcode(code);
-        } else if (err && !err.message?.includes('No MultiFormat')) {
-          // Ignore les erreurs "pas de code trouvé dans cette frame"
-          setBarStatus('Cherche un code-barres…');
-        }
-      });
-
+      // decodeFromConstraints gère le stream + la vidéo, retourne IScannerControls
+      const controls = await reader.decodeFromConstraints(
+        { video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 } } },
+        barVideoRef.current ?? undefined,
+        (result, err) => {
+          if (result) {
+            const code = result.getText();
+            setBarStatus(`✓ Détecté : ${code}`);
+            stopBarcodeCamera();
+            setBarcodeInput(code);
+            lookupBarcode(code);
+          } else if (err && !(err.message ?? '').includes('No MultiFormat')) {
+            setBarStatus('Cherche un code-barres…');
+          }
+        },
+      );
+      zxingControlsRef.current = controls;
     } catch (e) {
       stopBarcodeCamera();
       alert("Impossible d'accéder à la caméra");
