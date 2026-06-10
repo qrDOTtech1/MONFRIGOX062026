@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import AppShell from '@/components/AppShell';
 import { useTheme } from '@/components/ThemeProvider';
-import { UserCircle, LogOut, Shield, Heart, ShoppingCart, Refrigerator, Sun, Moon, Save, Check, AlertTriangle, Baby, Users } from 'lucide-react';
+import { UserCircle, LogOut, Shield, Heart, ShoppingCart, Refrigerator, Sun, Moon, Save, Check, AlertTriangle, Baby, Users, History, Sparkles, ChefHat } from 'lucide-react';
 
 interface User {
   id: string;
@@ -18,6 +18,13 @@ interface Stats {
   fridgeCount: number;
   favCount: number;
   listCount: number;
+}
+
+interface CookLogEntry {
+  id: string;
+  cookedAt: string;
+  servings: number;
+  recipe: { id: string; name: string; imageUrl: string; cuisine: string; prepTime: number; ingredients: Array<{ingredient:{emoji:string}}> };
 }
 
 const ALLERGENS = [
@@ -59,6 +66,10 @@ export default function ProfilePage() {
   const { theme, toggle } = useTheme();
   const [user, setUser] = useState<User | null>(null);
   const [stats, setStats] = useState<Stats>({ fridgeCount: 0, favCount: 0, listCount: 0 });
+  const [activeTab, setActiveTab] = useState<'prefs'|'history'>('prefs');
+  const [cookLogs, setCookLogs] = useState<CookLogEntry[]>([]);
+  const [cookCounts, setCookCounts] = useState<Record<string,number>>({});
+  const [historyLoaded, setHistoryLoaded] = useState(false);
 
   // Préférences
   const [allergens, setAllergens] = useState<string[]>([]);
@@ -82,6 +93,19 @@ export default function ProfilePage() {
       }
     });
   }, []);
+
+  async function loadHistory() {
+    if (historyLoaded) return;
+    const res = await fetch('/api/cook-log?limit=30');
+    if (res.ok) {
+      const d = await res.json();
+      setCookLogs(d.logs || []);
+      const map: Record<string,number> = {};
+      (d.counts || []).forEach((c: {recipeId:string; _count:{id:number}}) => { map[c.recipeId] = c._count.id; });
+      setCookCounts(map);
+    }
+    setHistoryLoaded(true);
+  }
 
   function toggleAllergen(key: string) {
     setAllergens(prev => prev.includes(key) ? prev.filter(a => a !== key) : [...prev, key]);
@@ -160,6 +184,78 @@ export default function ProfilePage() {
               <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>Listes</p>
             </div>
           </div>
+
+          {/* Tab switcher */}
+          <div className="flex rounded-xl p-0.5 mb-5" style={{ backgroundColor: 'var(--bg-inset)' }}>
+            {[
+              { id: 'prefs' as const, label: 'Préférences', icon: Sparkles },
+              { id: 'history' as const, label: 'Historique', icon: History },
+            ].map(({ id, label, icon: Icon }) => (
+              <button key={id} onClick={() => { setActiveTab(id); if (id === 'history') loadHistory(); }}
+                className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-sm font-medium transition-all"
+                style={activeTab === id
+                  ? { backgroundColor: 'var(--bg-raised)', color: 'var(--text)', boxShadow: '0 1px 3px rgba(0,0,0,.12)' }
+                  : { color: 'var(--text-muted)' }}>
+                <Icon className="w-4 h-4" /> {label}
+              </button>
+            ))}
+          </div>
+
+          {/* ─── HISTORIQUE TAB ─── */}
+          {activeTab === 'history' && (
+            <div className="mb-5">
+              {/* Onboarding redo button */}
+              <button onClick={() => router.push('/onboarding')}
+                className="w-full flex items-center gap-3 p-4 rounded-xl mb-5 transition-colors hover:bg-[var(--bg-inset)] text-left"
+                style={{ backgroundColor: 'var(--bg-raised)', border: '1px solid var(--border)' }}>
+                <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0" style={{ backgroundColor: 'var(--bg-inset)' }}>
+                  <ChefHat className="w-5 h-5" style={{ color: 'var(--text-secondary)' }} />
+                </div>
+                <div className="flex-1">
+                  <p className="text-sm font-semibold">Refaire l&apos;onboarding</p>
+                  <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>Mettre à jour tes goûts, allergies, régime</p>
+                </div>
+                <span className="text-xs px-2 py-1 rounded-lg" style={{ backgroundColor: 'var(--bg-inset)', color: 'var(--text-muted)' }}>→</span>
+              </button>
+
+              <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
+                <History className="w-4 h-4" style={{ color: 'var(--text-muted)' }} />
+                Mes cuisines récentes
+              </h3>
+              {cookLogs.length === 0 ? (
+                <div className="text-center py-10">
+                  <ChefHat className="w-10 h-10 mx-auto mb-3" style={{ color: 'var(--text-muted)', opacity: 0.3 }} />
+                  <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Aucune recette cuisinée pour l&apos;instant</p>
+                  <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>Termine le mode cuisine pour que ça apparaisse ici</p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {cookLogs.map(log => (
+                    <button key={log.id} onClick={() => router.push(`/recipes/${log.recipe.id}`)}
+                      className="w-full flex items-center gap-3 p-3 rounded-xl text-left transition-colors hover:bg-[var(--bg-inset)]"
+                      style={{ backgroundColor: 'var(--bg-raised)', border: '1px solid var(--border-subtle)' }}>
+                      <div className="w-11 h-11 rounded-lg flex items-center justify-center shrink-0 overflow-hidden text-xl"
+                        style={{ backgroundColor: 'var(--bg-inset)' }}>
+                        {log.recipe.imageUrl
+                          ? <img src={log.recipe.imageUrl} alt="" className="w-full h-full object-cover" />
+                          : log.recipe.ingredients?.[0]?.ingredient?.emoji || '🍽️'}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate">{log.recipe.name}</p>
+                        <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
+                          {new Date(log.cookedAt).toLocaleDateString('fr-FR', { day:'numeric', month:'short', year:'numeric' })}
+                          {cookCounts[log.recipe.id] > 1 && <span className="ml-2 text-emerald-500 font-medium">×{cookCounts[log.recipe.id]}</span>}
+                        </p>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ─── PRÉFÉRENCES TAB ─── */}
+          {activeTab === 'prefs' && <>
 
           {/* === PRÉFÉRENCES ALIMENTAIRES === */}
           <div className="card p-5 mb-5">
@@ -315,6 +411,8 @@ export default function ProfilePage() {
               Supprimer mon compte
             </button>
           </div>
+
+          </> /* end prefs tab */}
         </>
       )}
     </AppShell>

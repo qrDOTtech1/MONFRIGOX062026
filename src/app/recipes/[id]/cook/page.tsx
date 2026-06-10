@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { ArrowLeft, ArrowRight, ChefHat, Clock, X, Timer, Check, Users, Camera, Refrigerator, Loader2 } from 'lucide-react';
+import { ArrowLeft, ArrowRight, ChefHat, Clock, X, Timer, Check, Users, Camera, Refrigerator, Loader2, Globe, Lock } from 'lucide-react';
 
 interface Recipe {
   id: string;
@@ -67,6 +67,12 @@ export default function CookModePage() {
   const [resultPhoto, setResultPhoto] = useState<string | null>(null);
   const [deducting, setDeducting] = useState(false);
   const [deducted, setDeducted] = useState(false);
+  // Community share
+  const [shareNote, setShareNote] = useState('');
+  const [sharePublic, setSharePublic] = useState(false);
+  const [sharing, setSharing] = useState(false);
+  const [shared, setShared] = useState(false);
+  const [showPublicWarning, setShowPublicWarning] = useState(false);
 
   useEffect(() => {
     fetch(`/api/recipes/${id}`)
@@ -78,6 +84,45 @@ export default function CookModePage() {
         }
       });
   }, [id]);
+
+  // Auto-log quand done
+  useEffect(() => {
+    if (!done || !recipe) return;
+    fetch('/api/cook-log', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ recipeId: recipe.id, servings: recipe.servings }),
+    }).catch(() => {});
+  }, [done, recipe]);
+
+  // Compression image client-side
+  async function compressImage(file: File): Promise<string> {
+    return new Promise(resolve => {
+      const canvas = document.createElement('canvas');
+      const img = new Image();
+      img.onload = () => {
+        const max = 600;
+        const ratio = Math.min(max / img.width, max / img.height, 1);
+        canvas.width = Math.round(img.width * ratio);
+        canvas.height = Math.round(img.height * ratio);
+        canvas.getContext('2d')!.drawImage(img, 0, 0, canvas.width, canvas.height);
+        resolve(canvas.toDataURL('image/jpeg', 0.72));
+      };
+      img.src = URL.createObjectURL(file);
+    });
+  }
+
+  async function shareToComm() {
+    if (!recipe) return;
+    setSharing(true);
+    await fetch(`/api/recipes/${recipe.id}/notes`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ content: shareNote, photoUrl: resultPhoto ?? '', isPublic: sharePublic }),
+    });
+    setSharing(false);
+    setShared(true);
+  }
 
   useEffect(() => {
     let wakeLock: WakeLockSentinel | null = null;
@@ -172,31 +217,93 @@ export default function CookModePage() {
           <p className="text-sm mb-1" style={{ color: 'var(--text-secondary)' }}>{recipe.name} est prêt</p>
           <p className="text-xs mb-6" style={{ color: 'var(--text-muted)' }}>Pour {recipe.servings} personne{recipe.servings > 1 ? 's' : ''}</p>
 
-          {/* Photo du résultat final */}
-          {resultPhoto ? (
-            <div className="mb-6">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={resultPhoto} alt="Ton plat" className="w-full rounded-xl mb-2" style={{ border: '1px solid var(--border)' }} />
-              <button onClick={() => setResultPhoto(null)} className="text-xs" style={{ color: 'var(--text-muted)' }}>
-                Changer la photo
+          {/* Photo + Community share */}
+          {!shared ? (
+            <div className="w-full mb-5">
+              {/* Community banner */}
+              <div className="rounded-xl p-4 mb-4 text-left"
+                style={{ background: 'linear-gradient(135deg,#f59e0b15,#ec489915)', border: '1px solid rgba(245,158,11,0.2)' }}>
+                <p className="text-sm font-semibold mb-0.5">✨ Partagez votre création à notre communauté !</p>
+                <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Inspirez les autres cuisiniers avec votre photo et votre avis</p>
+              </div>
+
+              {/* Photo */}
+              {resultPhoto ? (
+                <div className="mb-3">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={resultPhoto} alt="Ton plat" className="w-full rounded-xl mb-2 aspect-video object-cover" style={{ border: '1px solid var(--border)' }} />
+                  <button onClick={() => setResultPhoto(null)} className="text-xs" style={{ color: 'var(--text-muted)' }}>Changer la photo</button>
+                </div>
+              ) : (
+                <label className="card flex items-center gap-3 px-4 py-3.5 mb-3 cursor-pointer hover:bg-[var(--bg-inset)] transition-colors">
+                  <Camera className="w-5 h-5 shrink-0" style={{ color: 'var(--text-muted)' }} />
+                  <div className="text-left">
+                    <p className="text-sm font-medium">Ajouter une photo</p>
+                    <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Immortalise ton plat 📸</p>
+                  </div>
+                  <input type="file" accept="image/*" capture="environment" className="hidden"
+                    onChange={async e => {
+                      const file = e.target.files?.[0];
+                      if (file) setResultPhoto(await compressImage(file));
+                    }} />
+                </label>
+              )}
+
+              {/* Note */}
+              <textarea
+                placeholder="Ajoute une note… astuces, variantes, ce que tu as modifié ✍️"
+                value={shareNote}
+                onChange={e => setShareNote(e.target.value)}
+                rows={2}
+                className="input-field mb-3 resize-none text-sm"
+              />
+
+              {/* Public toggle */}
+              <button onClick={() => {
+                  if (!sharePublic) setShowPublicWarning(true);
+                  setSharePublic(p => !p);
+                }}
+                className="w-full flex items-center gap-3 px-4 py-3 rounded-xl mb-3 transition-all text-left"
+                style={{ backgroundColor: sharePublic ? 'rgba(59,130,246,0.08)' : 'var(--bg-inset)', border: `1px solid ${sharePublic ? 'rgba(59,130,246,0.25)' : 'var(--border-subtle)'}` }}>
+                {sharePublic ? <Globe className="w-4 h-4 text-blue-500" /> : <Lock className="w-4 h-4" style={{ color: 'var(--text-muted)' }} />}
+                <div className="flex-1">
+                  <p className="text-sm font-medium">{sharePublic ? 'Visible par la communauté' : 'Note privée'}</p>
+                  {sharePublic && <p className="text-[10px] text-blue-500">Ta photo et ta note seront publiques</p>}
+                </div>
+                <div className={`w-10 h-5.5 rounded-full transition-all ${sharePublic ? 'bg-blue-500' : ''}`}
+                  style={{ backgroundColor: sharePublic ? '#3b82f6' : 'var(--border)', display: 'flex', alignItems: 'center', padding: '2px' }}>
+                  <div className="w-4 h-4 rounded-full bg-white shadow transition-all"
+                    style={{ transform: sharePublic ? 'translateX(18px)' : 'translateX(0)' }} />
+                </div>
+              </button>
+
+              {/* Public warning */}
+              {showPublicWarning && sharePublic && (
+                <div className="rounded-lg px-3 py-2.5 mb-3 fade-in"
+                  style={{ backgroundColor: 'rgba(59,130,246,0.06)', border: '1px solid rgba(59,130,246,0.2)' }}>
+                  <p className="text-xs text-blue-600 dark:text-blue-400">
+                    📢 Ta note et ta photo seront visibles par tous les utilisateurs de MonFrigo. Tu pourras les rendre privées depuis la fiche de la recette.
+                  </p>
+                </div>
+              )}
+
+              <button onClick={shareToComm} disabled={sharing || (!shareNote.trim() && !resultPhoto)}
+                className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-semibold transition-all disabled:opacity-40 mb-2"
+                style={{ backgroundColor: 'var(--accent)', color: 'var(--accent-text)' }}>
+                {sharing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Camera className="w-4 h-4" />}
+                {sharing ? 'Publication…' : 'Partager ma création'}
+              </button>
+              <button onClick={() => setShared(true)} className="w-full text-xs py-1.5" style={{ color: 'var(--text-muted)' }}>
+                Passer sans partager
               </button>
             </div>
           ) : (
-            <label className="card flex flex-col items-center justify-center gap-2 py-8 mb-6 cursor-pointer transition-colors hover:bg-[var(--bg-inset)]">
-              <Camera className="w-7 h-7" style={{ color: 'var(--text-muted)' }} />
-              <span className="text-sm font-medium">Prends ton plat en photo</span>
-              <span className="text-xs" style={{ color: 'var(--text-muted)' }}>Immortalise le résultat 📸</span>
-              <input
-                type="file"
-                accept="image/*"
-                capture="environment"
-                className="hidden"
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  if (file) setResultPhoto(URL.createObjectURL(file));
-                }}
-              />
-            </label>
+            shared && (shareNote || resultPhoto) ? (
+              <div className="flex items-center justify-center gap-2 py-3 rounded-xl mb-5 text-sm font-medium fade-in"
+                style={{ backgroundColor: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.2)', color: '#10b981' }}>
+                <Check className="w-4 h-4" /> Partagé avec la communauté !
+              </div>
+            ) : null
           )}
 
           {/* Déduction frigo */}

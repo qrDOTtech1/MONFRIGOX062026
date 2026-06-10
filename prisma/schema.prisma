@@ -26,23 +26,28 @@ enum Difficulty {
 }
 
 model User {
-  id            String    @id @default(cuid())
-  email         String    @unique
-  name          String
-  password      String
-  role          Role      @default(USER)
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  id              String    @id @default(cuid())
+  email           String    @unique
+  name            String
+  password        String
+  role            Role      @default(USER)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
   // Préférences alimentaires
-  allergens     String    @default("")  // JSON array: ["gluten","lactose",...]
-  dietMode      String    @default("")  // vegan, vegetarien, halal, casher, sans-porc, ""
-  kidMode       String    @default("")  // "", "enfant", "bebe"
-  kidAgeMonths  Int?                     // âge en mois si bébé/enfant
-  defaultServings Int     @default(4)
-  fridgeItems   FridgeItem[]
-  favorites     Favorite[]
-  shoppingLists ShoppingList[]
-  mealPlans     MealPlan[]
+  allergens       String    @default("")  // JSON array: ["gluten","lactose",...]
+  dietMode        String    @default("")  // vegan, vegetarien, halal, casher, sans-porc, ""
+  kidMode         String    @default("")  // "", "enfant", "bebe"
+  kidAgeMonths    Int?
+  defaultServings Int       @default(4)
+  // Goûts & onboarding
+  tasteProfile    String    @default("")  // JSON: { flavors: [], cuisines: [] }
+  onboardingDone  Boolean   @default(false)
+  fridgeItems     FridgeItem[]
+  favorites       Favorite[]
+  shoppingLists   ShoppingList[]
+  mealPlans       MealPlan[]
+  recipeNotes     RecipeNote[]
+  cookLogs        CookLog[]
 }
 
 model Ingredient {
@@ -86,10 +91,10 @@ model Recipe {
   carbs        Float?
   fiber        Float?
   salt         Float?
-  nutriScore   String    @default("")  // A, B, C, D, E ou vide
+  nutriScore   String    @default("")
   // Source externe
   externalId   String?
-  externalSrc  String    @default("")  // "mealdb", "spoonacular", ""
+  externalSrc  String    @default("")
   // Catégories spéciales
   kidFriendly  Boolean   @default(false)
   babyFriendly Boolean   @default(false)
@@ -97,6 +102,8 @@ model Recipe {
   ingredients  RecipeIngredient[]
   favorites    Favorite[]
   mealPlans    MealPlan[]
+  notes        RecipeNote[]
+  cookLogs     CookLog[]
 }
 
 model RecipeIngredient {
@@ -151,6 +158,31 @@ model MealPlan {
   recipe   Recipe   @relation(fields: [recipeId], references: [id], onDelete: Cascade)
 
   @@unique([userId, date, mealType])
+}
+
+model RecipeNote {
+  id        String   @id @default(cuid())
+  userId    String
+  recipeId  String
+  content   String   @default("")
+  photoUrl  String   @default("") @db.Text
+  isPublic  Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  recipe    Recipe   @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, recipeId])
+}
+
+model CookLog {
+  id       String   @id @default(cuid())
+  userId   String
+  recipeId String
+  cookedAt DateTime @default(now())
+  servings Int      @default(4)
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  recipe   Recipe   @relation(fields: [recipeId], references: [id], onDelete: Cascade)
 }
 
 model AppConfig {
