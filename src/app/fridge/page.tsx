@@ -5,8 +5,9 @@ import AppShell from '@/components/AppShell';
 import RecipeCard from '@/components/RecipeCard';
 import {
   Refrigerator, Plus, X, AlertTriangle, ChefHat,
-  Wand2, Loader2, Minus, SlidersHorizontal, Calendar, Check,
+  Wand2, Loader2, Minus, SlidersHorizontal, Calendar, Check, Barcode,
 } from 'lucide-react';
+import Link from 'next/link';
 
 interface FridgeItem {
   id: string;
@@ -53,6 +54,7 @@ export default function FridgePage() {
   const [count, setCount] = useState(5);
   const [aiLoading, setAiLoading] = useState(false);
   const [aiError, setAiError] = useState('');
+  const [creatingIngredient, setCreatingIngredient] = useState(false);
 
   // Péremption : id de l'item en cours d'édition
   const [editExpiryId, setEditExpiryId] = useState<string | null>(null);
@@ -90,6 +92,24 @@ export default function FridgePage() {
     });
     setSearchIngredient(''); setSuggestions([]); setShowAdd(false);
     loadData();
+  }
+
+  async function createAndAdd() {
+    const name = searchIngredient.trim();
+    if (!name) return;
+    setCreatingIngredient(true);
+    try {
+      const res = await fetch('/api/ingredients', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name }),
+      });
+      if (res.ok) {
+        const ing = await res.json();
+        await addToFridge(ing.id);
+      }
+    } finally {
+      setCreatingIngredient(false);
+    }
   }
 
   async function removeFromFridge(id: string) {
@@ -156,9 +176,37 @@ export default function FridgePage() {
 
       {showAdd && (
         <div className="card p-3.5 mb-4 fade-in">
-          <input type="text" placeholder="Chercher un ingrédient…" value={searchIngredient}
-            onChange={e => setSearchIngredient(e.target.value)} className="input-field mb-2" autoFocus />
-          {suggestions.length > 0 && (
+          {/* Bouton scan EAN */}
+          <Link href="/scan?mode=barcode"
+            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl mb-2.5 transition-all"
+            style={{ backgroundColor: 'rgba(59,130,246,0.06)', border: '1px solid rgba(59,130,246,0.2)' }}>
+            <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
+              style={{ backgroundColor: 'rgba(59,130,246,0.12)' }}>
+              <Barcode className="w-4 h-4 text-blue-500" />
+            </div>
+            <div>
+              <p className="text-sm font-medium text-blue-600 dark:text-blue-400">Scanner un code-barres EAN</p>
+              <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>Recommandé · précis, sans quota IA</p>
+            </div>
+          </Link>
+
+          <div className="relative flex items-center gap-0 mb-1.5" style={{ borderBottom: '1px solid var(--border-subtle)' }}>
+            <span className="absolute inset-x-0 -bottom-px flex justify-center">
+              <span className="px-2 text-[10px]" style={{ backgroundColor: 'var(--bg-card, var(--bg-raised))', color: 'var(--text-muted)' }}>ou chercher par nom</span>
+            </span>
+          </div>
+          <div className="h-3" />
+
+          <input
+            type="text"
+            placeholder="Chercher un ingrédient…"
+            value={searchIngredient}
+            onChange={e => setSearchIngredient(e.target.value)}
+            onKeyDown={e => e.stopPropagation()}
+            className="input-field mb-2"
+            autoFocus
+          />
+          {suggestions.length > 0 ? (
             <div className="space-y-0.5 max-h-40 overflow-y-auto">
               {suggestions.map(s => (
                 <button key={s.id} onClick={() => addToFridge(s.id)}
@@ -167,6 +215,17 @@ export default function FridgePage() {
                 </button>
               ))}
             </div>
+          ) : searchIngredient.trim().length >= 2 && (
+            <button onClick={createAndAdd} disabled={creatingIngredient}
+              className="w-full text-left px-3 py-2 rounded-md text-sm flex items-center gap-2 transition-colors disabled:opacity-50"
+              style={{ backgroundColor: 'var(--bg-inset)', border: '1px dashed var(--border)' }}>
+              {creatingIngredient
+                ? <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0" style={{ color: 'var(--text-muted)' }} />
+                : <Plus className="w-3.5 h-3.5 shrink-0" style={{ color: 'var(--text-muted)' }} />}
+              <span style={{ color: 'var(--text-secondary)' }}>
+                Ajouter «&nbsp;<span className="font-medium">{searchIngredient.trim()}</span>&nbsp;»
+              </span>
+            </button>
           )}
         </div>
       )}

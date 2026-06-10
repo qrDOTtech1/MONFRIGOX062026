@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 import AppShell from '@/components/AppShell';
 import {
   Camera, Upload, ScanLine, Loader2, Check, Plus,
@@ -26,7 +27,15 @@ interface BarcodeResult {
 type Mode = 'choose' | 'scan' | 'barcode';
 
 export default function ScanPage() {
-  const [mode, setMode] = useState<Mode>('choose');
+  const searchParams = useSearchParams();
+  const [mode, setMode] = useState<Mode>(() =>
+    searchParams.get('mode') === 'barcode' ? 'barcode' : 'choose'
+  );
+
+  // Sync si le param change (navigation)
+  useEffect(() => {
+    if (searchParams.get('mode') === 'barcode') setMode('barcode');
+  }, [searchParams]);
 
   // --- Mode photo ---
   const [images, setImages] = useState<string[]>([]);

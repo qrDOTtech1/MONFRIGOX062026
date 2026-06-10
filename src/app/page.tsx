@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { Refrigerator, ScanLine, ChefHat, ShoppingCart, Leaf } from 'lucide-react';
+import { ScanLine, ChefHat, ShoppingCart, Leaf } from 'lucide-react';
 
 const features = [
   { icon: ScanLine, title: 'Scan intelligent', desc: 'Photographie ton frigo, l\'IA identifie tes ingrédients' },
@@ -14,10 +14,7 @@ export default function LandingPage() {
   return (
     <div className="min-h-screen flex flex-col">
       <header className="flex items-center justify-between px-6 py-4">
-        <div className="flex items-center gap-2.5">
-          <Refrigerator className="w-6 h-6" />
-          <span className="text-lg font-semibold tracking-tight">Mon Frigo</span>
-        </div>
+        <span className="text-lg font-bold tracking-tight">Mon Frigo</span>
         <div className="flex gap-2">
           <Link href="/login" className="btn-secondary !px-4 !py-2 text-sm">Connexion</Link>
           <Link href="/register" className="btn-primary !px-4 !py-2 text-sm">S&apos;inscrire</Link>
@@ -25,10 +22,6 @@ export default function LandingPage() {
       </header>
 
       <main className="flex-1 flex flex-col items-center justify-center px-6 text-center">
-        <div className="w-16 h-16 rounded-2xl flex items-center justify-center mb-8" style={{ backgroundColor: 'var(--bg-inset)', border: '1px solid var(--border)' }}>
-          <Refrigerator className="w-8 h-8" style={{ color: 'var(--text-secondary)' }} />
-        </div>
-
         <h1 className="text-3xl md:text-4xl font-bold mb-4 leading-tight tracking-tight">
           Ton frigo,<br />
           ton chef personnel.

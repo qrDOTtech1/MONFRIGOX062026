@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Refrigerator, Mail, Lock, User, Eye, EyeOff } from 'lucide-react';
+import { Mail, Lock, User, Eye, EyeOff } from 'lucide-react';
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -39,9 +39,7 @@ export default function RegisterPage() {
     <div className="min-h-screen flex items-center justify-center px-4">
       <div className="w-full max-w-sm">
         <div className="flex flex-col items-center mb-8">
-          <div className="w-12 h-12 rounded-xl flex items-center justify-center mb-4" style={{ backgroundColor: 'var(--bg-inset)', border: '1px solid var(--border)' }}>
-            <Refrigerator className="w-6 h-6" style={{ color: 'var(--text-secondary)' }} />
-          </div>
+          <p className="text-2xl font-bold tracking-tight mb-4">Mon Frigo</p>
           <h1 className="text-xl font-semibold">Crée ton compte</h1>
           <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>Rejoins Mon Frigo gratuitement</p>
         </div>
