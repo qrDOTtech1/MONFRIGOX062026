@@ -298,8 +298,15 @@ export default function LandingPage() {
         </section>
       </main>
 
-      <footer className="text-center text-xs py-6" style={{ color: 'var(--text-muted)' }}>
-        Mon Frigo &copy; 2026
+      <footer className="text-center text-xs py-6 space-y-1" style={{ color: 'var(--text-muted)' }}>
+        <p>Mon Frigo &copy; 2026</p>
+        <p>
+          Une application proposée par{' '}
+          <a href="https://matable.pro" target="_blank" rel="noopener noreferrer"
+            className="underline underline-offset-2 hover:opacity-80 transition-opacity">
+            matable.pro
+          </a>
+        </p>
       </footer>
     </div>
   );
