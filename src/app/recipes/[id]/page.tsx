@@ -6,7 +6,17 @@ import AppShell from '@/components/AppShell';
 import {
   ArrowLeft, Clock, Users, Heart, ShoppingCart, Check, X, ChefHat,
   Minus, Plus, Flame, Wheat, Droplets, Beef, Sparkles,
+  MessageSquare, Globe, Lock, Send, Trash2, ImagePlus, Loader2,
 } from 'lucide-react';
+
+interface RecipeNote {
+  id: string;
+  content: string;
+  photoUrl: string;
+  isPublic: boolean;
+  createdAt: string;
+  user?: { name: string; email: string };
+}
 
 interface Recipe {
   id: string;
@@ -62,6 +72,17 @@ export default function RecipeDetailPage() {
   const [enriching, setEnriching] = useState(false);
   const enrichTriggered = useRef(false);
 
+  // Notes communautaires
+  const [myNote, setMyNote]           = useState<RecipeNote | null>(null);
+  const [communityNotes, setCommunityNotes] = useState<RecipeNote[]>([]);
+  const [noteContent, setNoteContent] = useState('');
+  const [notePublic, setNotePublic]   = useState(false);
+  const [notePhoto, setNotePhoto]     = useState('');
+  const [savingNote, setSavingNote]   = useState(false);
+  const [noteSaved, setNoteSaved]     = useState(false);
+  const [deletingNote, setDeletingNote] = useState(false);
+  const notePhotoRef = useRef<HTMLInputElement>(null);
+
   useEffect(() => {
     fetch(`/api/recipes/${id}`)
       .then(r => r.ok ? r.json() : null)
@@ -71,6 +92,73 @@ export default function RecipeDetailPage() {
         setLoading(false);
       });
   }, [id]);
+
+  // Chargement des notes
+  useEffect(() => {
+    if (!id) return;
+    fetch(`/api/recipes/${id}/notes`)
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (!data) return;
+        setCommunityNotes(data.communityNotes || []);
+        if (data.myNote) {
+          setMyNote(data.myNote);
+          setNoteContent(data.myNote.content || '');
+          setNotePublic(data.myNote.isPublic || false);
+          setNotePhoto(data.myNote.photoUrl || '');
+        }
+      });
+  }, [id]);
+
+  async function compressNotePhoto(file: File): Promise<string> {
+    return new Promise(resolve => {
+      const reader = new FileReader();
+      reader.onload = e => {
+        const img = new Image();
+        img.onload = () => {
+          const max = 600;
+          let { width, height } = img;
+          if (width > max || height > max) {
+            if (width > height) { height = Math.round(height * max / width); width = max; }
+            else { width = Math.round(width * max / height); height = max; }
+          }
+          const canvas = document.createElement('canvas');
+          canvas.width = width; canvas.height = height;
+          canvas.getContext('2d')!.drawImage(img, 0, 0, width, height);
+          resolve(canvas.toDataURL('image/jpeg', 0.72));
+        };
+        img.src = e.target!.result as string;
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+
+  async function saveNote() {
+    if (!noteContent.trim() && !notePhoto) return;
+    setSavingNote(true);
+    const res = await fetch(`/api/recipes/${id}/notes`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ content: noteContent, photoUrl: notePhoto, isPublic: notePublic }),
+    });
+    if (res.ok) {
+      const saved = await res.json();
+      setMyNote(saved.note);
+      setNoteSaved(true);
+      setTimeout(() => setNoteSaved(false), 2000);
+    }
+    setSavingNote(false);
+  }
+
+  async function deleteNote() {
+    setDeletingNote(true);
+    await fetch(`/api/recipes/${id}/notes`, { method: 'DELETE' });
+    setMyNote(null);
+    setNoteContent('');
+    setNotePhoto('');
+    setNotePublic(false);
+    setDeletingNote(false);
+  }
 
   // Auto-enrichissement : si la recette n'a pas de nutrition → l'IA traduit + calcule en arrière-plan
   useEffect(() => {
@@ -311,7 +399,7 @@ export default function RecipeDetailPage() {
       </div>
 
       {/* Préparation */}
-      <div className="card p-4">
+      <div className="card p-4 mb-3">
         <div className="flex items-center justify-between mb-3">
           <h2 className="font-medium text-sm">Préparation</h2>
           {enriching && (
@@ -331,6 +419,113 @@ export default function RecipeDetailPage() {
           ))}
         </div>
       </div>
+
+      {/* ── Ma note ── */}
+      <div className="card p-4 mb-3">
+        <div className="flex items-center gap-2 mb-3">
+          <MessageSquare className="w-4 h-4" style={{ color: 'var(--text-secondary)' }} />
+          <h2 className="font-medium text-sm">Ma note</h2>
+          {myNote && (
+            <button onClick={deleteNote} disabled={deletingNote}
+              className="ml-auto p-1 rounded-lg transition-colors"
+              style={{ color: 'var(--text-muted)' }}>
+              {deletingNote ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+            </button>
+          )}
+        </div>
+
+        <textarea
+          placeholder="Écris tes astuces, modifications, avis… (visible que par toi sauf si tu rends public)"
+          value={noteContent}
+          onChange={e => setNoteContent(e.target.value)}
+          rows={3}
+          className="w-full text-sm rounded-xl p-3 resize-none outline-none"
+          style={{ backgroundColor: 'var(--bg-inset)', border: '1px solid var(--border)', color: 'var(--text)' }}
+        />
+
+        {/* Photo */}
+        <input ref={notePhotoRef} type="file" accept="image/*" className="hidden"
+          onChange={async e => {
+            const f = e.target.files?.[0];
+            if (f) setNotePhoto(await compressNotePhoto(f));
+          }} />
+
+        {notePhoto && (
+          <div className="relative mt-2 inline-block">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={notePhoto} alt="note" className="w-20 h-20 object-cover rounded-xl" />
+            <button onClick={() => setNotePhoto('')}
+              className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full flex items-center justify-center text-white bg-red-500">
+              <X className="w-3 h-3" />
+            </button>
+          </div>
+        )}
+
+        <div className="flex items-center justify-between mt-3">
+          <div className="flex items-center gap-3">
+            <button onClick={() => notePhotoRef.current?.click()}
+              className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg"
+              style={{ backgroundColor: 'var(--bg-inset)', border: '1px solid var(--border)', color: 'var(--text-muted)' }}>
+              <ImagePlus className="w-3.5 h-3.5" /> Photo
+            </button>
+
+            <button onClick={() => setNotePublic(p => !p)}
+              className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg transition-all ${notePublic ? 'text-amber-600 dark:text-amber-400' : ''}`}
+              style={{ backgroundColor: notePublic ? 'rgba(245,158,11,0.1)' : 'var(--bg-inset)', border: `1px solid ${notePublic ? 'rgba(245,158,11,0.3)' : 'var(--border)'}`, color: notePublic ? undefined : 'var(--text-muted)' }}>
+              {notePublic ? <><Globe className="w-3.5 h-3.5" /> Public</> : <><Lock className="w-3.5 h-3.5" /> Privé</>}
+            </button>
+          </div>
+
+          <button onClick={saveNote} disabled={savingNote || (!noteContent.trim() && !notePhoto)}
+            className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg font-medium disabled:opacity-40 transition-all"
+            style={{ backgroundColor: noteSaved ? 'rgba(16,185,129,0.15)' : 'var(--accent)', color: noteSaved ? 'rgb(16,185,129)' : 'var(--accent-text)' }}>
+            {savingNote ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : noteSaved ? <Check className="w-3.5 h-3.5" /> : <Send className="w-3.5 h-3.5" />}
+            {noteSaved ? 'Sauvegardé' : 'Sauvegarder'}
+          </button>
+        </div>
+
+        {notePublic && (
+          <p className="text-[10px] mt-2 px-1" style={{ color: 'var(--text-muted)' }}>
+            🌍 Ta note et ta photo seront visibles par tous les utilisateurs sur cette recette.
+          </p>
+        )}
+      </div>
+
+      {/* ── Notes de la communauté ── */}
+      {communityNotes.length > 0 && (
+        <div className="card p-4 mb-6">
+          <div className="flex items-center gap-2 mb-3">
+            <Users className="w-4 h-4" style={{ color: 'var(--text-secondary)' }} />
+            <h2 className="font-medium text-sm">Communauté</h2>
+            <span className="text-xs px-2 py-0.5 rounded-full" style={{ backgroundColor: 'var(--bg-inset)', color: 'var(--text-muted)' }}>
+              {communityNotes.length}
+            </span>
+          </div>
+          <div className="space-y-3">
+            {communityNotes.map(note => (
+              <div key={note.id} className="pb-3 last:pb-0" style={{ borderBottom: '1px solid var(--border-subtle)' }}>
+                <div className="flex items-center gap-2 mb-1.5">
+                  <div className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-semibold"
+                    style={{ backgroundColor: 'var(--bg-inset)', color: 'var(--text-secondary)' }}>
+                    {(note.user?.name || note.user?.email || '?')[0].toUpperCase()}
+                  </div>
+                  <span className="text-xs font-medium">{note.user?.name || note.user?.email?.split('@')[0] || 'Anonyme'}</span>
+                  <span className="text-[10px] ml-auto" style={{ color: 'var(--text-muted)' }}>
+                    {new Date(note.createdAt).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}
+                  </span>
+                </div>
+                {note.photoUrl && (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={note.photoUrl} alt="création" className="w-full max-h-48 object-cover rounded-xl mb-2" />
+                )}
+                {note.content && (
+                  <p className="text-sm leading-relaxed" style={{ color: 'var(--text-secondary)' }}>{note.content}</p>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </AppShell>
   );
 }

@@ -17,7 +17,7 @@ export async function GET(_req: NextRequest, { params }: Params) {
     }),
     prisma.recipeNote.findMany({
       where: { recipeId, isPublic: true, userId: { not: user.id } },
-      include: { user: { select: { name: true } } },
+      include: { user: { select: { name: true, email: true } } },
       orderBy: { updatedAt: 'desc' },
       take: 20,
     }),
@@ -41,7 +41,7 @@ export async function POST(req: NextRequest, { params }: Params) {
     update: { content, photoUrl: photoUrl ?? undefined, isPublic: isPublic ?? undefined, updatedAt: new Date() },
   });
 
-  return NextResponse.json(note);
+  return NextResponse.json({ note });
 }
 
 // DELETE /api/recipes/:id/notes → delete my note
