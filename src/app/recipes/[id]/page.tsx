@@ -7,7 +7,17 @@ import {
   ArrowLeft, Clock, Users, Heart, ShoppingCart, Check, X, ChefHat,
   Minus, Plus, Flame, Wheat, Droplets, Beef, Sparkles,
   MessageSquare, Globe, Lock, Send, Trash2, ImagePlus, Loader2,
+  Euro, ExternalLink,
 } from 'lucide-react';
+
+interface CostEstimate {
+  total: number;
+  perServing: number;
+  currency: string;
+  confidence: 'high' | 'medium' | 'low';
+  missingCount: number;
+  breakdown: Array<{ name: string; emoji: string; price: number; source: string }>;
+}
 
 interface RecipeNote {
   id: string;
@@ -72,6 +82,9 @@ export default function RecipeDetailPage() {
   const [enriching, setEnriching] = useState(false);
   const enrichTriggered = useRef(false);
 
+  // Coût estimé
+  const [cost, setCost] = useState<CostEstimate | null>(null);
+
   // Notes communautaires
   const [myNote, setMyNote]           = useState<RecipeNote | null>(null);
   const [communityNotes, setCommunityNotes] = useState<RecipeNote[]>([]);
@@ -91,6 +104,14 @@ export default function RecipeDetailPage() {
         if (data) setServings(data.servings);
         setLoading(false);
       });
+  }, [id]);
+
+  // Chargement du coût estimé
+  useEffect(() => {
+    if (!id) return;
+    fetch(`/api/recipes/${id}/cost`)
+      .then(r => r.ok ? r.json() : null)
+      .then(data => { if (data) setCost(data); });
   }, [id]);
 
   // Chargement des notes
@@ -397,6 +418,67 @@ export default function RecipeDetailPage() {
           ))}
         </div>
       </div>
+
+      {/* ── Coût estimé ── */}
+      {cost && (
+        <div className="card p-4 mb-3">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <Euro className="w-4 h-4" style={{ color: 'var(--text-secondary)' }} />
+              <h2 className="font-medium text-sm">Coût estimé</h2>
+              <span className="text-[10px] px-1.5 py-0.5 rounded-full"
+                style={{
+                  backgroundColor: cost.confidence === 'high' ? 'rgba(16,185,129,0.1)' : cost.confidence === 'medium' ? 'rgba(245,158,11,0.1)' : 'rgba(107,114,128,0.1)',
+                  color: cost.confidence === 'high' ? 'rgb(16,185,129)' : cost.confidence === 'medium' ? 'rgb(180,120,0)' : 'var(--text-muted)',
+                }}>
+                {cost.confidence === 'high' ? 'fiable' : cost.confidence === 'medium' ? 'approx.' : 'indicatif'}
+              </span>
+            </div>
+            <div className="text-right">
+              <span className="text-lg font-bold">{cost.total.toFixed(2)}€</span>
+              <span className="text-xs ml-1" style={{ color: 'var(--text-muted)' }}>total</span>
+            </div>
+          </div>
+
+          {/* Prix par portion */}
+          <div className="flex items-center justify-between py-2 px-3 rounded-lg mb-3"
+            style={{ backgroundColor: 'var(--bg-inset)' }}>
+            <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
+              Par portion ({servings > recipe.servings ? servings : recipe.servings} pers.)
+            </span>
+            <span className="text-sm font-semibold text-emerald-600 dark:text-emerald-400">
+              ~{cost.perServing.toFixed(2)}€ / pers.
+            </span>
+          </div>
+
+          {/* Comparaison */}
+          <p className="text-[11px] mb-3" style={{ color: 'var(--text-muted)' }}>
+            {cost.total < 5
+              ? '🏆 Moins cher qu\'un café ! Cuisine maison imbattable.'
+              : cost.total < 12
+              ? '✅ Bien moins cher qu\'une livraison ou un restaurant.'
+              : '🍽️ Un repas fait maison reste plus sain qu\'un plat tout prêt.'}
+            {cost.missingCount > 0 && ` (${cost.missingCount} ingrédient${cost.missingCount > 1 ? 's' : ''} sans prix estimé)`}
+          </p>
+
+          {/* CTA Carrefour Drive */}
+          <a
+            href={`https://www.carrefour.fr/r/recherche?query=${encodeURIComponent(
+              recipe.ingredients.filter(i => !i.inFridge).slice(0, 3).map(i => i.ingredient.name).join(' ')
+            )}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center justify-between w-full px-3 py-2.5 rounded-lg text-xs font-medium transition-opacity hover:opacity-80"
+            style={{ backgroundColor: 'rgba(0,88,179,0.08)', color: 'rgb(0,88,179)', border: '1px solid rgba(0,88,179,0.2)' }}
+          >
+            <span>🛒 Commander les ingrédients manquants sur Carrefour Drive</span>
+            <ExternalLink className="w-3.5 h-3.5 shrink-0 ml-2" />
+          </a>
+          <p className="text-[10px] mt-1.5 text-center" style={{ color: 'var(--text-muted)' }}>
+            Prix indicatifs supermarché France · Open Food Facts
+          </p>
+        </div>
+      )}
 
       {/* Préparation */}
       <div className="card p-4 mb-3">
