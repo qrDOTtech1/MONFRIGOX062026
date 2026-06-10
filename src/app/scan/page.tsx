@@ -224,7 +224,7 @@ function ScanPageInner() {
 
   const stopBarcodeCamera = useCallback(() => {
     if (zxingReaderRef.current) {
-      zxingReaderRef.current.reset();
+      try { zxingReaderRef.current.stopContinuousDecode(); } catch { /* ignore */ }
       zxingReaderRef.current = null;
     }
     barStreamRef.current?.getTracks().forEach(t => t.stop());
