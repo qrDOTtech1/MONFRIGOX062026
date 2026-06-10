@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Clock, Heart, Lock } from 'lucide-react';
+import { Clock, Heart, Lock, AlertTriangle, Ban, Leaf } from 'lucide-react';
 
 interface RecipeCardProps {
   id: string;
@@ -17,6 +17,10 @@ interface RecipeCardProps {
   isFavorite?: boolean;
   isLocked?: boolean;
   onToggleFavorite?: () => void;
+  allergenWarnings?: string[];
+  dietConflict?: boolean;
+  dietLabel?: string;
+  usesExpiring?: number;
 }
 
 const difficultyColors: Record<string, string> = {
@@ -46,8 +50,33 @@ function getMatchTextColor(pct: number) {
 export default function RecipeCard({
   id, name, difficulty, prepTime, cuisine, imageUrl, matchPercent, matchCount,
   emoji, isFavorite, isLocked, onToggleFavorite,
+  allergenWarnings, dietConflict, dietLabel, usesExpiring,
 }: RecipeCardProps) {
   const router = useRouter();
+  const hasAllergen = (allergenWarnings?.length ?? 0) > 0;
+
+  // Badges allergène / régime (réutilisés dans les deux variantes)
+  const dietaryBadges = (
+    <>
+      {hasAllergen && (
+        <span className="badge text-[10px] flex items-center gap-1 text-red-600 dark:text-red-400" style={{ backgroundColor: 'rgba(239,68,68,0.1)' }} title="Contient un de vos allergènes">
+          <AlertTriangle className="w-2.5 h-2.5" /> Allergène
+        </span>
+      )}
+      {dietConflict && (
+        <span className="badge text-[10px] flex items-center gap-1" style={{ backgroundColor: 'var(--bg-inset)', color: 'var(--text-muted)' }} title={`Non ${dietLabel}`}>
+          <Ban className="w-2.5 h-2.5" /> Non {dietLabel}
+        </span>
+      )}
+    </>
+  );
+
+  // Pastille anti-gaspi sur la vignette
+  const expiringDot = (usesExpiring ?? 0) > 0 ? (
+    <span className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full flex items-center justify-center" style={{ backgroundColor: 'rgb(34,197,94)', color: 'white' }} title="Utilise des aliments qui périment bientôt">
+      <Leaf className="w-3 h-3" />
+    </span>
+  ) : null;
 
   if (isLocked) {
     return (
@@ -108,19 +137,22 @@ export default function RecipeCard({
     <Link
       href={`/recipes/${id}`}
       className="card flex gap-3.5 items-center hover:shadow-sm transition-all fade-in group block overflow-hidden"
-      style={{ padding: imageUrl ? '0' : undefined }}
+      style={{ padding: imageUrl ? '0' : undefined, ...(dietConflict ? { opacity: 0.75 } : {}) }}
     >
       {imageUrl ? (
         <>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={imageUrl}
-            alt={name}
-            className="w-20 h-20 object-cover shrink-0"
-            style={{ borderRadius: '0.625rem 0 0 0.625rem' }}
-            loading="lazy"
-            onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }}
-          />
+          <div className="relative shrink-0">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={imageUrl}
+              alt={name}
+              className="w-20 h-20 object-cover"
+              style={{ borderRadius: '0.625rem 0 0 0.625rem' }}
+              loading="lazy"
+              onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }}
+            />
+            {expiringDot}
+          </div>
           <div className="flex-1 min-w-0 py-3 pr-3">
             <h3 className="font-medium text-sm truncate mb-1">{name}</h3>
             <div className="flex items-center gap-2 flex-wrap">
@@ -129,6 +161,7 @@ export default function RecipeCard({
                 <Clock className="w-3 h-3" /> {prepTime} min
               </span>
               <span className="text-xs" style={{ color: 'var(--text-muted)' }}>{cuisine}</span>
+              {dietaryBadges}
             </div>
             {matchPercent !== undefined && (
               <div className="mt-2 flex items-center gap-2">
@@ -145,18 +178,20 @@ export default function RecipeCard({
         </>
       ) : (
         <div className="p-4 flex gap-3.5 items-center w-full">
-          <div className="w-12 h-12 rounded-lg flex items-center justify-center text-xl shrink-0"
+          <div className="w-12 h-12 rounded-lg flex items-center justify-center text-xl shrink-0 relative"
             style={{ backgroundColor: 'var(--bg-inset)' }}>
             {emoji || '🍽️'}
+            {expiringDot}
           </div>
           <div className="flex-1 min-w-0">
             <h3 className="font-medium text-sm truncate">{name}</h3>
-            <div className="flex items-center gap-2 mt-1.5">
+            <div className="flex items-center gap-2 mt-1.5 flex-wrap">
               <span className={difficultyColors[difficulty] || 'badge-easy'}>{difficultyLabels[difficulty] || difficulty}</span>
               <span className="flex items-center gap-1 text-xs" style={{ color: 'var(--text-muted)' }}>
                 <Clock className="w-3 h-3" /> {prepTime} min
               </span>
               <span className="text-xs" style={{ color: 'var(--text-muted)' }}>{cuisine}</span>
+              {dietaryBadges}
             </div>
             {matchPercent !== undefined && (
               <div className="mt-2 flex items-center gap-2">

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth';
+import { analyzeRecipeDietary } from '@/lib/dietary';
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const user = await getCurrentUser();
@@ -15,6 +16,20 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     });
     const fridgeIds = new Set(userFridge.map(f => f.ingredientId));
 
+    // Préférences utilisateur (tolérant si colonnes pas migrées)
+    let userAllergens: string[] = [];
+    let dietMode = '';
+    try {
+      const prefs = await prisma.user.findUnique({
+        where: { id: user.id },
+        select: { allergens: true, dietMode: true },
+      });
+      if (prefs?.allergens) {
+        try { userAllergens = JSON.parse(prefs.allergens); } catch { userAllergens = []; }
+      }
+      dietMode = prefs?.dietMode || '';
+    } catch { /* colonnes pas migrées */ }
+
     const recipe = await prisma.recipe.findUnique({
       where: { id },
       include: {
@@ -25,6 +40,13 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
 
     if (!recipe) return NextResponse.json({ error: 'Recette introuvable' }, { status: 404 });
 
+    const dietary = analyzeRecipeDietary(
+      recipe.ingredients.map(i => i.ingredient.name),
+      userAllergens,
+      dietMode,
+      recipe.carbs,
+    );
+
     return NextResponse.json({
       ...recipe,
       isFavorite: recipe.favorites.length > 0,
@@ -32,6 +54,10 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
         ...i,
         inFridge: fridgeIds.has(i.ingredientId),
       })),
+      allergenWarnings: dietary.allergenWarnings,
+      dietConflict: dietary.dietConflict,
+      dietLabel: dietary.dietLabel,
+      dietConflictIngredients: dietary.dietConflictIngredients,
       favorites: undefined,
     });
   } catch (err: any) {

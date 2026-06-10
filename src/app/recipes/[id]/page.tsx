@@ -7,8 +7,9 @@ import {
   ArrowLeft, Clock, Users, Heart, ShoppingCart, Check, X, ChefHat,
   Minus, Plus, Flame, Wheat, Droplets, Beef, Sparkles,
   MessageSquare, Globe, Lock, Send, Trash2, ImagePlus, Loader2,
-  Euro, ExternalLink, Wand2, Crown,
+  Euro, ExternalLink, Wand2, Crown, AlertTriangle, Ban, CalendarPlus,
 } from 'lucide-react';
+import { ALLERGEN_LABELS } from '@/lib/dietary';
 
 interface RevisitResult {
   title?: string; description?: string;
@@ -59,6 +60,10 @@ interface Recipe {
     inFridge: boolean;
   }>;
   isFavorite: boolean;
+  allergenWarnings?: string[];
+  dietConflict?: boolean;
+  dietLabel?: string;
+  dietConflictIngredients?: string[];
 }
 
 function parseSteps(raw: string): string[] {
@@ -78,6 +83,12 @@ function clean(steps: string[]): string[] {
 const NUTRISCORE_COLORS: Record<string, string> = {
   A: 'bg-emerald-600', B: 'bg-lime-500', C: 'bg-yellow-500', D: 'bg-orange-500', E: 'bg-red-600',
 };
+
+const MEAL_TYPES = [
+  { key: 'BREAKFAST', label: 'Matin' },
+  { key: 'LUNCH', label: 'Déjeuner' },
+  { key: 'DINNER', label: 'Dîner' },
+];
 
 export default function RecipeDetailPage() {
   const { id } = useParams();
@@ -109,6 +120,12 @@ export default function RecipeDetailPage() {
   const [noteSaved, setNoteSaved]     = useState(false);
   const [deletingNote, setDeletingNote] = useState(false);
   const notePhotoRef = useRef<HTMLInputElement>(null);
+
+  // Planning des repas
+  const [showPlan, setShowPlan] = useState(false);
+  const [planDate, setPlanDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [planMeal, setPlanMeal] = useState('DINNER');
+  const [planSaved, setPlanSaved] = useState(false);
 
   useEffect(() => {
     fetch(`/api/recipes/${id}`)
@@ -212,6 +229,16 @@ export default function RecipeDetailPage() {
       .finally(() => setEnriching(false));
   }, [recipe, id]);
 
+  async function addToPlanning() {
+    await fetch('/api/meal-plan', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ recipeId: id, date: planDate, mealType: planMeal }),
+    });
+    setPlanSaved(true);
+    setTimeout(() => { setPlanSaved(false); setShowPlan(false); }, 1500);
+  }
+
   const ratio = recipe ? servings / recipe.servings : 1;
 
   function adjustQuantity(qty: number): string {
@@ -294,6 +321,32 @@ export default function RecipeDetailPage() {
         <h1 className="text-xl font-semibold mb-1.5">{recipe.name}</h1>
         <p className="text-sm mb-3" style={{ color: 'var(--text-secondary)' }}>{recipe.description}</p>
 
+        {/* Avertissement allergènes / régime */}
+        {(recipe.allergenWarnings?.length ?? 0) > 0 && (
+          <div className="rounded-lg p-3 mb-3 flex items-start gap-2.5" style={{ backgroundColor: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.25)' }}>
+            <AlertTriangle className="w-4 h-4 text-red-500 shrink-0 mt-0.5" />
+            <div>
+              <p className="text-sm font-medium text-red-600 dark:text-red-400">Attention — allergènes détectés</p>
+              <p className="text-xs mt-0.5" style={{ color: 'var(--text-secondary)' }}>
+                Cette recette peut contenir : {recipe.allergenWarnings!.map(a => ALLERGEN_LABELS[a] || a).join(', ')}.
+              </p>
+            </div>
+          </div>
+        )}
+        {recipe.dietConflict && (
+          <div className="rounded-lg p-3 mb-3 flex items-start gap-2.5" style={{ backgroundColor: 'rgba(234,179,8,0.06)', border: '1px solid rgba(234,179,8,0.2)' }}>
+            <Ban className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
+            <div>
+              <p className="text-sm font-medium text-amber-600 dark:text-amber-400">Non compatible avec votre régime {recipe.dietLabel}</p>
+              {(recipe.dietConflictIngredients?.length ?? 0) > 0 && (
+                <p className="text-xs mt-0.5" style={{ color: 'var(--text-secondary)' }}>
+                  En cause : {recipe.dietConflictIngredients!.slice(0, 4).join(', ')}.
+                </p>
+              )}
+            </div>
+          </div>
+        )}
+
         <div className="flex flex-wrap gap-2 mb-4">
           <span className={diffColors[recipe.difficulty]}>{diffLabels[recipe.difficulty]}</span>
           <span className="badge" style={{ backgroundColor: 'var(--bg-inset)', color: 'var(--text-secondary)' }}><Clock className="w-3 h-3 mr-1" />{recipe.prepTime} min</span>
@@ -358,6 +411,30 @@ export default function RecipeDetailPage() {
             </button>
           )}
         </div>
+
+        {/* Ajouter au planning */}
+        <button onClick={() => setShowPlan(!showPlan)} className="btn-secondary w-full flex items-center justify-center gap-2 mt-2">
+          <CalendarPlus className="w-4 h-4" /> Ajouter au planning
+        </button>
+        {showPlan && (
+          <div className="card p-3.5 mt-2 fade-in">
+            <div className="grid grid-cols-2 gap-2 mb-2.5">
+              <div>
+                <label className="text-[10px] block mb-1" style={{ color: 'var(--text-muted)' }}>Date</label>
+                <input type="date" value={planDate} onChange={e => setPlanDate(e.target.value)} className="input-field !py-2 text-sm" />
+              </div>
+              <div>
+                <label className="text-[10px] block mb-1" style={{ color: 'var(--text-muted)' }}>Repas</label>
+                <select value={planMeal} onChange={e => setPlanMeal(e.target.value)} className="input-field !py-2 text-sm">
+                  {MEAL_TYPES.map(m => <option key={m.key} value={m.key}>{m.label}</option>)}
+                </select>
+              </div>
+            </div>
+            <button onClick={addToPlanning} disabled={planSaved} className="btn-primary w-full flex items-center justify-center gap-2 disabled:opacity-60">
+              {planSaved ? <><Check className="w-4 h-4" /> Ajouté au planning</> : <><CalendarPlus className="w-4 h-4" /> Confirmer</>}
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Valeurs nutritionnelles */}

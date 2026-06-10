@@ -19,11 +19,16 @@ interface Recipe {
   ingredients: Array<{ ingredient: { emoji: string } }>;
   isFavorite: boolean;
   isLocked?: boolean;
+  allergenWarnings?: string[];
+  dietConflict?: boolean;
+  dietLabel?: string;
+  usesExpiring?: number;
 }
 
 const DIFFICULTIES = ['Tous', 'Facile', 'Moyen', 'Difficile'];
 const TIMES = ['Tous', '< 15 min', '< 30 min', '< 45 min'];
 const CUISINES = ['Toutes', 'FR', 'IT', 'JP', 'MX', 'IN', 'MA', 'TH', 'VN', 'CN', 'US', 'ES', 'GR'];
+const DIETARY = ['Tous', 'Anti-gaspi', 'Compatible régime'];
 
 export default function ExplorerPage() {
   const [recipes, setRecipes] = useState<Recipe[]>([]);
@@ -32,6 +37,7 @@ export default function ExplorerPage() {
   const [difficulty, setDifficulty] = useState('Tous');
   const [time, setTime] = useState('Tous');
   const [cuisine, setCuisine] = useState('Toutes');
+  const [dietary, setDietary] = useState('Tous');
   const [showFilters, setShowFilters] = useState(false);
 
   const load = useCallback(async () => {
@@ -53,10 +59,12 @@ export default function ExplorerPage() {
     if (time === '< 30 min' && r.prepTime > 30) return false;
     if (time === '< 45 min' && r.prepTime > 45) return false;
     if (cuisine !== 'Toutes' && r.cuisine !== cuisine) return false;
+    if (dietary === 'Anti-gaspi' && (r.usesExpiring ?? 0) === 0) return false;
+    if (dietary === 'Compatible régime' && (r.dietConflict || (r.allergenWarnings?.length ?? 0) > 0)) return false;
     return true;
   });
 
-  const activeFilters = [difficulty !== 'Tous', time !== 'Tous', cuisine !== 'Toutes'].filter(Boolean).length;
+  const activeFilters = [difficulty !== 'Tous', time !== 'Tous', cuisine !== 'Toutes', dietary !== 'Tous'].filter(Boolean).length;
 
   if (loading) {
     return (
@@ -111,6 +119,20 @@ export default function ExplorerPage() {
       {showFilters && (
         <div className="card p-3.5 mb-3 space-y-3 fade-in">
           <div>
+            <p className="text-[10px] font-medium uppercase tracking-wide mb-1.5" style={{ color: 'var(--text-muted)' }}>Régime &amp; anti-gaspi</p>
+            <div className="flex gap-1.5 flex-wrap">
+              {DIETARY.map(d => (
+                <button key={d} onClick={() => setDietary(d)}
+                  className="px-2.5 py-1 rounded-md text-xs font-medium transition-all"
+                  style={dietary === d
+                    ? { backgroundColor: 'var(--accent)', color: 'var(--accent-text)' }
+                    : { backgroundColor: 'var(--bg-inset)', color: 'var(--text-muted)', border: '1px solid var(--border-subtle)' }}>
+                  {d}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div>
             <p className="text-[10px] font-medium uppercase tracking-wide mb-1.5" style={{ color: 'var(--text-muted)' }}>Difficulté</p>
             <div className="flex gap-1.5 flex-wrap">
               {DIFFICULTIES.map(d => (
@@ -153,7 +175,7 @@ export default function ExplorerPage() {
             </div>
           </div>
           {activeFilters > 0 && (
-            <button onClick={() => { setDifficulty('Tous'); setTime('Tous'); setCuisine('Toutes'); }}
+            <button onClick={() => { setDifficulty('Tous'); setTime('Tous'); setCuisine('Toutes'); setDietary('Tous'); }}
               className="text-xs text-red-500 hover:text-red-400 transition-colors">
               Réinitialiser les filtres
             </button>
@@ -185,6 +207,10 @@ export default function ExplorerPage() {
                 emoji={r.ingredients?.[0]?.ingredient?.emoji}
                 isFavorite={r.isFavorite}
                 isLocked={r.isLocked}
+                allergenWarnings={r.allergenWarnings}
+                dietConflict={r.dietConflict}
+                dietLabel={r.dietLabel}
+                usesExpiring={r.usesExpiring}
               />
             ))}
           </div>
