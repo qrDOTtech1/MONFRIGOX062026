@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import AppShell from '@/components/AppShell';
 import { ArrowLeft, Plus, X, Loader2, ChefHat, Globe, Lock } from 'lucide-react';
@@ -11,12 +11,17 @@ interface IngredientRow {
   unit: string;
 }
 
+interface IngredientSuggestion { id: string; name: string; emoji: string; }
+
 const CUISINES = ['Maison', 'FR', 'IT', 'JP', 'MX', 'IN', 'MA', 'TH', 'VN', 'CN', 'US', 'ES', 'GR', 'Autre'];
 const DIFFICULTIES = [
   { key: 'FACILE', label: 'Facile' },
   { key: 'MOYEN', label: 'Moyen' },
   { key: 'DIFFICILE', label: 'Difficile' },
 ];
+// Pré-sélections proposées (datalists)
+const COMMON_QUANTITIES = ['1', '2', '3', '4', '1/2', '1/4', '50', '100', '150', '200', '250', '300', '500', '750', '1000'];
+const COMMON_UNITS = ['g', 'kg', 'ml', 'cl', 'l', 'c.à.s.', 'c.à.c.', 'pièce', 'tranche', 'gousse', 'pincée', 'poignée', 'sachet', 'boîte', 'botte', 'verre', 'tasse', 'feuille', 'brin'];
 
 export default function NewRecipePage() {
   const router = useRouter();
@@ -32,8 +37,30 @@ export default function NewRecipePage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
+  // Autocomplétion des ingrédients
+  const [activeRow, setActiveRow] = useState<number | null>(null);
+  const [suggestions, setSuggestions] = useState<IngredientSuggestion[]>([]);
+
+  useEffect(() => {
+    if (activeRow === null) { setSuggestions([]); return; }
+    const q = ingredients[activeRow]?.name.trim() || '';
+    if (q.length < 2) { setSuggestions([]); return; }
+    const timer = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/ingredients/search?q=${encodeURIComponent(q)}`);
+        if (res.ok) setSuggestions(await res.json());
+      } catch { /* ignore */ }
+    }, 250);
+    return () => clearTimeout(timer);
+  }, [activeRow, ingredients]);
+
   function updateIngredient(i: number, field: keyof IngredientRow, value: string) {
     setIngredients(prev => prev.map((ing, idx) => idx === i ? { ...ing, [field]: value } : ing));
+  }
+  function pickSuggestion(i: number, s: IngredientSuggestion) {
+    updateIngredient(i, 'name', s.name);
+    setActiveRow(null);
+    setSuggestions([]);
   }
   function addRow() { setIngredients(prev => [...prev, { name: '', quantity: '', unit: '' }]); }
   function removeRow(i: number) { setIngredients(prev => prev.filter((_, idx) => idx !== i)); }
@@ -116,13 +143,62 @@ export default function NewRecipePage() {
 
       {/* Ingrédients */}
       <div className="card p-4 mb-3">
-        <label className="text-xs font-medium block mb-2.5" style={{ color: 'var(--text-secondary)' }}>Ingrédients *</label>
+        <label className="text-xs font-medium block mb-1" style={{ color: 'var(--text-secondary)' }}>Ingrédients *</label>
+        <p className="text-[10px] mb-2.5" style={{ color: 'var(--text-muted)' }}>
+          Commence à taper un ingrédient pour le retrouver, ou choisis une quantité/unité suggérée.
+        </p>
+
+        {/* Listes de pré-sélection (suggestions natives) */}
+        <datalist id="quantities">
+          {COMMON_QUANTITIES.map(q => <option key={q} value={q} />)}
+        </datalist>
+        <datalist id="units">
+          {COMMON_UNITS.map(u => <option key={u} value={u} />)}
+        </datalist>
+
         <div className="space-y-2">
           {ingredients.map((ing, i) => (
-            <div key={i} className="flex gap-2 items-center">
-              <input value={ing.quantity} onChange={e => updateIngredient(i, 'quantity', e.target.value)} placeholder="200" className="input-field !py-2 w-16 text-sm" />
-              <input value={ing.unit} onChange={e => updateIngredient(i, 'unit', e.target.value)} placeholder="g" className="input-field !py-2 w-20 text-sm" />
-              <input value={ing.name} onChange={e => updateIngredient(i, 'name', e.target.value)} placeholder="Ingrédient" className="input-field !py-2 flex-1 text-sm" />
+            <div key={i} className="flex gap-2 items-start">
+              <input
+                list="quantities"
+                value={ing.quantity}
+                onChange={e => updateIngredient(i, 'quantity', e.target.value)}
+                placeholder="200"
+                className="input-field !py-2 w-16 text-sm shrink-0"
+              />
+              <input
+                list="units"
+                value={ing.unit}
+                onChange={e => updateIngredient(i, 'unit', e.target.value)}
+                placeholder="g"
+                className="input-field !py-2 w-20 text-sm shrink-0"
+              />
+              <div className="relative flex-1">
+                <input
+                  value={ing.name}
+                  onChange={e => { updateIngredient(i, 'name', e.target.value); setActiveRow(i); }}
+                  onFocus={() => setActiveRow(i)}
+                  onBlur={() => setTimeout(() => setActiveRow(r => (r === i ? null : r)), 150)}
+                  placeholder="Ingrédient"
+                  className="input-field !py-2 w-full text-sm"
+                  autoComplete="off"
+                />
+                {activeRow === i && suggestions.length > 0 && (
+                  <div className="absolute z-20 left-0 right-0 mt-1 rounded-lg overflow-hidden shadow-lg max-h-44 overflow-y-auto"
+                    style={{ backgroundColor: 'var(--bg-raised)', border: '1px solid var(--border)' }}>
+                    {suggestions.map(s => (
+                      <button
+                        key={s.id}
+                        type="button"
+                        onMouseDown={e => { e.preventDefault(); pickSuggestion(i, s); }}
+                        className="w-full text-left px-3 py-2 text-sm flex items-center gap-2 transition-colors hover:bg-[var(--bg-inset)]"
+                      >
+                        <span>{s.emoji || '🍽️'}</span> {s.name}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
               <button onClick={() => removeRow(i)} disabled={ingredients.length === 1} className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 disabled:opacity-30 hover:bg-[var(--bg-inset)]">
                 <X className="w-4 h-4" style={{ color: 'var(--text-muted)' }} />
               </button>
