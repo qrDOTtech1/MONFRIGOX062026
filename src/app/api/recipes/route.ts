@@ -37,15 +37,24 @@ export async function GET(req: NextRequest) {
       .map(f => f.ingredientId),
   );
 
+  // Visibilité : recettes officielles (authorId null), publiques, ou les miennes
+  const visibility = {
+    OR: [
+      { authorId: null },
+      { isPublic: true },
+      { authorId: user.id },
+    ],
+  };
   const where = favOnly
-    ? { favorites: { some: { userId: user.id } } }
-    : {};
+    ? { AND: [{ favorites: { some: { userId: user.id } } }, visibility] }
+    : visibility;
 
   const recipes = await prisma.recipe.findMany({
     where,
     include: {
       ingredients: { include: { ingredient: true } },
       favorites: { where: { userId: user.id } },
+      author: { select: { name: true } },
     },
     orderBy: { name: 'asc' },
   });
@@ -84,6 +93,10 @@ export async function GET(req: NextRequest) {
       kidFriendly: r.kidFriendly,
       babyFriendly: r.babyFriendly,
       isRevisite: r.isRevisite,
+      // Communauté
+      isCommunity: !!r.authorId,
+      isMine: r.authorId === user.id,
+      author: r.author?.name || null,
     };
   });
 
@@ -118,4 +131,75 @@ export async function GET(req: NextRequest) {
   }
 
   return NextResponse.json(filtered.map(r => ({ ...r, isLocked: false })));
+}
+
+/**
+ * POST /api/recipes — un utilisateur partage sa propre recette (communauté).
+ * Body: { name, description, instructions, cuisine, difficulty, prepTime, servings,
+ *         isPublic, ingredients: [{name, quantity, unit}] }
+ */
+export async function POST(req: NextRequest) {
+  const user = await getCurrentUser();
+  if (!user) return NextResponse.json({ error: 'Non autorisé' }, { status: 401 });
+
+  const body = await req.json();
+  const {
+    name, description, instructions, cuisine,
+    difficulty, prepTime, servings, isPublic, ingredients,
+  } = body;
+
+  if (!name?.trim() || !instructions?.trim()) {
+    return NextResponse.json({ error: 'Nom et préparation requis' }, { status: 400 });
+  }
+
+  const validDiff = ['FACILE', 'MOYEN', 'DIFFICILE'].includes(difficulty) ? difficulty : 'FACILE';
+
+  try {
+    const recipe = await prisma.recipe.create({
+      data: {
+        name: name.trim(),
+        description: (description || '').trim() || `Recette partagée par ${user.name || 'un membre'}`,
+        instructions: instructions.trim(),
+        cuisine: (cuisine || 'Maison').trim(),
+        difficulty: validDiff as any,
+        prepTime: Number(prepTime) > 0 ? Number(prepTime) : 30,
+        servings: Number(servings) > 0 ? Number(servings) : 4,
+        authorId: user.id,
+        isPublic: isPublic !== false, // public par défaut
+      },
+    });
+
+    if (Array.isArray(ingredients)) {
+      for (const ing of ingredients) {
+        const ingName = String(ing?.name || '').trim();
+        if (!ingName) continue;
+
+        let ingredient = await prisma.ingredient.findFirst({
+          where: { name: { equals: ingName, mode: 'insensitive' } },
+        });
+        if (!ingredient) {
+          ingredient = await prisma.ingredient.create({
+            data: { name: ingName, category: 'Communauté', emoji: '🍳' },
+          });
+        }
+
+        const qtyMatch = String(ing?.quantity ?? '').replace(',', '.').match(/[\d.]+/);
+        const quantity = qtyMatch ? parseFloat(qtyMatch[0]) : 1;
+
+        await prisma.recipeIngredient.create({
+          data: {
+            recipeId: recipe.id,
+            ingredientId: ingredient.id,
+            quantity: isNaN(quantity) ? 1 : quantity,
+            unit: String(ing?.unit || 'unité').trim() || 'unité',
+          },
+        }).catch(() => {});
+      }
+    }
+
+    return NextResponse.json({ id: recipe.id });
+  } catch (err: any) {
+    console.error('Recipe create error:', err);
+    return NextResponse.json({ error: err?.message || 'Erreur création recette' }, { status: 500 });
+  }
 }

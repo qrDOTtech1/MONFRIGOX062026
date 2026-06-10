@@ -24,12 +24,14 @@ interface Recipe {
   dietLabel?: string;
   usesExpiring?: number;
   isRevisite?: boolean;
+  isCommunity?: boolean;
+  author?: string | null;
 }
 
 const DIFFICULTIES = ['Tous', 'Facile', 'Moyen', 'Difficile'];
 const TIMES = ['Tous', '< 15 min', '< 30 min', '< 45 min'];
 const CUISINES = ['Toutes', 'FR', 'IT', 'JP', 'MX', 'IN', 'MA', 'TH', 'VN', 'CN', 'US', 'ES', 'GR'];
-const DIETARY = ['Tous', 'Anti-gaspi', 'Compatible régime', 'Revisités'];
+const DIETARY = ['Tous', 'Anti-gaspi', 'Compatible régime', 'Revisités', 'Communauté'];
 
 export default function ExplorerPage() {
   const [recipes, setRecipes] = useState<Recipe[]>([]);
@@ -63,6 +65,7 @@ export default function ExplorerPage() {
     if (dietary === 'Anti-gaspi' && (r.usesExpiring ?? 0) === 0) return false;
     if (dietary === 'Compatible régime' && (r.dietConflict || (r.allergenWarnings?.length ?? 0) > 0)) return false;
     if (dietary === 'Revisités' && !r.isRevisite) return false;
+    if (dietary === 'Communauté' && !r.isCommunity) return false;
     return true;
   });
 
@@ -214,6 +217,7 @@ export default function ExplorerPage() {
                 dietLabel={r.dietLabel}
                 usesExpiring={r.usesExpiring}
                 isRevisite={r.isRevisite}
+                isCommunity={r.isCommunity}
               />
             ))}
           </div>

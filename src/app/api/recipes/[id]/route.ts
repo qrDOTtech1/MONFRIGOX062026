@@ -35,6 +35,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
       include: {
         ingredients: { include: { ingredient: true } },
         favorites: { where: { userId: user.id } },
+        author: { select: { name: true } },
       },
     });
 
@@ -58,6 +59,8 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
       dietConflict: dietary.dietConflict,
       dietLabel: dietary.dietLabel,
       dietConflictIngredients: dietary.dietConflictIngredients,
+      isCommunity: !!recipe.authorId,
+      authorName: recipe.author?.name || null,
       favorites: undefined,
     });
   } catch (err: any) {

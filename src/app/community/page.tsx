@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import AppShell from '@/components/AppShell';
 import Link from 'next/link';
-import { Heart, Clock, TrendingUp, ChefHat, MessageSquare, Crown, Loader2 } from 'lucide-react';
+import { Heart, Clock, TrendingUp, ChefHat, MessageSquare, Crown, Loader2, Plus } from 'lucide-react';
 
 interface CommunityNote {
   id: string;
@@ -135,6 +135,20 @@ export default function CommunityPage() {
           )}
         </div>
       </div>
+
+      {/* Partager sa recette */}
+      <Link href="/recipes/new"
+        className="card p-3.5 mb-5 flex items-center gap-3 hover:shadow-sm transition-all"
+        style={{ border: '1px solid var(--accent)', backgroundColor: 'color-mix(in srgb, var(--accent) 6%, transparent)' }}>
+        <div className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: 'var(--accent)', color: 'var(--accent-text)' }}>
+          <Plus className="w-5 h-5" />
+        </div>
+        <div className="flex-1">
+          <p className="font-medium text-sm">Partager ma recette</p>
+          <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Publie ta création — elle apparaîtra dans Explorer (filtre Communauté)</p>
+        </div>
+        <ChefHat className="w-4 h-4" style={{ color: 'var(--text-muted)' }} />
+      </Link>
 
       {/* Tri */}
       <div className="flex gap-1 p-1 rounded-xl mb-5" style={{ backgroundColor: 'var(--bg-inset)' }}>

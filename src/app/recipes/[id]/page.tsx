@@ -64,6 +64,8 @@ interface Recipe {
   dietConflict?: boolean;
   dietLabel?: string;
   dietConflictIngredients?: string[];
+  isCommunity?: boolean;
+  authorName?: string | null;
 }
 
 function parseSteps(raw: string): string[] {
@@ -345,6 +347,11 @@ export default function RecipeDetailPage() {
 
       <div className="mb-5">
         <h1 className="text-xl font-semibold mb-1.5">{recipe.name}</h1>
+        {recipe.isCommunity && recipe.authorName && (
+          <p className="text-xs mb-1.5 inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full" style={{ backgroundColor: 'rgba(59,130,246,0.1)', color: 'rgb(59,130,246)' }}>
+            👥 Partagé par {recipe.authorName}
+          </p>
+        )}
         <p className="text-sm mb-3" style={{ color: 'var(--text-secondary)' }}>{recipe.description}</p>
 
         {/* Avertissement allergènes / régime */}

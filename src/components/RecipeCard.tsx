@@ -22,6 +22,7 @@ interface RecipeCardProps {
   dietLabel?: string;
   usesExpiring?: number;
   isRevisite?: boolean;
+  isCommunity?: boolean;
 }
 
 const difficultyColors: Record<string, string> = {
@@ -51,7 +52,7 @@ function getMatchTextColor(pct: number) {
 export default function RecipeCard({
   id, name, difficulty, prepTime, cuisine, imageUrl, matchPercent, matchCount,
   emoji, isFavorite, isLocked, onToggleFavorite,
-  allergenWarnings, dietConflict, dietLabel, usesExpiring, isRevisite,
+  allergenWarnings, dietConflict, dietLabel, usesExpiring, isRevisite, isCommunity,
 }: RecipeCardProps) {
   const router = useRouter();
   const hasAllergen = (allergenWarnings?.length ?? 0) > 0;
@@ -59,6 +60,11 @@ export default function RecipeCard({
   // Badges allergène / régime (réutilisés dans les deux variantes)
   const dietaryBadges = (
     <>
+      {isCommunity && (
+        <span className="badge text-[10px] flex items-center gap-1" style={{ backgroundColor: 'rgba(59,130,246,0.12)', color: 'rgb(59,130,246)' }} title="Recette partagée par la communauté">
+          👥 Communauté
+        </span>
+      )}
       {isRevisite && (
         <span className="badge text-[10px] flex items-center gap-1" style={{ backgroundColor: 'rgba(168,85,247,0.12)', color: 'rgb(168,85,247)' }} title="Recette revisitée par l'IA">
           ✨ Revisité

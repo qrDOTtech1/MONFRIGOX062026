@@ -61,6 +61,7 @@ model User {
   recipeNotes     RecipeNote[]
   noteLikes       RecipeNoteLike[]
   cookLogs        CookLog[]
+  recipes         Recipe[]         @relation("UserRecipes")
 }
 
 model Ingredient {
@@ -125,6 +126,10 @@ model Recipe {
   // Revisite : recette dérivée d'une autre via l'IA
   isRevisite   Boolean   @default(false)
   revisitOf    String?   // id de la recette d'origine
+  // Recette partagée par un utilisateur (communauté)
+  authorId     String?   // null = recette officielle/seed
+  author       User?     @relation("UserRecipes", fields: [authorId], references: [id], onDelete: SetNull)
+  isPublic     Boolean   @default(false)  // partagée publiquement dans la communauté
   createdAt    DateTime  @default(now())
   ingredients  RecipeIngredient[]
   favorites    Favorite[]
