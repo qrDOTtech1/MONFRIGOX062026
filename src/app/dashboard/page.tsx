@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import AppShell from '@/components/AppShell';
 import RecipeCard from '@/components/RecipeCard';
-import { Search, ChefHat, SlidersHorizontal, Refrigerator, Sparkles, Globe } from 'lucide-react';
+import { Search, ChefHat, SlidersHorizontal, Refrigerator, Sparkles, Globe, Users, ChevronDown, X } from 'lucide-react';
 
 interface Recipe {
   id: string;
@@ -16,7 +16,7 @@ interface Recipe {
   imageUrl: string;
   matchPercent: number;
   matchCount: string;
-  ingredients: Array<{ ingredient: { emoji: string } }>;
+  ingredients: Array<{ ingredient: { emoji: string; name: string } }>;
   isFavorite: boolean;
   isLocked?: boolean;
   allergenWarnings?: string[];
@@ -26,12 +26,63 @@ interface Recipe {
   isRevisite?: boolean;
   isCommunity?: boolean;
   author?: string | null;
+  kidFriendly?: boolean;
+  babyFriendly?: boolean;
 }
 
 const DIFFICULTIES = ['Tous', 'Facile', 'Moyen', 'Difficile'];
 const TIMES        = ['Tous', '< 15 min', '< 30 min', '< 45 min'];
 const CUISINES     = ['Toutes', 'FR', 'IT', 'JP', 'MX', 'IN', 'MA', 'TH', 'VN', 'CN', 'US', 'ES', 'GR'];
 const DIETARY      = ['Tous', 'Anti-gaspi', 'Compatible régime', 'Revisités', 'Communauté'];
+
+// Filtres invité avancés
+const GUEST_DIETS = [
+  { key: 'vegetarien', label: 'Végétarien',  emoji: '🥗' },
+  { key: 'vegan',      label: 'Vegan',       emoji: '🌱' },
+  { key: 'halal',      label: 'Halal',       emoji: '☪️' },
+  { key: 'casher',     label: 'Casher',      emoji: '✡️' },
+  { key: 'sans-porc',  label: 'Sans porc',   emoji: '🐷' },
+  { key: 'keto',       label: 'Keto',        emoji: '🥑' },
+  { key: 'sans-sucre', label: 'Sans sucre',  emoji: '🍬' },
+];
+
+const GUEST_ALLERGENS = [
+  { key: 'gluten',         label: 'Gluten',          emoji: '🌾' },
+  { key: 'lactose',        label: 'Lactose',          emoji: '🥛' },
+  { key: 'oeufs',          label: 'Œufs',             emoji: '🥚' },
+  { key: 'arachides',      label: 'Arachides',        emoji: '🥜' },
+  { key: 'fruits-a-coque', label: 'Fruits à coque',   emoji: '🌰' },
+  { key: 'soja',           label: 'Soja',             emoji: '🫘' },
+  { key: 'poisson',        label: 'Poisson',          emoji: '🐟' },
+  { key: 'crustaces',      label: 'Crustacés',        emoji: '🦐' },
+  { key: 'gluten',         label: 'Gluten',           emoji: '🌾' },
+  { key: 'sesame',         label: 'Sésame',           emoji: '⚪' },
+  { key: 'sulfites',       label: 'Sulfites',         emoji: '🍷' },
+];
+
+// Clé allergène → mots-clés dans les ingrédients (correspondance côté client)
+const ALLERGEN_KEYWORDS: Record<string, string[]> = {
+  gluten:         ['blé', 'farine', 'orge', 'seigle', 'pain', 'pâte', 'gluten', 'semoule', 'couscous'],
+  lactose:        ['lait', 'beurre', 'crème', 'fromage', 'yaourt', 'parmesan', 'mozzarella', 'ricotta'],
+  oeufs:          ['oeuf', 'egg', 'mayonnaise'],
+  arachides:      ['cacahuète', 'arachide', 'peanut'],
+  'fruits-a-coque': ['noix', 'noisette', 'amande', 'cajou', 'pistache', 'pécan', 'macadamia'],
+  soja:           ['soja', 'tofu', 'tempeh', 'edamame', 'miso'],
+  poisson:        ['saumon', 'thon', 'cabillaud', 'lieu', 'sardine', 'anchois', 'poisson'],
+  crustaces:      ['crevette', 'homard', 'crabe', 'langoustine', 'crustacé'],
+  sesame:         ['sésame', 'tahini'],
+  sulfites:       ['vin', 'vinaigre', 'raisin sec'],
+};
+
+const DIET_KEYWORDS: Record<string, { exclude: string[] }> = {
+  vegetarien:  { exclude: ['viande', 'poulet', 'boeuf', 'porc', 'agneau', 'veau', 'dinde', 'jambon', 'lardons', 'bacon', 'saucisse'] },
+  vegan:       { exclude: ['viande', 'poulet', 'boeuf', 'porc', 'agneau', 'veau', 'dinde', 'jambon', 'lardons', 'bacon', 'saucisse', 'lait', 'beurre', 'fromage', 'crème', 'oeuf', 'miel', 'yaourt'] },
+  halal:       { exclude: ['porc', 'jambon', 'lardons', 'bacon', 'saucisse', 'alcool', 'vin', 'bière'] },
+  casher:      { exclude: ['porc', 'jambon', 'lardons', 'bacon', 'crevette', 'homard', 'crabe'] },
+  'sans-porc': { exclude: ['porc', 'jambon', 'lardons', 'bacon', 'saucisse', 'chorizo', 'pancetta'] },
+  keto:        { exclude: ['pain', 'pâte', 'riz', 'pomme de terre', 'farine', 'sucre', 'sirop'] },
+  'sans-sucre':{ exclude: ['sucre', 'sirop', 'miel', 'confiture', 'chocolat'] },
+};
 
 function SectionLabel({ icon, label, count, color }: { icon: React.ReactNode; label: string; count: number; color?: string }) {
   return (
@@ -57,7 +108,12 @@ export default function ExplorerPage() {
   const [cuisine, setCuisine]         = useState('Toutes');
   const [dietary, setDietary]         = useState('Tous');
   const [showFilters, setShowFilters] = useState(false);
+  const [showAdvanced, setShowAdvanced] = useState(false);
   const [sectionMode, setSectionMode] = useState(true);
+  // Filtres invité
+  const [guestDiet, setGuestDiet]           = useState('');
+  const [guestAllergens, setGuestAllergens] = useState<string[]>([]);
+  const [kidMode, setKidMode]               = useState<'' | 'kid' | 'baby'>('');
 
   const load = useCallback(async () => {
     const res = await fetch('/api/recipes');
@@ -66,6 +122,21 @@ export default function ExplorerPage() {
   }, []);
 
   useEffect(() => { load(); }, [load]);
+
+  // Vérification côté client si un ingrédient correspond à un allergène
+  function recipeHasAllergen(r: Recipe, allergenKey: string): boolean {
+    const keywords = ALLERGEN_KEYWORDS[allergenKey] ?? [];
+    return r.ingredients.some(i =>
+      keywords.some(kw => i.ingredient.name.toLowerCase().includes(kw))
+    );
+  }
+
+  function recipeConflictsDiet(r: Recipe, dietKey: string): boolean {
+    const { exclude } = DIET_KEYWORDS[dietKey] ?? { exclude: [] };
+    return r.ingredients.some(i =>
+      exclude.some(kw => i.ingredient.name.toLowerCase().includes(kw))
+    );
+  }
 
   const filtered = recipes.filter(r => {
     if (search && !r.name.toLowerCase().includes(search.toLowerCase()) &&
@@ -82,15 +153,27 @@ export default function ExplorerPage() {
     if (dietary === 'Compatible régime' && (r.dietConflict || (r.allergenWarnings?.length ?? 0) > 0)) return false;
     if (dietary === 'Revisités'         && !r.isRevisite) return false;
     if (dietary === 'Communauté'        && !r.isCommunity) return false;
+    // Filtres invité
+    if (guestDiet && recipeConflictsDiet(r, guestDiet)) return false;
+    if (guestAllergens.some(a => recipeHasAllergen(r, a))) return false;
+    if (kidMode === 'kid'  && !r.kidFriendly) return false;
+    if (kidMode === 'baby' && !r.babyFriendly) return false;
     return true;
   });
 
   const activeFilters = [difficulty !== 'Tous', time !== 'Tous', cuisine !== 'Toutes', dietary !== 'Tous'].filter(Boolean).length;
-  const isSearching   = !!search || activeFilters > 0;
+  const guestFilters  = [!!guestDiet, guestAllergens.length > 0, kidMode !== ''].filter(Boolean).length;
+  const isSearching   = !!search || activeFilters > 0 || guestFilters > 0;
 
   const ready   = filtered.filter(r => r.matchPercent >= 80);
   const partial = filtered.filter(r => r.matchPercent >= 40 && r.matchPercent < 80);
   const explore = filtered.filter(r => r.matchPercent < 40);
+
+  function resetGuest() {
+    setGuestDiet('');
+    setGuestAllergens([]);
+    setKidMode('');
+  }
 
   const CardList = ({ list }: { list: Recipe[] }) => (
     <div className="space-y-2">
@@ -152,7 +235,26 @@ export default function ExplorerPage() {
         </div>
       </div>
 
-      <div className="flex gap-2 mb-3">
+      {/* Filtre invité actif → banner */}
+      {guestFilters > 0 && (
+        <div className="flex items-center gap-2 px-3 py-2 rounded-xl mb-3 fade-in"
+          style={{ backgroundColor: 'rgba(99,102,241,0.08)', border: '1px solid rgba(99,102,241,0.2)' }}>
+          <Users className="w-3.5 h-3.5 shrink-0" style={{ color: '#818cf8' }} />
+          <span className="text-xs flex-1" style={{ color: '#818cf8' }}>
+            Mode invité actif
+            {guestDiet && ` · ${GUEST_DIETS.find(d => d.key === guestDiet)?.emoji} ${GUEST_DIETS.find(d => d.key === guestDiet)?.label}`}
+            {guestAllergens.length > 0 && ` · ${guestAllergens.length} allergène${guestAllergens.length > 1 ? 's' : ''} exclus`}
+            {kidMode === 'kid' && ' · Enfants'}
+            {kidMode === 'baby' && ' · Bébé'}
+          </span>
+          <button onClick={resetGuest} className="shrink-0">
+            <X className="w-3.5 h-3.5" style={{ color: '#818cf8' }} />
+          </button>
+        </div>
+      )}
+
+      {/* Barre de recherche + filtres */}
+      <div className="flex gap-2 mb-2">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: 'var(--text-muted)' }} />
           <input
@@ -164,22 +266,23 @@ export default function ExplorerPage() {
           />
         </div>
         <button
-          onClick={() => setShowFilters(!showFilters)}
+          onClick={() => { setShowFilters(!showFilters); if (showFilters) setShowAdvanced(false); }}
           className="relative px-3 rounded-lg text-sm font-medium transition-colors flex items-center gap-1.5"
           style={showFilters || activeFilters > 0
             ? { backgroundColor: 'var(--accent)', color: 'var(--accent-text)' }
             : { backgroundColor: 'var(--bg-inset)', color: 'var(--text-secondary)', border: '1px solid var(--border)' }}>
           <SlidersHorizontal className="w-4 h-4" />
-          {activeFilters > 0 && (
+          {(activeFilters + guestFilters) > 0 && (
             <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full text-[9px] font-bold flex items-center justify-center bg-red-500 text-white">
-              {activeFilters}
+              {activeFilters + guestFilters}
             </span>
           )}
         </button>
       </div>
 
+      {/* Filtres standards */}
       {showFilters && (
-        <div className="card p-3.5 mb-3 space-y-3 fade-in">
+        <div className="card p-3.5 mb-2 space-y-3 fade-in">
           <div>
             <p className="text-[10px] font-medium uppercase tracking-wide mb-1.5" style={{ color: 'var(--text-muted)' }}>Régime &amp; anti-gaspi</p>
             <div className="flex gap-1.5 flex-wrap">
@@ -236,20 +339,127 @@ export default function ExplorerPage() {
               ))}
             </div>
           </div>
-          {activeFilters > 0 && (
-            <button onClick={() => { setDifficulty('Tous'); setTime('Tous'); setCuisine('Toutes'); setDietary('Tous'); }}
-              className="text-xs text-red-500 hover:text-red-400 transition-colors">
-              Réinitialiser les filtres
+          <div className="flex items-center justify-between pt-1">
+            {activeFilters > 0 && (
+              <button onClick={() => { setDifficulty('Tous'); setTime('Tous'); setCuisine('Toutes'); setDietary('Tous'); }}
+                className="text-xs text-red-500">
+                Réinitialiser
+              </button>
+            )}
+            {/* Bouton Plus de filtres */}
+            <button
+              onClick={() => setShowAdvanced(a => !a)}
+              className="ml-auto flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-xl transition-all"
+              style={showAdvanced || guestFilters > 0
+                ? { backgroundColor: 'rgba(99,102,241,0.12)', color: '#818cf8', border: '1px solid rgba(99,102,241,0.3)' }
+                : { backgroundColor: 'var(--bg-inset)', color: 'var(--text-muted)', border: '1px solid var(--border)' }}>
+              <Users className="w-3.5 h-3.5" />
+              Filtres invité
+              {guestFilters > 0 && <span className="w-4 h-4 rounded-full text-[9px] font-bold flex items-center justify-center bg-indigo-500 text-white">{guestFilters}</span>}
+              <ChevronDown className={`w-3.5 h-3.5 transition-transform ${showAdvanced ? 'rotate-180' : ''}`} />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Panneau filtres invité */}
+      {showFilters && showAdvanced && (
+        <div className="rounded-2xl p-4 mb-3 space-y-4 fade-in"
+          style={{ backgroundColor: 'rgba(99,102,241,0.05)', border: '1.5px solid rgba(99,102,241,0.2)' }}>
+          <div className="flex items-center gap-2 mb-1">
+            <Users className="w-4 h-4" style={{ color: '#818cf8' }} />
+            <p className="text-sm font-semibold" style={{ color: '#818cf8' }}>Filtres invité</p>
+            <p className="text-xs ml-auto" style={{ color: 'var(--text-muted)' }}>Je reçois quelqu&apos;un avec un régime particulier</p>
+          </div>
+
+          {/* Régime invité */}
+          <div>
+            <p className="text-[10px] font-medium uppercase tracking-wide mb-2" style={{ color: 'var(--text-muted)' }}>Régime de l&apos;invité</p>
+            <div className="flex gap-1.5 flex-wrap">
+              <button
+                onClick={() => setGuestDiet('')}
+                className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-medium transition-all"
+                style={guestDiet === ''
+                  ? { backgroundColor: 'rgba(99,102,241,0.15)', color: '#818cf8', border: '1.5px solid rgba(99,102,241,0.4)' }
+                  : { backgroundColor: 'var(--bg-raised)', color: 'var(--text-muted)', border: '1.5px solid var(--border)' }}>
+                Aucun
+              </button>
+              {GUEST_DIETS.map(d => (
+                <button key={d.key}
+                  onClick={() => setGuestDiet(guestDiet === d.key ? '' : d.key)}
+                  className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-medium transition-all"
+                  style={guestDiet === d.key
+                    ? { backgroundColor: 'rgba(99,102,241,0.15)', color: '#818cf8', border: '1.5px solid rgba(99,102,241,0.4)' }
+                    : { backgroundColor: 'var(--bg-raised)', color: 'var(--text)', border: '1.5px solid var(--border)' }}>
+                  {d.emoji} {d.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Allergènes invité */}
+          <div>
+            <p className="text-[10px] font-medium uppercase tracking-wide mb-2" style={{ color: 'var(--text-muted)' }}>Allergènes à exclure</p>
+            <div className="flex gap-1.5 flex-wrap">
+              {GUEST_ALLERGENS.filter((v, i, a) => a.findIndex(x => x.key === v.key) === i).map(a => {
+                const on = guestAllergens.includes(a.key);
+                return (
+                  <button key={a.key}
+                    onClick={() => setGuestAllergens(prev => on ? prev.filter(x => x !== a.key) : [...prev, a.key])}
+                    className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-medium transition-all"
+                    style={on
+                      ? { backgroundColor: 'rgba(239,68,68,0.1)', color: '#ef4444', border: '1.5px solid rgba(239,68,68,0.4)' }
+                      : { backgroundColor: 'var(--bg-raised)', color: 'var(--text)', border: '1.5px solid var(--border)' }}>
+                    {a.emoji} {a.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Mode enfant */}
+          <div>
+            <p className="text-[10px] font-medium uppercase tracking-wide mb-2" style={{ color: 'var(--text-muted)' }}>Public</p>
+            <div className="flex gap-1.5">
+              {[
+                { key: '',     label: 'Tous',   emoji: '👨‍👩‍👧' },
+                { key: 'kid',  label: 'Enfants', emoji: '🧒' },
+                { key: 'baby', label: 'Bébé',    emoji: '👶' },
+              ].map(m => (
+                <button key={m.key}
+                  onClick={() => setKidMode(m.key as any)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium transition-all"
+                  style={kidMode === m.key
+                    ? { backgroundColor: 'rgba(99,102,241,0.15)', color: '#818cf8', border: '1.5px solid rgba(99,102,241,0.4)' }
+                    : { backgroundColor: 'var(--bg-raised)', color: 'var(--text)', border: '1.5px solid var(--border)' }}>
+                  {m.emoji} {m.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {guestFilters > 0 && (
+            <button onClick={resetGuest} className="text-xs text-red-400 flex items-center gap-1">
+              <X className="w-3 h-3" /> Réinitialiser filtres invité
             </button>
           )}
         </div>
       )}
 
+      {/* Résultats */}
       {filtered.length === 0 ? (
         <div className="text-center py-16">
           <ChefHat className="w-10 h-10 mx-auto mb-3" style={{ color: 'var(--text-muted)', opacity: 0.3 }} />
-          <p className="text-sm font-medium mb-1">Aucun résultat</p>
-          <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Essaie un autre terme ou modifie les filtres</p>
+          <p className="text-sm font-medium mb-1">Aucune recette compatible</p>
+          <p className="text-xs mb-4" style={{ color: 'var(--text-muted)' }}>
+            {guestFilters > 0 ? 'Aucune recette ne correspond aux contraintes invité.' : 'Essaie un autre terme ou modifie les filtres.'}
+          </p>
+          {guestFilters > 0 && (
+            <button onClick={resetGuest} className="text-xs font-semibold px-3 py-2 rounded-xl transition-all"
+              style={{ backgroundColor: 'var(--bg-raised)', border: '1px solid var(--border)', color: 'var(--text-secondary)' }}>
+              Retirer les filtres invité
+            </button>
+          )}
         </div>
       ) : sectionMode && !isSearching ? (
         <div className="fade-in">
@@ -270,33 +480,19 @@ export default function ExplorerPage() {
           )}
           {ready.length > 0 && (
             <>
-              <SectionLabel
-                icon={<Refrigerator className="w-4 h-4" style={{ color: '#22c55e' }} />}
-                label="Prêt à cuisiner"
-                count={ready.length}
-                color="#22c55e"
-              />
+              <SectionLabel icon={<Refrigerator className="w-4 h-4" style={{ color: '#22c55e' }} />} label="Prêt à cuisiner" count={ready.length} color="#22c55e" />
               <CardList list={ready} />
             </>
           )}
           {partial.length > 0 && (
             <>
-              <SectionLabel
-                icon={<Sparkles className="w-4 h-4" style={{ color: '#f59e0b' }} />}
-                label="Presque complet"
-                count={partial.length}
-                color="#f59e0b"
-              />
+              <SectionLabel icon={<Sparkles className="w-4 h-4" style={{ color: '#f59e0b' }} />} label="Presque complet" count={partial.length} color="#f59e0b" />
               <CardList list={partial} />
             </>
           )}
           {explore.length > 0 && (
             <>
-              <SectionLabel
-                icon={<Globe className="w-4 h-4" style={{ color: 'var(--text-muted)' }} />}
-                label="À explorer"
-                count={explore.length}
-              />
+              <SectionLabel icon={<Globe className="w-4 h-4" style={{ color: 'var(--text-muted)' }} />} label="À explorer" count={explore.length} />
               <CardList list={explore} />
             </>
           )}
