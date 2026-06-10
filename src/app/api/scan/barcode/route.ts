@@ -84,6 +84,17 @@ export async function POST(req: NextRequest) {
     });
   }
 
+  const nutrients = product.nutrients ?? {};
+  const nutritionData = {
+    kcal:      nutrients.calories   || null,
+    protein:   nutrients.protein    || null,
+    fat:       nutrients.fat        || null,
+    carbs:     nutrients.carbs      || null,
+    fiber:     nutrients.fiber      || null,
+    salt:      nutrients.salt       || null,
+    nutriScore: product.nutriScore  || '',
+  };
+
   // ── Si pas trouvé → créer automatiquement l'ingrédient ──────────────────
   if (!existing) {
     const category = guessCategory(product.categories ?? '', cleanName);
@@ -97,23 +108,27 @@ export async function POST(req: NextRequest) {
           imageUrl: product.imageUrl ?? '',
           brands:   product.brands   ?? '',
           barcode:  String(barcode),
+          ...nutritionData,
         },
       });
     } catch {
-      // Doublon race-condition → récupérer l'existant
       existing = await prisma.ingredient.findFirst({
         where: { name: { equals: cleanName, mode: 'insensitive' } },
       });
     }
   } else {
-    // Mettre à jour l'image + barcode si manquants
-    if ((!existing.imageUrl || !existing.barcode) && (product.imageUrl || barcode)) {
+    // Mettre à jour les champs manquants (image, nutrition, barcode)
+    const needsUpdate =
+      !existing.imageUrl || !existing.barcode ||
+      existing.kcal === null || existing.kcal === undefined;
+    if (needsUpdate) {
       await prisma.ingredient.update({
         where: { id: existing.id },
         data: {
-          imageUrl: existing.imageUrl || product.imageUrl || '',
-          barcode:  existing.barcode  || String(barcode),
-          brands:   existing.brands   || product.brands || '',
+          imageUrl:  existing.imageUrl  || product.imageUrl  || '',
+          barcode:   existing.barcode   || String(barcode),
+          brands:    existing.brands    || product.brands    || '',
+          ...(existing.kcal == null ? nutritionData : {}),
         },
       });
     }

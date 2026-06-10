@@ -71,6 +71,14 @@ model Ingredient {
   imageUrl    String   @default("")
   brands      String   @default("")
   barcode     String   @default("")
+  // Valeurs nutritionnelles pour 100g (depuis Open Food Facts EAN scan)
+  kcal        Float?
+  protein     Float?
+  fat         Float?
+  carbs       Float?
+  fiber       Float?
+  salt        Float?
+  nutriScore  String   @default("")
   fridgeItems FridgeItem[]
   recipeIngredients RecipeIngredient[]
   shoppingItems ShoppingItem[]

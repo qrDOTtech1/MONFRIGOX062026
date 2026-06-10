@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth';
-import { callOllama } from '@/lib/ollama';
+import { chatCompletion } from '@/lib/ollama';
 
 // Limites hebdomadaires de revisites IA
 const LIMITS = { FREE: 0, PREMIUM: 3, VIP: 15, ADMIN: 999999 };
@@ -95,7 +95,7 @@ Réponds en JSON avec ce format exact :
 }
 Réponds UNIQUEMENT avec le JSON, sans markdown, sans explication.`;
 
-  const raw = await callOllama(prompt, false);
+  const raw = await chatCompletion([{ role: 'user', content: prompt }]);
 
   // Parser le JSON de la réponse
   let revisited: Record<string, unknown>;
