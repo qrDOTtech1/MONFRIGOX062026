@@ -1,11 +1,11 @@
 'use client';
 
 /**
- * LogoAnim — mascotte animée Mon Frigo
+ * LogoAnim — mascotte Mon Frigo
  *
- * La vidéo a un fond noir → on utilise mix-blend-mode: screen en dark mode
- * (le noir disparaît, les pixels colorés restent).
- * En light mode : conteneur sombre arrondi pour intégrer naturellement le fond noir.
+ * Fond noir natif → conteneur sombre arrondi.
+ * logo-static.png = frame de base (poster entre deux animations).
+ * logo-anim.mp4   = animation principale (boucle).
  */
 
 interface LogoAnimProps {
@@ -15,36 +15,49 @@ interface LogoAnimProps {
   withName?: boolean;
   /** Taille du texte si withName (défaut 'text-lg') */
   nameSize?: string;
+  /** Forcer l'image statique uniquement (ex. favicon, og:image) */
+  staticOnly?: boolean;
 }
 
-export default function LogoAnim({ size = 48, withName = false, nameSize = 'text-lg' }: LogoAnimProps) {
+export default function LogoAnim({
+  size = 48,
+  withName = false,
+  nameSize = 'text-lg',
+  staticOnly = false,
+}: LogoAnimProps) {
+  const radius = Math.round(size * 0.22);
+
   return (
     <div className="flex items-center gap-2.5 select-none">
-      {/* Conteneur vidéo */}
       <div
         style={{
-          width:  size,
+          width: size,
           height: size,
-          borderRadius: size * 0.22,   // coins arrondis proportionnels
+          borderRadius: radius,
           overflow: 'hidden',
-          background: '#000',           // fond noir pour intégrer la vidéo
+          background: '#000',
           flexShrink: 0,
-          boxShadow: '0 2px 12px rgba(0,0,0,0.35)',
+          boxShadow: '0 2px 12px rgba(0,0,0,0.30)',
         }}
       >
-        <video
-          src="/logo-anim.mp4"
-          autoPlay
-          loop
-          muted
-          playsInline
-          style={{
-            width: '100%',
-            height: '100%',
-            objectFit: 'cover',
-            display: 'block',
-          }}
-        />
+        {staticOnly ? (
+          /* eslint-disable-next-line @next/next/no-img-element */
+          <img
+            src="/logo-static.png"
+            alt="Mon Frigo"
+            style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+          />
+        ) : (
+          <video
+            src="/logo-anim.mp4"
+            poster="/logo-static.png"   /* ← image fixe pendant chargement / entre boucles */
+            autoPlay
+            loop
+            muted
+            playsInline
+            style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+          />
+        )}
       </div>
 
       {withName && (
