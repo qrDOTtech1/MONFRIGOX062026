@@ -2,31 +2,32 @@ import { prisma } from './db';
 
 export type Plan = 'FREE' | 'PREMIUM' | 'VIP';
 
-/** Limites par défaut — overridables via AppConfig */
-export const DEFAULT_LIMITS: Record<Plan, { daily: number; monthly: number }> = {
-  FREE:    { daily: 5,      monthly: 30    },
-  PREMIUM: { daily: 100,    monthly: 1000  },
-  VIP:     { daily: 999999, monthly: 999999 },
+/** Limites hebdomadaires par défaut — overridables via AppConfig */
+export const DEFAULT_LIMITS: Record<Plan, { weekly: number }> = {
+  FREE:    { weekly: 1      },
+  PREMIUM: { weekly: 10     },
+  VIP:     { weekly: 999999 },
 };
 
-function todayStr()  { return new Date().toISOString().slice(0, 10); }  // YYYY-MM-DD
-function monthStr()  { return new Date().toISOString().slice(0, 7);  }  // YYYY-MM
+/** ISO week string : 2026-W23 */
+function weekStr(): string {
+  const d = new Date();
+  const jan1 = new Date(d.getFullYear(), 0, 1);
+  const week = Math.ceil(((d.getTime() - jan1.getTime()) / 86400000 + jan1.getDay() + 1) / 7);
+  return `${d.getFullYear()}-W${String(week).padStart(2, '0')}`;
+}
 
-/** Lit les limites depuis AppConfig si définies, sinon valeurs par défaut */
-async function getLimits(): Promise<Record<Plan, { daily: number; monthly: number }>> {
+async function getLimits(): Promise<Record<Plan, { weekly: number }>> {
   try {
     const configs = await prisma.appConfig.findMany({
-      where: { key: { in: [
-        'limit_free_daily','limit_free_monthly',
-        'limit_premium_daily','limit_premium_monthly',
-      ]}},
+      where: { key: { in: ['limit_free_weekly', 'limit_premium_weekly'] } },
     });
     const m: Record<string, number> = {};
     configs.forEach(c => { m[c.key] = parseInt(c.value) || 0; });
     return {
-      FREE:    { daily: m['limit_free_daily']    || 5,   monthly: m['limit_free_monthly']    || 30   },
-      PREMIUM: { daily: m['limit_premium_daily'] || 100, monthly: m['limit_premium_monthly'] || 1000 },
-      VIP:     { daily: 999999, monthly: 999999 },
+      FREE:    { weekly: m['limit_free_weekly']    || 1  },
+      PREMIUM: { weekly: m['limit_premium_weekly'] || 10 },
+      VIP:     { weekly: 999999 },
     };
   } catch {
     return DEFAULT_LIMITS;
@@ -35,102 +36,67 @@ async function getLimits(): Promise<Record<Plan, { daily: number; monthly: numbe
 
 export interface RateLimitResult {
   allowed:   boolean;
-  remaining: number;   // min(daily_left, monthly_left)
+  remaining: number;
   plan:      string;
-  reason?:   string;   // message d'erreur si non autorisé
-  upgrade?:  boolean;  // true → inciter l'upgrade de plan
+  reason?:   string;
+  upgrade?:  boolean;
 }
 
 /**
  * Vérifie et consomme 1 crédit IA pour l'utilisateur.
- * Priorité : quota du plan → extraQuota
+ * Réinitialisation hebdomadaire. Priorité : plan quota → extraQuota.
+ * Réutilise les champs aiCallsToday/aiCallsTodayDate (désormais = week/weekDate).
  */
 export async function checkAndConsumeAI(userId: string): Promise<RateLimitResult> {
   const user = await prisma.user.findUnique({
     where: { id: userId },
     select: {
       plan: true, planExpiresAt: true, extraQuota: true,
-      aiCallsToday: true, aiCallsTodayDate: true,
-      aiCallsMonth: true, aiCallsMonthDate: true,
+      aiCallsToday: true, aiCallsTodayDate: true,  // repurposé : appels semaine
     },
   });
   if (!user) return { allowed: false, remaining: 0, plan: 'FREE', reason: 'Utilisateur introuvable' };
 
-  // Plan expiré → downgrade FREE
   const plan = (user.planExpiresAt && user.planExpiresAt < new Date())
     ? 'FREE'
     : (user.plan as Plan) || 'FREE';
 
   const limits = await getLimits();
-  const { daily, monthly } = limits[plan] ?? DEFAULT_LIMITS.FREE;
+  const { weekly } = limits[plan] ?? DEFAULT_LIMITS.FREE;
 
-  const today  = todayStr();
-  const month  = monthStr();
+  const week = weekStr();
+  const callsWeek = user.aiCallsTodayDate === week ? user.aiCallsToday : 0;
 
-  // Réinitialisation des compteurs si nouveau jour / mois
-  let callsToday  = user.aiCallsTodayDate === today  ? user.aiCallsToday  : 0;
-  let callsMonth  = user.aiCallsMonthDate === month  ? user.aiCallsMonth  : 0;
-
-  const withinDaily   = callsToday  < daily;
-  const withinMonthly = callsMonth  < monthly;
-
-  // Dans les limites → consommer et autoriser
-  if (withinDaily && withinMonthly) {
-    callsToday++;
-    callsMonth++;
+  if (callsWeek < weekly) {
     await prisma.user.update({
       where: { id: userId },
-      data: {
-        aiCallsToday:     callsToday,
-        aiCallsTodayDate: today,
-        aiCallsMonth:     callsMonth,
-        aiCallsMonthDate: month,
-      },
+      data: { aiCallsToday: callsWeek + 1, aiCallsTodayDate: week },
     });
-    return {
-      allowed:   true,
-      remaining: Math.min(daily - callsToday, monthly - callsMonth),
-      plan,
-    };
+    return { allowed: true, remaining: weekly - callsWeek - 1, plan };
   }
 
-  // Hors limites → essayer le quota bonus
+  // Quota plan dépassé → extraQuota
   if (user.extraQuota > 0) {
     await prisma.user.update({
       where: { id: userId },
-      data: {
-        extraQuota:       user.extraQuota - 1,
-        aiCallsToday:     callsToday  + 1,
-        aiCallsTodayDate: today,
-        aiCallsMonth:     callsMonth  + 1,
-        aiCallsMonthDate: month,
-      },
+      data: { extraQuota: user.extraQuota - 1, aiCallsToday: callsWeek + 1, aiCallsTodayDate: week },
     });
-    return {
-      allowed:   true,
-      remaining: user.extraQuota - 1,
-      plan,
-    };
+    return { allowed: true, remaining: user.extraQuota - 1, plan };
   }
 
-  // Bloqué
-  const isDaily = !withinDaily;
-  const reset   = isDaily ? 'demain' : 'le mois prochain';
-  const reason  = isDaily
-    ? `Limite journalière atteinte (${daily} requêtes/jour). Réinitialisation ${reset}.`
-    : `Limite mensuelle atteinte (${monthly} requêtes/mois). Réinitialisation ${reset}.`;
+  const reason = plan === 'FREE'
+    ? `Limite hebdomadaire atteinte (${weekly} requête/semaine en gratuit). Passez en Premium pour 10 requêtes/semaine.`
+    : `Limite hebdomadaire atteinte (${weekly} requêtes/semaine). Réinitialisation lundi.`;
 
-  return { allowed: false, remaining: 0, plan, reason, upgrade: plan === 'FREE' };
+  return { allowed: false, remaining: 0, plan, reason, upgrade: plan !== 'VIP' };
 }
 
-/** Résumé d'usage pour le profil utilisateur */
 export async function getUsageSummary(userId: string) {
   const user = await prisma.user.findUnique({
     where: { id: userId },
     select: {
       plan: true, planExpiresAt: true, extraQuota: true,
       aiCallsToday: true, aiCallsTodayDate: true,
-      aiCallsMonth: true, aiCallsMonthDate: true,
     },
   });
   if (!user) return null;
@@ -138,19 +104,16 @@ export async function getUsageSummary(userId: string) {
   const plan = (user.planExpiresAt && user.planExpiresAt < new Date())
     ? 'FREE' : (user.plan as Plan) || 'FREE';
 
-  const limits  = await getLimits();
-  const { daily, monthly } = limits[plan] ?? DEFAULT_LIMITS.FREE;
-  const today   = todayStr();
-  const month   = monthStr();
+  const limits = await getLimits();
+  const { weekly } = limits[plan] ?? DEFAULT_LIMITS.FREE;
+  const week = weekStr();
 
   return {
     plan,
-    planExpiresAt:  user.planExpiresAt,
-    extraQuota:     user.extraQuota,
-    aiCallsToday:   user.aiCallsTodayDate  === today  ? user.aiCallsToday  : 0,
-    aiCallsMonth:   user.aiCallsMonthDate  === month  ? user.aiCallsMonth  : 0,
-    limitDaily:     daily,
-    limitMonthly:   monthly,
-    isUnlimited:    plan === 'VIP',
+    planExpiresAt: user.planExpiresAt,
+    extraQuota:    user.extraQuota,
+    aiCallsWeek:   user.aiCallsTodayDate === week ? user.aiCallsToday : 0,
+    limitWeekly:   weekly,
+    isUnlimited:   plan === 'VIP',
   };
 }

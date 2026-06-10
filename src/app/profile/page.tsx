@@ -74,8 +74,8 @@ export default function ProfilePage() {
   // Billing
   interface BillingStatus {
     plan: string; extraQuota: number; isUnlimited: boolean;
-    aiCallsToday: number; aiCallsMonth: number;
-    limitDaily: number; limitMonthly: number;
+    aiCallsWeek: number;
+    limitWeekly: number;
     planExpiresAt: string | null;
     links: Record<string, string>;
     prices: Record<string, string>;
@@ -221,8 +221,7 @@ export default function ProfilePage() {
               {!billing.isUnlimited && (
                 <div className="space-y-2 mb-4">
                   {[
-                    { label: `Aujourd'hui`, used: billing.aiCallsToday, max: billing.limitDaily },
-                    { label: 'Ce mois',     used: billing.aiCallsMonth, max: billing.limitMonthly },
+                    { label: 'Cette semaine', used: billing.aiCallsWeek, max: billing.limitWeekly },
                   ].map(row => {
                     const pct = Math.min(100, Math.round(row.used / row.max * 100));
                     const danger = pct >= 80;

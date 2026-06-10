@@ -49,5 +49,13 @@ export async function GET(req: NextRequest) {
 
   result.sort((a, b) => b.matchPercent - a.matchPercent);
 
+  // Utilisateurs FREE : accès à la moitié des recettes (triées par matchPercent)
+  const userRecord = await prisma.user.findUnique({ where: { id: user.id }, select: { plan: true, planExpiresAt: true } });
+  const effectivePlan = (userRecord?.planExpiresAt && userRecord.planExpiresAt < new Date()) ? 'FREE' : (userRecord?.plan || 'FREE');
+  if (effectivePlan === 'FREE' && !favOnly) {
+    const half = Math.ceil(result.length / 2);
+    return NextResponse.json(result.slice(0, half));
+  }
+
   return NextResponse.json(result);
 }

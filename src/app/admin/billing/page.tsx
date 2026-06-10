@@ -58,13 +58,11 @@ const FIELDS = [
     ],
   },
   {
-    section: '⚙️ Limites IA par plan',
-    hint: 'Requêtes Ollama autorisées par jour et par mois. VIP = illimité (valeur ignorée).',
+    section: '⚙️ Limites IA par plan (hebdomadaires)',
+    hint: 'Requêtes Ollama autorisées par semaine. VIP = illimité. Réinitialisation chaque lundi.',
     fields: [
-      { key: 'limit_free_daily',       label: 'FREE — limite/jour',     placeholder: '5' },
-      { key: 'limit_free_monthly',     label: 'FREE — limite/mois',     placeholder: '30' },
-      { key: 'limit_premium_daily',    label: 'PREMIUM — limite/jour',  placeholder: '100' },
-      { key: 'limit_premium_monthly',  label: 'PREMIUM — limite/mois',  placeholder: '1000' },
+      { key: 'limit_free_weekly',    label: 'FREE — limite/semaine',    placeholder: '1'  },
+      { key: 'limit_premium_weekly', label: 'PREMIUM — limite/semaine', placeholder: '10' },
     ],
   },
 ];
