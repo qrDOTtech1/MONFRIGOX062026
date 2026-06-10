@@ -122,6 +122,9 @@ model Recipe {
   // Catégories spéciales
   kidFriendly  Boolean   @default(false)
   babyFriendly Boolean   @default(false)
+  // Revisite : recette dérivée d'une autre via l'IA
+  isRevisite   Boolean   @default(false)
+  revisitOf    String?   // id de la recette d'origine
   createdAt    DateTime  @default(now())
   ingredients  RecipeIngredient[]
   favorites    Favorite[]

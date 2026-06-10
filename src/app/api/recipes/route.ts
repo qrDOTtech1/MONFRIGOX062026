@@ -83,6 +83,7 @@ export async function GET(req: NextRequest) {
       nutriScore: r.nutriScore,
       kidFriendly: r.kidFriendly,
       babyFriendly: r.babyFriendly,
+      isRevisite: r.isRevisite,
     };
   });
 

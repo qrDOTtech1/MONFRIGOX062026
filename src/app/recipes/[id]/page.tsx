@@ -109,6 +109,7 @@ export default function RecipeDetailPage() {
   const [revisitResult, setRevisitResult]   = useState<RevisitResult | null>(null);
   const [revisitError, setRevisitError]     = useState('');
   const [revisitRemaining, setRevisitRemaining] = useState<number | null>(null);
+  const [savingRevisit, setSavingRevisit]   = useState(false);
 
   // Notes communautaires
   const [myNote, setMyNote]           = useState<RecipeNote | null>(null);
@@ -284,6 +285,31 @@ export default function RecipeDetailPage() {
       if (data.remaining !== undefined) setRevisitRemaining(data.remaining);
     }
     setRevisiting(false);
+  }
+
+  async function saveRevisit() {
+    if (!revisitResult) return;
+    setSavingRevisit(true);
+    try {
+      const res = await fetch(`/api/recipes/${id}/revisit/save`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: revisitResult.title || `Revisite de ${recipe?.name}`,
+          description: revisitResult.description,
+          ingredients: revisitResult.ingredients,
+          instructions: revisitResult.instructions,
+          tips: revisitResult.tips,
+        }),
+      });
+      const data = await res.json();
+      if (res.ok && data.id) {
+        router.push(`/recipes/${data.id}`);
+      } else {
+        setRevisitError(data.error || 'Erreur enregistrement');
+      }
+    } finally {
+      setSavingRevisit(false);
+    }
   }
 
   if (loading) {
@@ -696,6 +722,12 @@ export default function RecipeDetailPage() {
                 </div>
               )}
             </div>
+            <button onClick={saveRevisit} disabled={savingRevisit}
+              className="btn-primary w-full flex items-center justify-center gap-2 text-sm disabled:opacity-50">
+              {savingRevisit
+                ? <><Loader2 className="w-4 h-4 animate-spin" /> Enregistrement…</>
+                : <><Sparkles className="w-4 h-4" /> Enregistrer comme recette</>}
+            </button>
             <div className="flex gap-2">
               <button onClick={() => { setRevisitResult(null); setRevisitInstruction(''); }}
                 className="btn-secondary flex-1 text-sm">Nouvelle revisit</button>

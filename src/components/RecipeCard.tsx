@@ -21,6 +21,7 @@ interface RecipeCardProps {
   dietConflict?: boolean;
   dietLabel?: string;
   usesExpiring?: number;
+  isRevisite?: boolean;
 }
 
 const difficultyColors: Record<string, string> = {
@@ -50,7 +51,7 @@ function getMatchTextColor(pct: number) {
 export default function RecipeCard({
   id, name, difficulty, prepTime, cuisine, imageUrl, matchPercent, matchCount,
   emoji, isFavorite, isLocked, onToggleFavorite,
-  allergenWarnings, dietConflict, dietLabel, usesExpiring,
+  allergenWarnings, dietConflict, dietLabel, usesExpiring, isRevisite,
 }: RecipeCardProps) {
   const router = useRouter();
   const hasAllergen = (allergenWarnings?.length ?? 0) > 0;
@@ -58,6 +59,11 @@ export default function RecipeCard({
   // Badges allergène / régime (réutilisés dans les deux variantes)
   const dietaryBadges = (
     <>
+      {isRevisite && (
+        <span className="badge text-[10px] flex items-center gap-1" style={{ backgroundColor: 'rgba(168,85,247,0.12)', color: 'rgb(168,85,247)' }} title="Recette revisitée par l'IA">
+          ✨ Revisité
+        </span>
+      )}
       {hasAllergen && (
         <span className="badge text-[10px] flex items-center gap-1 text-red-600 dark:text-red-400" style={{ backgroundColor: 'rgba(239,68,68,0.1)' }} title="Contient un de vos allergènes">
           <AlertTriangle className="w-2.5 h-2.5" /> Allergène
