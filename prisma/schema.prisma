@@ -52,11 +52,14 @@ model User {
   aiCallsTodayDate String    @default("")       // YYYY-MM-DD
   aiCallsMonth     Int       @default(0)
   aiCallsMonthDate String    @default("")       // YYYY-MM
+  revisitCount     Int       @default(0)        // compteur revisites IA semaine
+  revisitWeek      String    @default("")       // YYYY-Www
   fridgeItems      FridgeItem[]
   favorites       Favorite[]
   shoppingLists   ShoppingList[]
   mealPlans       MealPlan[]
   recipeNotes     RecipeNote[]
+  noteLikes       RecipeNoteLike[]
   cookLogs        CookLog[]
 }
 
@@ -180,12 +183,24 @@ model RecipeNote {
   content   String   @default("")
   photoUrl  String   @default("") @db.Text
   isPublic  Boolean  @default(false)
+  likeCount Int      @default(0)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   recipe    Recipe   @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+  likes     RecipeNoteLike[]
 
   @@unique([userId, recipeId])
+}
+
+model RecipeNoteLike {
+  id        String     @id @default(cuid())
+  userId    String
+  noteId    String
+  createdAt DateTime   @default(now())
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  note      RecipeNote @relation(fields: [noteId], references: [id], onDelete: Cascade)
+  @@unique([userId, noteId])
 }
 
 model CookLog {

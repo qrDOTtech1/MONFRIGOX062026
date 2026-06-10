@@ -7,8 +7,14 @@ import {
   ArrowLeft, Clock, Users, Heart, ShoppingCart, Check, X, ChefHat,
   Minus, Plus, Flame, Wheat, Droplets, Beef, Sparkles,
   MessageSquare, Globe, Lock, Send, Trash2, ImagePlus, Loader2,
-  Euro, ExternalLink,
+  Euro, ExternalLink, Wand2, Crown,
 } from 'lucide-react';
+
+interface RevisitResult {
+  title?: string; description?: string;
+  ingredients?: Array<{ name: string; quantity: string; unit: string }>;
+  instructions?: string; tips?: string;
+}
 
 interface CostEstimate {
   total: number;
@@ -84,6 +90,14 @@ export default function RecipeDetailPage() {
 
   // Coût estimé
   const [cost, setCost] = useState<CostEstimate | null>(null);
+
+  // Revisit IA
+  const [revisitOpen, setRevisitOpen]       = useState(false);
+  const [revisitInstruction, setRevisitInstruction] = useState('');
+  const [revisiting, setRevisiting]         = useState(false);
+  const [revisitResult, setRevisitResult]   = useState<RevisitResult | null>(null);
+  const [revisitError, setRevisitError]     = useState('');
+  const [revisitRemaining, setRevisitRemaining] = useState<number | null>(null);
 
   // Notes communautaires
   const [myNote, setMyNote]           = useState<RecipeNote | null>(null);
@@ -225,6 +239,24 @@ export default function RecipeDetailPage() {
       body: JSON.stringify({ name: `Pour: ${recipe.name} (${servings} pers.)`, items: missing }),
     });
     router.push('/shopping');
+  }
+
+  async function revisitRecipe() {
+    if (!revisitInstruction.trim()) return;
+    setRevisiting(true); setRevisitError(''); setRevisitResult(null);
+    const res = await fetch(`/api/recipes/${id}/revisit`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ instruction: revisitInstruction }),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      setRevisitError(data.error || 'Erreur');
+      if (data.upgrade) setRevisitError('🔒 ' + data.error);
+    } else {
+      setRevisitResult(data.revisited);
+      if (data.remaining !== undefined) setRevisitRemaining(data.remaining);
+    }
+    setRevisiting(false);
   }
 
   if (loading) {
@@ -500,6 +532,105 @@ export default function RecipeDetailPage() {
             </div>
           ))}
         </div>
+      </div>
+
+      {/* ── Revisit IA ── */}
+      <div className="card p-4 mb-3">
+        <button onClick={() => { setRevisitOpen(o => !o); setRevisitResult(null); setRevisitError(''); }}
+          className="w-full flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Wand2 className="w-4 h-4" style={{ color: 'var(--text-secondary)' }} />
+            <h2 className="font-medium text-sm">Revisiter avec l&apos;IA</h2>
+            <span className="text-[10px] px-1.5 py-0.5 rounded-full font-medium text-amber-600 dark:text-amber-400"
+              style={{ backgroundColor: 'rgba(245,158,11,0.1)' }}>Premium / VIP</span>
+          </div>
+          {revisitRemaining !== null && (
+            <span className="text-[10px]" style={{ color: 'var(--text-muted)' }}>{revisitRemaining} restante{revisitRemaining !== 1 ? 's' : ''}</span>
+          )}
+        </button>
+
+        {revisitOpen && !revisitResult && (
+          <div className="mt-3 space-y-2">
+            <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+              Demande à l&apos;IA de réécrire cette recette selon ton instruction.
+            </p>
+            <div className="grid grid-cols-2 gap-1.5">
+              {['Rends-la végétarienne', 'Version sans gluten', 'Plus rapide (< 20 min)', 'Moins calorique'].map(s => (
+                <button key={s} onClick={() => setRevisitInstruction(s)}
+                  className="text-[11px] px-2.5 py-1.5 rounded-lg text-left transition-colors hover:bg-[var(--bg-inset)]"
+                  style={{ border: '1px solid var(--border)', color: revisitInstruction === s ? 'var(--accent)' : 'var(--text-secondary)',
+                    borderColor: revisitInstruction === s ? 'var(--accent)' : undefined }}>
+                  {s}
+                </button>
+              ))}
+            </div>
+            <textarea
+              placeholder="Ou écris ta propre instruction… (ex: adapte pour 2 personnes avec du boeuf)"
+              value={revisitInstruction}
+              onChange={e => setRevisitInstruction(e.target.value)}
+              rows={2}
+              className="input-field w-full text-sm resize-none"
+              onKeyDown={e => e.stopPropagation()}
+            />
+            <button onClick={revisitRecipe} disabled={revisiting || !revisitInstruction.trim()}
+              className="btn-primary w-full flex items-center justify-center gap-2 disabled:opacity-40">
+              {revisiting
+                ? <><Loader2 className="w-4 h-4 animate-spin" /> Génération en cours…</>
+                : <><Wand2 className="w-4 h-4" /> Générer la version revisitée</>}
+            </button>
+            {revisitError && (
+              <div className="rounded-lg p-3 text-sm" style={{ backgroundColor: 'rgba(239,68,68,0.08)', color: 'rgb(239,68,68)', border: '1px solid rgba(239,68,68,0.2)' }}>
+                {revisitError}
+                {revisitError.startsWith('🔒') && (
+                  <a href="/profile" className="block mt-1.5 underline text-xs">Passer Premium →</a>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
+        {revisitResult && (
+          <div className="mt-3 space-y-3 fade-in">
+            <div className="rounded-xl p-4" style={{ backgroundColor: 'var(--bg-inset)', border: '1px solid var(--border)' }}>
+              {revisitResult.title && <h3 className="font-bold text-base mb-1">✨ {revisitResult.title}</h3>}
+              {revisitResult.description && <p className="text-sm mb-3" style={{ color: 'var(--text-secondary)' }}>{revisitResult.description}</p>}
+              {revisitResult.ingredients && revisitResult.ingredients.length > 0 && (
+                <div className="mb-3">
+                  <p className="text-xs font-semibold mb-1.5" style={{ color: 'var(--text-muted)' }}>INGRÉDIENTS</p>
+                  <ul className="space-y-1">
+                    {revisitResult.ingredients.map((ing, i) => (
+                      <li key={i} className="text-sm flex gap-2">
+                        <span className="font-mono text-xs tabular-nums" style={{ color: 'var(--text-muted)' }}>{ing.quantity} {ing.unit}</span>
+                        <span>{ing.name}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              {revisitResult.instructions && (
+                <div className="mb-3">
+                  <p className="text-xs font-semibold mb-1.5" style={{ color: 'var(--text-muted)' }}>PRÉPARATION</p>
+                  <p className="text-sm leading-relaxed" style={{ color: 'var(--text-secondary)' }}>{revisitResult.instructions}</p>
+                </div>
+              )}
+              {revisitResult.tips && (
+                <div className="rounded-lg px-3 py-2 text-xs" style={{ backgroundColor: 'rgba(245,158,11,0.08)', color: 'rgb(180,120,0)', border: '1px solid rgba(245,158,11,0.2)' }}>
+                  💡 {revisitResult.tips}
+                </div>
+              )}
+            </div>
+            <div className="flex gap-2">
+              <button onClick={() => { setRevisitResult(null); setRevisitInstruction(''); }}
+                className="btn-secondary flex-1 text-sm">Nouvelle revisit</button>
+              <button onClick={() => setRevisitOpen(false)} className="btn-secondary flex-1 text-sm">Fermer</button>
+            </div>
+            {revisitRemaining !== null && (
+              <p className="text-[11px] text-center" style={{ color: 'var(--text-muted)' }}>
+                {revisitRemaining} revisit{revisitRemaining !== 1 ? 's' : ''} restante{revisitRemaining !== 1 ? 's' : ''} cette semaine
+              </p>
+            )}
+          </div>
+        )}
       </div>
 
       {/* ── Ma note ── */}

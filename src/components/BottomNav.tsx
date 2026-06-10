@@ -2,14 +2,14 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { ScanLine, Refrigerator, LayoutGrid, ShoppingCart, UserCircle } from 'lucide-react';
+import { ScanLine, Refrigerator, LayoutGrid, Users, UserCircle } from 'lucide-react';
 
 const items = [
-  { href: '/scan',      icon: ScanLine,     label: 'Scan' },
-  { href: '/fridge',    icon: Refrigerator, label: 'Mon Frigo' },
-  { href: '/dashboard', icon: LayoutGrid,   label: 'Explorer' },
-  { href: '/shopping',  icon: ShoppingCart, label: 'Courses' },
-  { href: '/profile',   icon: UserCircle,   label: 'Profil' },
+  { href: '/scan',       icon: ScanLine,     label: 'Scan'       },
+  { href: '/fridge',     icon: Refrigerator, label: 'Frigo'      },
+  { href: '/dashboard',  icon: LayoutGrid,   label: 'Explorer'   },
+  { href: '/community',  icon: Users,        label: 'Communauté' },
+  { href: '/profile',    icon: UserCircle,   label: 'Profil'     },
 ];
 
 export default function BottomNav() {
