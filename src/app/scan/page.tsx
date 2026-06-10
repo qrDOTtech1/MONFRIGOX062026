@@ -13,7 +13,12 @@ interface DetectedItem {
   name: string;
   confidence: number;
   ingredientId?: string;
+  manual?: boolean; // ajouté à la main (produit manqué par l'IA)
 }
+
+interface IngredientSuggestion { id: string; name: string; emoji: string; }
+
+const keyOf = (name: string) => name.trim().toLowerCase();
 
 interface BarcodeResult {
   name: string;
@@ -123,10 +128,29 @@ function ScanPageInner() {
   const [images, setImages]     = useState<string[]>([]);
   const [scanning, setScanning] = useState(false);
   const [results, setResults]   = useState<DetectedItem[]>([]);
-  const [added, setAdded]       = useState<Set<string>>(new Set());
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [addingToFridge, setAddingToFridge] = useState(false);
+  const [addedCount, setAddedCount] = useState<number | null>(null);
   const fileRef                 = useRef<HTMLInputElement>(null);
   const videoRef                = useRef<HTMLVideoElement>(null);
   const [cameraActive, setCameraActive] = useState(false);
+
+  // ── Ajout produit manquant (autocomplétion) ──
+  const [manualQuery, setManualQuery] = useState('');
+  const [manualSuggestions, setManualSuggestions] = useState<IngredientSuggestion[]>([]);
+  const [manualFocused, setManualFocused] = useState(false);
+
+  useEffect(() => {
+    const q = manualQuery.trim();
+    if (q.length < 2) { setManualSuggestions([]); return; }
+    const timer = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/ingredients/search?q=${encodeURIComponent(q)}`);
+        if (res.ok) setManualSuggestions(await res.json());
+      } catch { /* ignore */ }
+    }, 250);
+    return () => clearTimeout(timer);
+  }, [manualQuery]);
 
   // ── Mode barcode ──
   const [barcodeInput, setBarcodeInput] = useState('');
@@ -177,7 +201,7 @@ function ScanPageInner() {
   }
 
   async function analyzeAllImages() {
-    setScanning(true); setResults([]);
+    setScanning(true); setResults([]); setAddedCount(null);
     const seen = new Set<string>(); const all: DetectedItem[] = [];
     for (const img of images) {
       try {
@@ -194,16 +218,68 @@ function ScanPageInner() {
         }
       } catch { /* continue */ }
     }
-    setResults(all); setScanning(false);
+    setResults(all);
+    // Tout pré-sélectionné par défaut
+    setSelected(new Set(all.map(i => keyOf(i.name))));
+    setScanning(false);
   }
 
-  async function addItem(item: DetectedItem) {
-    if (!item.ingredientId) return;
-    await fetch('/api/fridge', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ingredientId: item.ingredientId }),
+  function toggleSelect(name: string) {
+    const k = keyOf(name);
+    setSelected(prev => {
+      const next = new Set(prev);
+      if (next.has(k)) next.delete(k); else next.add(k);
+      return next;
     });
-    setAdded(prev => new Set(prev).add(item.name));
+  }
+  function selectAll() { setSelected(new Set(results.map(i => keyOf(i.name)))); }
+  function deselectAll() { setSelected(new Set()); }
+
+  // Ajoute un produit manqué par l'IA (depuis l'autocomplétion ou texte libre)
+  function addManualItem(name: string, ingredientId?: string) {
+    const k = keyOf(name);
+    if (!name.trim()) return;
+    setResults(prev => prev.some(i => keyOf(i.name) === k)
+      ? prev
+      : [...prev, { name: name.trim(), confidence: 1, ingredientId, manual: true }]);
+    setSelected(prev => new Set(prev).add(k));
+    setManualQuery('');
+    setManualSuggestions([]);
+    setManualFocused(false);
+  }
+
+  // Résout l'id d'ingrédient (le crée si besoin) puis l'ajoute au frigo
+  async function resolveAndAdd(item: DetectedItem): Promise<boolean> {
+    let ingredientId = item.ingredientId;
+    if (!ingredientId) {
+      try {
+        const res = await fetch('/api/ingredients', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name: item.name }),
+        });
+        if (res.ok) { const ing = await res.json(); ingredientId = ing.id; }
+      } catch { /* ignore */ }
+    }
+    if (!ingredientId) return false;
+    try {
+      await fetch('/api/fridge', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ingredientId }),
+      });
+      return true;
+    } catch { return false; }
+  }
+
+  async function addSelectedToFridge() {
+    const toAdd = results.filter(i => selected.has(keyOf(i.name)));
+    if (toAdd.length === 0) return;
+    setAddingToFridge(true);
+    let count = 0;
+    for (const item of toAdd) {
+      if (await resolveAndAdd(item)) count++;
+    }
+    setAddedCount(count);
+    setAddingToFridge(false);
   }
 
   // ── Barcode helpers (ZXing) ──
@@ -355,7 +431,7 @@ function ScanPageInner() {
 
       <AppShell>
         <div className="flex items-center gap-2.5 mb-4">
-          <button onClick={() => { setMode('choose'); setImages([]); setResults([]); setAdded(new Set()); }}
+          <button onClick={() => { setMode('choose'); setImages([]); setResults([]); setSelected(new Set()); setAddedCount(null); }}
             className="p-1.5 rounded-lg transition-colors hover:bg-[var(--bg-inset)]">
             <X className="w-4 h-4" style={{ color: 'var(--text-muted)' }} />
           </button>
@@ -434,29 +510,116 @@ function ScanPageInner() {
           </div>
         )}
 
-        {results.length > 0 && (
+        {results.length > 0 && addedCount === null && (
           <div className="fade-in">
-            <div className="flex items-center justify-between mb-3">
-              <h2 className="font-medium text-sm">{results.length} ingrédient{results.length > 1 ? 's' : ''} détecté{results.length > 1 ? 's' : ''}</h2>
-              <button onClick={() => { for (const i of results) addItem(i); }} className="btn-primary !py-1.5 !px-3 text-xs">Tout ajouter</button>
+            <div className="flex items-center justify-between mb-2">
+              <h2 className="font-medium text-sm">{results.length} ingrédient{results.length > 1 ? 's' : ''} · {selected.size} sélectionné{selected.size > 1 ? 's' : ''}</h2>
+              <button
+                onClick={() => selected.size === results.length ? deselectAll() : selectAll()}
+                className="text-xs font-medium" style={{ color: 'var(--accent)' }}>
+                {selected.size === results.length ? 'Tout désélectionner' : 'Tout sélectionner'}
+              </button>
             </div>
+
+            {/* Liste avec cases à cocher */}
             <div className="space-y-1.5">
-              {results.map((item, i) => (
-                <div key={i} className="card p-3 flex items-center justify-between">
-                  <div>
-                    <p className="font-medium text-sm">{item.name}</p>
-                    <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{Math.round(item.confidence * 100)}% confiance</p>
-                  </div>
-                  {added.has(item.name)
-                    ? <div className="w-7 h-7 rounded-md flex items-center justify-center bg-emerald-500/10"><Check className="w-4 h-4 text-emerald-500" /></div>
-                    : <button onClick={() => addItem(item)} className="w-7 h-7 rounded-md flex items-center justify-center hover:bg-[var(--bg-inset)] transition-colors" style={{ border: '1px solid var(--border)' }}><Plus className="w-3.5 h-3.5" style={{ color: 'var(--text-muted)' }} /></button>
-                  }
-                </div>
-              ))}
+              {results.map((item, i) => {
+                const isSel = selected.has(keyOf(item.name));
+                return (
+                  <button key={i} onClick={() => toggleSelect(item.name)}
+                    className="card p-3 flex items-center gap-3 w-full text-left transition-colors"
+                    style={isSel ? { borderColor: 'var(--accent)' } : undefined}>
+                    <div className="w-5 h-5 rounded-md border-2 flex items-center justify-center shrink-0 transition-all"
+                      style={isSel
+                        ? { backgroundColor: 'var(--accent)', borderColor: 'var(--accent)' }
+                        : { borderColor: 'var(--border)' }}>
+                      {isSel && <Check className="w-3.5 h-3.5" style={{ color: 'var(--accent-text)' }} />}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-sm truncate">{item.name}</p>
+                      <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                        {item.manual ? 'Ajouté manuellement' : `${Math.round(item.confidence * 100)}% confiance`}
+                      </p>
+                    </div>
+                  </button>
+                );
+              })}
             </div>
-            <button onClick={() => { setImages([]); setResults([]); setAdded(new Set()); }} className="btn-secondary w-full mt-4">
+
+            {/* Ajouter un produit manqué par l'IA */}
+            <div className="card p-3.5 mt-3">
+              <p className="text-xs font-medium mb-2">L&apos;IA a oublié un produit ?</p>
+
+              {/* Autocomplétion ingrédient */}
+              <div className="relative mb-2">
+                <input
+                  value={manualQuery}
+                  onChange={e => setManualQuery(e.target.value)}
+                  onFocus={() => setManualFocused(true)}
+                  onBlur={() => setTimeout(() => setManualFocused(false), 150)}
+                  onKeyDown={e => { if (e.key === 'Enter' && manualQuery.trim()) addManualItem(manualQuery); }}
+                  placeholder="Chercher / ajouter un ingrédient…"
+                  className="input-field !py-2 text-sm w-full"
+                  autoComplete="off"
+                />
+                {manualFocused && (manualSuggestions.length > 0 || manualQuery.trim().length >= 2) && (
+                  <div className="absolute z-20 left-0 right-0 mt-1 rounded-lg overflow-hidden shadow-lg max-h-44 overflow-y-auto"
+                    style={{ backgroundColor: 'var(--bg-raised)', border: '1px solid var(--border)' }}>
+                    {manualSuggestions.map(s => (
+                      <button key={s.id} type="button"
+                        onMouseDown={e => { e.preventDefault(); addManualItem(s.name, s.id); }}
+                        className="w-full text-left px-3 py-2 text-sm flex items-center gap-2 transition-colors hover:bg-[var(--bg-inset)]">
+                        <span>{s.emoji || '🍽️'}</span> {s.name}
+                      </button>
+                    ))}
+                    {manualQuery.trim().length >= 2 && !manualSuggestions.some(s => keyOf(s.name) === keyOf(manualQuery)) && (
+                      <button type="button"
+                        onMouseDown={e => { e.preventDefault(); addManualItem(manualQuery); }}
+                        className="w-full text-left px-3 py-2 text-sm flex items-center gap-2 transition-colors hover:bg-[var(--bg-inset)]"
+                        style={{ color: 'var(--accent)' }}>
+                        <Plus className="w-3.5 h-3.5" /> Ajouter « {manualQuery.trim()} »
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Via code-barres EAN */}
+              <button onClick={() => setMode('barcode')}
+                className="w-full flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-medium transition-colors"
+                style={{ backgroundColor: 'var(--bg-inset)', color: 'var(--text-secondary)', border: '1px solid var(--border-subtle)' }}>
+                <Barcode className="w-4 h-4" /> Ajouter via code-barres (EAN)
+              </button>
+            </div>
+
+            {/* CTA ajouter au frigo */}
+            <button onClick={addSelectedToFridge} disabled={selected.size === 0 || addingToFridge}
+              className="btn-primary w-full mt-3 flex items-center justify-center gap-2 disabled:opacity-40">
+              {addingToFridge
+                ? <><Loader2 className="w-4 h-4 animate-spin" /> Ajout en cours…</>
+                : <><Plus className="w-4 h-4" /> Ajouter au frigo ({selected.size})</>}
+            </button>
+            <button onClick={() => { setImages([]); setResults([]); setSelected(new Set()); setAddedCount(null); }}
+              className="btn-secondary w-full mt-2">
               Nouveau scan
             </button>
+          </div>
+        )}
+
+        {/* Succès */}
+        {addedCount !== null && (
+          <div className="fade-in text-center py-6">
+            <div className="w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-3" style={{ backgroundColor: 'rgba(16,185,129,0.1)' }}>
+              <Check className="w-7 h-7 text-emerald-500" />
+            </div>
+            <p className="font-semibold text-sm mb-1">{addedCount} ingrédient{addedCount > 1 ? 's' : ''} ajouté{addedCount > 1 ? 's' : ''} au frigo !</p>
+            <p className="text-xs mb-5" style={{ color: 'var(--text-muted)' }}>Retrouve-les dans ton frigo.</p>
+            <div className="flex gap-2">
+              <Link href="/fridge" className="btn-secondary flex-1">Voir mon frigo</Link>
+              <button onClick={() => { setImages([]); setResults([]); setSelected(new Set()); setAddedCount(null); }} className="btn-primary flex-1">
+                Nouveau scan
+              </button>
+            </div>
           </div>
         )}
       </AppShell>
