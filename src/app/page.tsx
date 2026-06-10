@@ -65,12 +65,12 @@ const plans: Plan[] = [
     cta: 'Commencer gratuitement',
     href: '/register',
     features: [
-      '1 requête IA / semaine',
-      '1 scan frigo / semaine',
-      '20 scans code-barres / semaine',
+      '3 requêtes IA à vie (essai)',
+      '20 scans code-barres EAN / semaine',
       'Accès à 50% des recettes',
     ],
     excluded: [
+      'Scan frigo IA',
       'Planning de repas',
       'Liste de courses',
       'Notes communautaires',
@@ -93,7 +93,7 @@ const plans: Plan[] = [
     href: '/register',
     features: [
       '10 requêtes IA / semaine',
-      '5 scans frigo / semaine',
+      '5 scans frigo IA / semaine',
       '100 scans code-barres / semaine',
       'Toutes les recettes',
       'Planning de repas',

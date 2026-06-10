@@ -7,6 +7,16 @@ export async function POST(req: NextRequest) {
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: 'Non autorisé' }, { status: 401 });
 
+  // Scan frigo IA réservé Premium/VIP (coût vision élevé)
+  const userRecord = await prisma.user.findUnique({ where: { id: user.id }, select: { plan: true, planExpiresAt: true } });
+  const plan = (userRecord?.planExpiresAt && userRecord.planExpiresAt < new Date()) ? 'FREE' : (userRecord?.plan || 'FREE');
+  if (plan === 'FREE') {
+    return NextResponse.json({
+      error: 'Le scan IA est réservé aux abonnés Premium et VIP.',
+      upgrade: true,
+    }, { status: 403 });
+  }
+
   const { image } = await req.json();
   if (!image) return NextResponse.json({ error: 'Image requise' }, { status: 400 });
 

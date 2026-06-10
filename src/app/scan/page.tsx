@@ -3,9 +3,10 @@
 import { useState, useRef, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import AppShell from '@/components/AppShell';
+import Link from 'next/link';
 import {
   Camera, Upload, ScanLine, Loader2, Check, Plus,
-  Trash2, ImagePlus, Info, Barcode, X,
+  Trash2, ImagePlus, Info, Barcode, X, Lock,
 } from 'lucide-react';
 
 interface DetectedItem {
@@ -24,7 +25,7 @@ interface BarcodeResult {
   ingredientName: string | null;
 }
 
-type Mode = 'choose' | 'scan' | 'barcode';
+type Mode = 'choose' | 'scan' | 'barcode' | 'upgrade';
 
 function ScanPageInner() {
   const searchParams = useSearchParams();
@@ -100,6 +101,11 @@ function ScanPageInner() {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ image: img.split(',')[1] }),
         });
+        if (res.status === 403) {
+          setScanning(false);
+          setMode('upgrade');
+          return;
+        }
         if (res.ok) {
           const data = await res.json();
           for (const item of data.items || []) {
@@ -184,6 +190,35 @@ function ScanPageInner() {
 
   // ── Render ─────────────────────────────────────────────────────────────────
 
+  if (mode === 'upgrade') {
+    return (
+      <AppShell>
+        <div className="flex flex-col items-center justify-center text-center py-20 px-4">
+          <div className="w-16 h-16 rounded-2xl flex items-center justify-center mb-6"
+            style={{ backgroundColor: 'rgba(245,158,11,0.1)' }}>
+            <Lock className="w-7 h-7 text-amber-500" />
+          </div>
+          <h2 className="text-xl font-bold mb-2">Scan IA — Premium uniquement</h2>
+          <p className="text-sm mb-1 max-w-xs" style={{ color: 'var(--text-secondary)' }}>
+            Le scan IA de frigo utilise la vision artificielle — réservé aux abonnés Premium et VIP.
+          </p>
+          <p className="text-xs mb-8" style={{ color: 'var(--text-muted)' }}>
+            Le scan code-barres EAN reste disponible gratuitement.
+          </p>
+          <Link href="/profile"
+            className="px-8 py-3 rounded-xl text-sm font-semibold mb-3 block"
+            style={{ backgroundColor: 'var(--accent)', color: 'var(--accent-text)' }}>
+            Passer Premium — 3,99€/mois
+          </Link>
+          <button onClick={() => setMode('barcode')} className="text-sm underline underline-offset-2"
+            style={{ color: 'var(--text-muted)' }}>
+            Utiliser le scan code-barres à la place
+          </button>
+        </div>
+      </AppShell>
+    );
+  }
+
   if (mode === 'choose') {
     return (
       <AppShell>
@@ -195,18 +230,22 @@ function ScanPageInner() {
         <div className="space-y-3">
           <button
             onClick={() => setMode('scan')}
-            className="card w-full p-5 flex items-center gap-4 hover:shadow-sm transition-all text-left"
+            className="card w-full p-5 flex items-center gap-4 hover:shadow-sm transition-all text-left relative overflow-hidden"
           >
             <div className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0"
               style={{ backgroundColor: 'var(--bg-inset)' }}>
               <Camera className="w-6 h-6" style={{ color: 'var(--text-secondary)' }} />
             </div>
-            <div>
+            <div className="flex-1">
               <p className="font-semibold text-sm">Scanner le frigo / placard</p>
               <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
                 Prends une ou plusieurs photos, l&apos;IA identifie les aliments
               </p>
             </div>
+            <span className="text-[10px] font-semibold px-2 py-1 rounded-full shrink-0"
+              style={{ backgroundColor: 'rgba(245,158,11,0.12)', color: 'rgb(180,120,0)' }}>
+              Premium
+            </span>
           </button>
 
           <button
