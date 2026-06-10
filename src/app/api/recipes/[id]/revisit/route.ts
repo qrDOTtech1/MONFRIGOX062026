@@ -95,7 +95,8 @@ Réponds en JSON avec ce format exact :
 }
 Réponds UNIQUEMENT avec le JSON, sans markdown, sans explication.`;
 
-  const raw = await chatCompletion([{ role: 'user', content: prompt }]);
+  const response = await chatCompletion([{ role: 'user', content: prompt }]);
+  const raw = response?.message?.content ?? '';
 
   // Parser le JSON de la réponse
   let revisited: Record<string, unknown>;
