@@ -28,12 +28,22 @@ interface Recipe {
   author?: string | null;
   kidFriendly?: boolean;
   babyFriendly?: boolean;
+  costTotal?: number;
+  costPerServing?: number;
+  costConfidence?: 'high' | 'medium' | 'low';
 }
 
 const DIFFICULTIES = ['Tous', 'Facile', 'Moyen', 'Difficile'];
 const TIMES        = ['Tous', '< 15 min', '< 30 min', '< 45 min'];
 const CUISINES     = ['Toutes', 'FR', 'IT', 'JP', 'MX', 'IN', 'MA', 'TH', 'VN', 'CN', 'US', 'ES', 'GR'];
 const DIETARY      = ['Tous', 'Anti-gaspi', 'Compatible régime', 'Revisités', 'Communauté'];
+const BUDGETS: { key: string; label: string; max: number | null }[] = [
+  { key: 'Tous',   label: 'Tous',     max: null },
+  { key: '5',      label: '< 5 €',    max: 5 },
+  { key: '10',     label: '< 10 €',   max: 10 },
+  { key: '15',     label: '< 15 €',   max: 15 },
+  { key: 'custom', label: 'Personnalisé', max: null },
+];
 
 // Filtres invité avancés
 const GUEST_DIETS = [
@@ -107,6 +117,8 @@ export default function ExplorerPage() {
   const [time, setTime]               = useState('Tous');
   const [cuisine, setCuisine]         = useState('Toutes');
   const [dietary, setDietary]         = useState('Tous');
+  const [budget, setBudget]           = useState('Tous');
+  const [customBudget, setCustomBudget] = useState('');
   const [showFilters, setShowFilters] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [sectionMode, setSectionMode] = useState(true);
@@ -138,6 +150,12 @@ export default function ExplorerPage() {
     );
   }
 
+  // Plafond budgétaire actif (€ pour la recette entière)
+  const budgetMax: number | null =
+    budget === 'custom'
+      ? (parseFloat(customBudget.replace(',', '.')) || null)
+      : (BUDGETS.find(b => b.key === budget)?.max ?? null);
+
   const filtered = recipes.filter(r => {
     if (search && !r.name.toLowerCase().includes(search.toLowerCase()) &&
         !r.description?.toLowerCase().includes(search.toLowerCase()) &&
@@ -153,6 +171,11 @@ export default function ExplorerPage() {
     if (dietary === 'Compatible régime' && (r.dietConflict || (r.allergenWarnings?.length ?? 0) > 0)) return false;
     if (dietary === 'Revisités'         && !r.isRevisite) return false;
     if (dietary === 'Communauté'        && !r.isCommunity) return false;
+    // Budget : on n'affiche que les recettes dont le coût est estimable et <= plafond
+    if (budgetMax !== null) {
+      if (!r.costTotal || r.costTotal <= 0) return false;
+      if (r.costTotal > budgetMax) return false;
+    }
     // Filtres invité
     if (guestDiet && recipeConflictsDiet(r, guestDiet)) return false;
     if (guestAllergens.some(a => recipeHasAllergen(r, a))) return false;
@@ -161,7 +184,8 @@ export default function ExplorerPage() {
     return true;
   });
 
-  const activeFilters = [difficulty !== 'Tous', time !== 'Tous', cuisine !== 'Toutes', dietary !== 'Tous'].filter(Boolean).length;
+  const budgetActive = budget !== 'Tous' && !(budget === 'custom' && budgetMax === null);
+  const activeFilters = [difficulty !== 'Tous', time !== 'Tous', cuisine !== 'Toutes', dietary !== 'Tous', budgetActive].filter(Boolean).length;
   const guestFilters  = [!!guestDiet, guestAllergens.length > 0, kidMode !== ''].filter(Boolean).length;
   const isSearching   = !!search || activeFilters > 0 || guestFilters > 0;
 
@@ -197,6 +221,7 @@ export default function ExplorerPage() {
           usesExpiring={r.usesExpiring}
           isRevisite={r.isRevisite}
           isCommunity={r.isCommunity}
+          cost={r.costTotal}
         />
       ))}
     </div>
@@ -339,9 +364,36 @@ export default function ExplorerPage() {
               ))}
             </div>
           </div>
+          <div>
+            <p className="text-[10px] font-medium uppercase tracking-wide mb-1.5" style={{ color: 'var(--text-muted)' }}>Budget <span className="normal-case">(coût total estimé)</span></p>
+            <div className="flex gap-1.5 flex-wrap items-center">
+              {BUDGETS.map(b => (
+                <button key={b.key} onClick={() => setBudget(b.key)}
+                  className="px-2.5 py-1 rounded-md text-xs font-medium transition-all"
+                  style={budget === b.key
+                    ? { backgroundColor: 'var(--accent)', color: 'var(--accent-text)' }
+                    : { backgroundColor: 'var(--bg-inset)', color: 'var(--text-muted)', border: '1px solid var(--border-subtle)' }}>
+                  {b.label}
+                </button>
+              ))}
+              {budget === 'custom' && (
+                <div className="flex items-center gap-1 fade-in">
+                  <input
+                    type="number" min={0} step="0.5" inputMode="decimal"
+                    value={customBudget}
+                    onChange={e => setCustomBudget(e.target.value)}
+                    placeholder="Max"
+                    className="input-field !py-1 !px-2 text-xs w-20"
+                    autoFocus
+                  />
+                  <span className="text-xs" style={{ color: 'var(--text-muted)' }}>€ max</span>
+                </div>
+              )}
+            </div>
+          </div>
           <div className="flex items-center justify-between pt-1">
             {activeFilters > 0 && (
-              <button onClick={() => { setDifficulty('Tous'); setTime('Tous'); setCuisine('Toutes'); setDietary('Tous'); }}
+              <button onClick={() => { setDifficulty('Tous'); setTime('Tous'); setCuisine('Toutes'); setDietary('Tous'); setBudget('Tous'); setCustomBudget(''); }}
                 className="text-xs text-red-500">
                 Réinitialiser
               </button>

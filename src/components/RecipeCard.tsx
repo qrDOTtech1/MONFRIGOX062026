@@ -23,6 +23,7 @@ interface RecipeCardProps {
   usesExpiring?: number;
   isRevisite?: boolean;
   isCommunity?: boolean;
+  cost?: number;
 }
 
 const difficultyColors: Record<string, string> = {
@@ -52,7 +53,7 @@ function getMatchTextColor(pct: number) {
 export default function RecipeCard({
   id, name, difficulty, prepTime, cuisine, imageUrl, matchPercent, matchCount,
   emoji, isFavorite, isLocked, onToggleFavorite,
-  allergenWarnings, dietConflict, dietLabel, usesExpiring, isRevisite, isCommunity,
+  allergenWarnings, dietConflict, dietLabel, usesExpiring, isRevisite, isCommunity, cost,
 }: RecipeCardProps) {
   const router = useRouter();
   const hasAllergen = (allergenWarnings?.length ?? 0) > 0;
@@ -60,6 +61,11 @@ export default function RecipeCard({
   // Badges allergène / régime (réutilisés dans les deux variantes)
   const dietaryBadges = (
     <>
+      {typeof cost === 'number' && cost > 0 && (
+        <span className="badge text-[10px] flex items-center gap-1" style={{ backgroundColor: 'rgba(16,185,129,0.12)', color: 'rgb(16,185,129)' }} title="Coût total estimé de la recette">
+          ≈ {cost < 10 ? cost.toFixed(1) : Math.round(cost)} €
+        </span>
+      )}
       {isCommunity && (
         <span className="badge text-[10px] flex items-center gap-1" style={{ backgroundColor: 'rgba(59,130,246,0.12)', color: 'rgb(59,130,246)' }} title="Recette partagée par la communauté">
           👥 Communauté
