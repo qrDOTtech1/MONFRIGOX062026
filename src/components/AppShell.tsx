@@ -2,6 +2,7 @@
 
 import BottomNav from './BottomNav';
 import RecipeChat from './RecipeChat';
+import LogoAnim from './LogoAnim';
 import { useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 
@@ -46,7 +47,19 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <>
-      <div className="page-container fade-in">{children}</div>
+      {/* Top bar avec logo */}
+      <header className="fixed top-0 left-0 right-0 z-40 flex items-center px-4 h-12"
+        style={{
+          backgroundColor: 'var(--bg)',
+          borderBottom: '1px solid var(--border-subtle)',
+          backdropFilter: 'blur(8px)',
+          WebkitBackdropFilter: 'blur(8px)',
+        }}>
+        <LogoAnim size={32} withName nameSize="text-sm" />
+      </header>
+
+      {/* Contenu décalé sous le top bar */}
+      <div className="page-container fade-in" style={{ paddingTop: '3rem' }}>{children}</div>
       <RecipeChat allRecipes={recipes} />
       <BottomNav />
     </>
