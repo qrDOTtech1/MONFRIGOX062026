@@ -43,7 +43,7 @@ export async function POST(
     unit: i.unit,
   }));
 
-  const prompt = `Tu es un assistant culinaire expert en nutrition.
+  const prompt = `Tu es un chef cuisinier professionnel et expert en nutrition.
 
 Voici une recette (peut être en anglais) :
 - Nom: ${recipe.name}
@@ -51,11 +51,18 @@ Voici une recette (peut être en anglais) :
 - Instructions: ${recipe.instructions}
 - Cuisine: ${recipe.cuisine}
 - Portions: ${recipe.servings}
-- Ingrédients: ${ingredientList.map(i => `"${i.name}" (unité: "${i.unit}")`).join(', ')}
+- Ingrédients actuels: ${ingredientList.map(i => `id="${i.id}" nom="${i.name}" unité_actuelle="${i.unit}"`).join(' | ')}
 
 Ta tâche :
 1. Traduis EN FRANÇAIS le nom, la description, les instructions et chaque ingrédient si ce n'est pas déjà le cas.
-2. Traduis également les unités de mesure (cups → tasses ou ml, tbsp → cuillère à soupe, tsp → cuillère à café, oz → g, lb → g, etc.)
+2. Corrige les quantités et unités pour qu'elles soient RÉALISTES et PRÉCISES pour ${recipe.servings} portion(s).
+   - JAMAIS "unité" sauf pour des objets entiers comptables (oeuf, oignon, citron...)
+   - Huiles et liquides → cs (cuillère à soupe) ou ml
+   - Épices, sel, sucre → cc (cuillère à café) ou g ou pincée
+   - Viandes, féculents, légumes pesés → g
+   - Herbes fraîches → brins ou g
+   - Bouillons, sauces → ml
+   - Beurre → g ou noix (pour une noix de beurre)
 3. Estime les valeurs nutritionnelles PAR PORTION.
 
 Réponds UNIQUEMENT en JSON valide, sans commentaire, sans balise markdown :
@@ -70,12 +77,14 @@ Réponds UNIQUEMENT en JSON valide, sans commentaire, sans balise markdown :
   "fiber": 4.5,
   "salt": 1.2,
   "ingredients": [
-    { "id": "...", "nameFr": "...", "unitFr": "..." }
+    { "id": "cuid_original", "nameFr": "huile d'olive", "quantity": 2, "unit": "cs" },
+    { "id": "cuid_original", "nameFr": "oignon", "quantity": 1, "unit": "pièce" },
+    { "id": "cuid_original", "nameFr": "bœuf haché", "quantity": 400, "unit": "g" }
   ]
 }
 
-Pour les instructions : chaque étape sur une ligne séparée (\\n). Sans numéros en début d'étape.
-Pour les ingrédients : traduis seulement, garde le même id.`;
+Pour les instructions : chaque étape sur une ligne (\\n). Sans numéros en début d'étape.
+IMPORTANT : garde le même "id" que celui fourni pour chaque ingrédient.`;
 
   try {
     const resp = await chatCompletion(
@@ -121,11 +130,20 @@ Pour les ingrédients : traduis seulement, garde le même id.`;
           }).catch(() => {}); // ignore si conflit unique
         }
 
-        // Mettre à jour l'unité dans RecipeIngredient
-        if (typeof ing.unitFr === 'string' && ing.unitFr.trim()) {
+        // Mettre à jour quantité + unité dans RecipeIngredient
+        const updateData: { unit?: string; quantity?: number } = {};
+        if (typeof ing.unit === 'string' && ing.unit.trim()) {
+          updateData.unit = ing.unit.trim();
+        } else if (typeof ing.unitFr === 'string' && ing.unitFr.trim()) {
+          updateData.unit = ing.unitFr.trim(); // compat ancien format
+        }
+        if (typeof ing.quantity === 'number' && ing.quantity > 0) {
+          updateData.quantity = ing.quantity;
+        }
+        if (Object.keys(updateData).length > 0) {
           await prisma.recipeIngredient.updateMany({
             where: { recipeId: id, ingredientId: ing.id },
-            data: { unit: ing.unitFr.trim() },
+            data: updateData,
           }).catch(() => {});
         }
       }

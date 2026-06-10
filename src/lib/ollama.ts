@@ -125,15 +125,48 @@ export async function suggestRecipes(ingredients: string[]) {
   return chatCompletion([
     {
       role: 'system',
-      content: `Tu es un chef cuisinier expert. Tu suggères des recettes basées sur les ingrédients disponibles.
-Réponds UNIQUEMENT en JSON valide avec ce format:
-[{"name": "Nom", "description": "Description courte", "difficulty": "FACILE|MOYEN|DIFFICILE", "prepTime": 20, "cuisine": "FR", "ingredients": ["ingredient1", "ingredient2"], "instructions": "Première étape.\\nDeuxième étape.\\nTroisième étape."}]
-IMPORTANT pour "instructions": fournis au minimum 3 étapes, chaque étape sur sa propre ligne séparée par un vrai saut de ligne \\n. N'utilise PAS de numéros ("1.", "2.") en début d'étape.
-Suggère 3-5 recettes. Privilégie les recettes qui utilisent un maximum des ingrédients listés.`,
+      content: `Tu es un chef cuisinier professionnel français. Tu génères des recettes détaillées et réalistes.
+
+Réponds UNIQUEMENT en JSON valide avec ce format exact :
+[{
+  "name": "Nom de la recette",
+  "description": "Description appétissante en 1-2 phrases",
+  "difficulty": "FACILE|MOYEN|DIFFICILE",
+  "prepTime": 25,
+  "cuisine": "FR",
+  "servings": 4,
+  "ingredients": [
+    {"name": "huile d'olive", "quantity": 2, "unit": "cs"},
+    {"name": "oignon", "quantity": 1, "unit": "pièce"},
+    {"name": "ail", "quantity": 3, "unit": "gousses"},
+    {"name": "tomates pelées", "quantity": 400, "unit": "g"},
+    {"name": "sel", "quantity": 1, "unit": "pincée"},
+    {"name": "thym", "quantity": 2, "unit": "brins"}
+  ],
+  "instructions": "Étape 1 détaillée.\\nÉtape 2 détaillée.\\nÉtape 3 détaillée."
+}]
+
+RÈGLES ABSOLUES pour les ingrédients — JAMAIS "1 unité" sauf pour des fruits/légumes entiers :
+- Huiles, sauces liquides → cuillères à soupe (cs) ou ml. Ex: 2 cs d'huile d'olive pour dorer des oignons
+- Épices, herbes sèches → cc (cuillère à café) ou g. Ex: 1 cc de cumin, 5 g de sel
+- Herbes fraîches → brins, feuilles ou g. Ex: 3 brins de thym, 10 feuilles de basilic
+- Viandes, poissons → g. Ex: 400 g de bœuf haché
+- Légumes pesés → g. Ex: 300 g de courgettes
+- Légumes entiers comptables → pièce. Ex: 2 oignons, 1 poivron
+- Fromages → g. Ex: 80 g de parmesan râpé
+- Farine, sucre, riz, pâtes → g. Ex: 200 g de riz
+- Bouillon, lait, crème → ml. Ex: 250 ml de bouillon de volaille
+- Beurre → g. Ex: 30 g de beurre
+- Ail → gousses. Ex: 2 gousses d'ail
+- Œufs → pièce. Ex: 3 œufs
+
+Unités autorisées : g, ml, cs (cuillère à soupe), cc (cuillère à café), pièce, gousses, brins, feuilles, pincée, kg, L, tranche, botte, sachet, boîte, noix (pour le beurre), poignée
+Suggère 3-5 recettes. Privilégie les ingrédients listés.
+IMPORTANT instructions : minimum 4 étapes, chaque étape sur une ligne séparée (\\n). Pas de numéros en début d'étape.`,
     },
     {
       role: 'user',
-      content: `Voici mes ingrédients disponibles: ${ingredients.join(', ')}. Suggère-moi des recettes!`,
+      content: `Ingrédients disponibles : ${ingredients.join(', ')}. Génère des recettes réalistes avec des quantités précises.`,
     },
   ]);
 }

@@ -73,11 +73,11 @@ export async function POST(
     .map(i => `- ${i.quantity} ${i.unit} ${i.ingredient.name}`)
     .join('\n');
 
-  const prompt = `Tu es un chef cuisinier expert. On te demande de revisiter une recette selon une instruction précise.
+  const prompt = `Tu es un chef cuisinier professionnel. On te demande de revisiter une recette selon une instruction précise.
 
 RECETTE : ${recipe.name}
 DESCRIPTION : ${recipe.description}
-INGRÉDIENTS :
+INGRÉDIENTS ORIGINAUX :
 ${ingredientList}
 
 INSTRUCTIONS ORIGINALES :
@@ -89,10 +89,23 @@ Réponds en JSON avec ce format exact :
 {
   "title": "Nouveau titre si changé, sinon titre original",
   "description": "Nouvelle description courte (1-2 phrases)",
-  "ingredients": [{"name": "...", "quantity": "...", "unit": "..."}],
-  "instructions": "Instructions complètes réécrites",
+  "ingredients": [
+    {"name": "huile d'olive", "quantity": 2, "unit": "cs"},
+    {"name": "oignons", "quantity": 2, "unit": "pièce"},
+    {"name": "bœuf haché", "quantity": 400, "unit": "g"}
+  ],
+  "instructions": "Étape détaillée 1.\\nÉtape détaillée 2.\\nÉtape détaillée 3.",
   "tips": "1 astuce clé de chef pour cette version"
 }
+
+RÈGLES ABSOLUES pour les quantités :
+- JAMAIS "1 unité" pour une huile, sauce, épice, herbe ou liquide
+- Huiles → cs (cuillère à soupe). Ex: 2 cs d'huile d'olive pour faire revenir
+- Épices, sel → cc ou pincée. Ex: 1 cc de cumin, 2 pincées de sel
+- Viandes, légumes pesés → g. Ex: 400 g de bœuf haché, 300 g de courgettes
+- Légumes entiers → pièce. Ex: 2 oignons, 1 poivron
+- Liquides → ml. Ex: 200 ml de bouillon
+- Beurre → g. Ex: 30 g de beurre
 Réponds UNIQUEMENT avec le JSON, sans markdown, sans explication.`;
 
   const response = await chatCompletion([{ role: 'user', content: prompt }]);

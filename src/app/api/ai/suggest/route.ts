@@ -57,15 +57,46 @@ export async function POST() {
         },
       });
 
-      // Link ingredients
+      // Link ingredients with proper quantity/unit from AI
       if (Array.isArray(r.ingredients)) {
-        for (const ingName of r.ingredients) {
-          const ingredient = await prisma.ingredient.findFirst({
-            where: { name: { contains: String(ingName), mode: 'insensitive' } },
+        for (const ing of r.ingredients) {
+          // Support both old format (string) and new format ({name, quantity, unit})
+          const ingName   = typeof ing === 'string' ? ing : (ing?.name || '');
+          const ingQty    = typeof ing === 'object' && ing?.quantity != null ? Number(ing.quantity) : 1;
+          const ingUnit   = typeof ing === 'object' && ing?.unit ? String(ing.unit) : 'unité';
+
+          if (!ingName.trim()) continue;
+
+          let ingredient = await prisma.ingredient.findFirst({
+            where: { name: { equals: ingName.trim(), mode: 'insensitive' } },
           });
+          // Fuzzy fallback: contains first word
+          if (!ingredient) {
+            ingredient = await prisma.ingredient.findFirst({
+              where: { name: { contains: ingName.trim().split(' ')[0], mode: 'insensitive' } },
+            });
+          }
+          // Auto-create unknown ingredient
+          if (!ingredient) {
+            try {
+              ingredient = await prisma.ingredient.create({
+                data: { name: ingName.trim().toLowerCase(), category: 'Épicerie', emoji: '🛒' },
+              });
+            } catch {
+              ingredient = await prisma.ingredient.findFirst({
+                where: { name: { equals: ingName.trim(), mode: 'insensitive' } },
+              });
+            }
+          }
+
           if (ingredient) {
             await prisma.recipeIngredient.create({
-              data: { recipeId: recipe.id, ingredientId: ingredient.id, quantity: 1, unit: 'unité' },
+              data: {
+                recipeId:     recipe.id,
+                ingredientId: ingredient.id,
+                quantity:     isNaN(ingQty) || ingQty <= 0 ? 1 : ingQty,
+                unit:         ingUnit || 'unité',
+              },
             }).catch(() => {});
           }
         }
