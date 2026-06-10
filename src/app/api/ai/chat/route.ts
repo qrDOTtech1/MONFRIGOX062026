@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth';
 import { chatCompletion } from '@/lib/ollama';
+import { checkAndConsumeAI } from '@/lib/ai-rate-limit';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -14,6 +15,12 @@ export async function POST(req: NextRequest) {
 
   const { messages } = await req.json() as { messages: Message[] };
   if (!messages?.length) return NextResponse.json({ error: 'Messages manquants' }, { status: 400 });
+
+  // ── Rate limiting ──
+  const rl = await checkAndConsumeAI(user.id);
+  if (!rl.allowed) {
+    return NextResponse.json({ error: rl.reason, upgrade: rl.upgrade, remaining: 0 }, { status: 429 });
+  }
 
   // Charge toutes les recettes de la DB pour que l'IA ait le contexte complet
   const recipes = await prisma.recipe.findMany({

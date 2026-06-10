@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth';
 import { suggestRecipes } from '@/lib/ollama';
+import { checkAndConsumeAI } from '@/lib/ai-rate-limit';
 
 export async function POST() {
   const user = await getCurrentUser();
@@ -13,7 +14,13 @@ export async function POST() {
   });
 
   if (fridgeItems.length === 0) {
-    return NextResponse.json({ error: 'Ajoute des ingrédients à ton frigo d\'abord!' }, { status: 400 });
+    return NextResponse.json({ error: "Ajoute des ingrédients à ton frigo d'abord!" }, { status: 400 });
+  }
+
+  // ── Rate limiting ──
+  const rl = await checkAndConsumeAI(user.id);
+  if (!rl.allowed) {
+    return NextResponse.json({ error: rl.reason, upgrade: rl.upgrade, remaining: 0 }, { status: 429 });
   }
 
   const ingredientNames = fridgeItems.map(f => f.ingredient.name);

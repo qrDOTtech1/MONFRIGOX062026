@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import AppShell from '@/components/AppShell';
 import { useTheme } from '@/components/ThemeProvider';
-import { UserCircle, LogOut, Shield, Heart, ShoppingCart, Refrigerator, Sun, Moon, Save, Check, AlertTriangle, Baby, Users, History, Sparkles, ChefHat } from 'lucide-react';
+import { UserCircle, LogOut, Shield, Heart, ShoppingCart, Refrigerator, Sun, Moon, Save, Check, AlertTriangle, Baby, Users, History, Sparkles, ChefHat, Zap, Crown, Star, Plus } from 'lucide-react';
 
 interface User {
   id: string;
@@ -71,6 +71,17 @@ export default function ProfilePage() {
   const [cookCounts, setCookCounts] = useState<Record<string,number>>({});
   const [historyLoaded, setHistoryLoaded] = useState(false);
 
+  // Billing
+  interface BillingStatus {
+    plan: string; extraQuota: number; isUnlimited: boolean;
+    aiCallsToday: number; aiCallsMonth: number;
+    limitDaily: number; limitMonthly: number;
+    planExpiresAt: string | null;
+    links: Record<string, string>;
+    prices: Record<string, string>;
+  }
+  const [billing, setBilling] = useState<BillingStatus | null>(null);
+
   // Préférences
   const [allergens, setAllergens] = useState<string[]>([]);
   const [dietMode, setDietMode] = useState('');
@@ -83,6 +94,7 @@ export default function ProfilePage() {
   useEffect(() => {
     fetch('/api/auth/me').then(r => r.ok ? r.json() : null).then(d => d && setUser(d.user));
     fetch('/api/profile/stats').then(r => r.ok ? r.json() : null).then(d => d && setStats(d));
+    fetch('/api/billing/status').then(r => r.ok ? r.json() : null).then(d => d && setBilling(d));
     fetch('/api/profile').then(r => r.ok ? r.json() : null).then(d => {
       if (d) {
         try { setAllergens(d.allergens ? JSON.parse(d.allergens) : []); } catch { setAllergens([]); }
@@ -184,6 +196,136 @@ export default function ProfilePage() {
               <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>Listes</p>
             </div>
           </div>
+
+          {/* ── Plan & Usage ── */}
+          {billing && (
+            <div className="card p-4 mb-5">
+              {/* Header plan */}
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  {billing.plan === 'VIP'     && <Crown className="w-4 h-4 text-purple-500" />}
+                  {billing.plan === 'PREMIUM' && <Star  className="w-4 h-4 text-amber-500" />}
+                  {billing.plan === 'FREE'    && <Zap   className="w-4 h-4" style={{ color: 'var(--text-muted)' }} />}
+                  <span className="font-semibold text-sm">
+                    Plan {billing.plan === 'FREE' ? 'Gratuit' : billing.plan === 'VIP' ? 'VIP 👑' : '⭐ Premium'}
+                  </span>
+                </div>
+                {billing.planExpiresAt && (
+                  <span className="text-[10px]" style={{ color: 'var(--text-muted)' }}>
+                    expire {new Date(billing.planExpiresAt).toLocaleDateString('fr-FR')}
+                  </span>
+                )}
+              </div>
+
+              {/* Usage bars */}
+              {!billing.isUnlimited && (
+                <div className="space-y-2 mb-4">
+                  {[
+                    { label: `Aujourd'hui`, used: billing.aiCallsToday, max: billing.limitDaily },
+                    { label: 'Ce mois',     used: billing.aiCallsMonth, max: billing.limitMonthly },
+                  ].map(row => {
+                    const pct = Math.min(100, Math.round(row.used / row.max * 100));
+                    const danger = pct >= 80;
+                    return (
+                      <div key={row.label}>
+                        <div className="flex justify-between text-[10px] mb-0.5" style={{ color: 'var(--text-muted)' }}>
+                          <span>Requêtes IA — {row.label}</span>
+                          <span className={danger ? 'text-amber-500 font-semibold' : ''}>{row.used}/{row.max}</span>
+                        </div>
+                        <div className="h-1.5 rounded-full overflow-hidden" style={{ backgroundColor: 'var(--bg-inset)' }}>
+                          <div className="h-full rounded-full transition-all"
+                            style={{ width: `${pct}%`, backgroundColor: danger ? '#f59e0b' : 'var(--accent)' }} />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+              {billing.isUnlimited && (
+                <p className="text-xs mb-4 text-purple-500 font-medium">✨ Requêtes IA illimitées</p>
+              )}
+
+              {/* Extra quota */}
+              {billing.extraQuota > 0 && (
+                <div className="flex items-center gap-2 px-3 py-2 rounded-lg mb-3"
+                  style={{ backgroundColor: 'rgba(16,185,129,0.06)', border: '1px solid rgba(16,185,129,0.15)' }}>
+                  <Zap className="w-3.5 h-3.5 text-emerald-500" />
+                  <span className="text-xs text-emerald-600 dark:text-emerald-400">
+                    <strong>{billing.extraQuota}</strong> requête{billing.extraQuota > 1 ? 's' : ''} bonus disponible{billing.extraQuota > 1 ? 's' : ''}
+                  </span>
+                </div>
+              )}
+
+              {/* CTA upgrade */}
+              {billing.plan === 'FREE' && (
+                <div className="space-y-2">
+                  <p className="text-xs font-medium mb-2" style={{ color: 'var(--text-muted)' }}>Passer à un plan payant :</p>
+                  <div className="grid grid-cols-2 gap-2">
+                    {billing.links.premiumMonthly && (
+                      <a href={billing.links.premiumMonthly} target="_blank" rel="noreferrer"
+                        className="flex flex-col items-center py-3 px-2 rounded-xl text-center transition-all hover:scale-[1.02]"
+                        style={{ backgroundColor: 'rgba(245,158,11,0.08)', border: '1.5px solid rgba(245,158,11,0.3)' }}>
+                        <Star className="w-4 h-4 text-amber-500 mb-1" />
+                        <span className="text-xs font-semibold">Premium</span>
+                        <span className="text-[10px] text-amber-500">{billing.prices.premiumMonthly}/mois</span>
+                      </a>
+                    )}
+                    {billing.links.premiumAnnual && (
+                      <a href={billing.links.premiumAnnual} target="_blank" rel="noreferrer"
+                        className="flex flex-col items-center py-3 px-2 rounded-xl text-center transition-all hover:scale-[1.02]"
+                        style={{ backgroundColor: 'rgba(245,158,11,0.08)', border: '1.5px solid rgba(245,158,11,0.3)' }}>
+                        <Star className="w-4 h-4 text-amber-500 mb-1" />
+                        <span className="text-xs font-semibold">Premium annuel</span>
+                        <span className="text-[10px] text-amber-500">{billing.prices.premiumAnnual}/an</span>
+                      </a>
+                    )}
+                    {billing.links.vipMonthly && (
+                      <a href={billing.links.vipMonthly} target="_blank" rel="noreferrer"
+                        className="flex flex-col items-center py-3 px-2 rounded-xl text-center transition-all hover:scale-[1.02]"
+                        style={{ backgroundColor: 'rgba(168,85,247,0.08)', border: '1.5px solid rgba(168,85,247,0.3)' }}>
+                        <Crown className="w-4 h-4 text-purple-500 mb-1" />
+                        <span className="text-xs font-semibold">VIP Famille</span>
+                        <span className="text-[10px] text-purple-500">{billing.prices.vipMonthly}/mois</span>
+                      </a>
+                    )}
+                    {billing.links.vipAnnual && (
+                      <a href={billing.links.vipAnnual} target="_blank" rel="noreferrer"
+                        className="flex flex-col items-center py-3 px-2 rounded-xl text-center transition-all hover:scale-[1.02]"
+                        style={{ backgroundColor: 'rgba(168,85,247,0.08)', border: '1.5px solid rgba(168,85,247,0.3)' }}>
+                        <Crown className="w-4 h-4 text-purple-500 mb-1" />
+                        <span className="text-xs font-semibold">VIP annuel</span>
+                        <span className="text-[10px] text-purple-500">{billing.prices.vipAnnual}/an</span>
+                      </a>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Acheter quota bonus */}
+              {(billing.links.quota50 || billing.links.quota200 || billing.links.quota500) && (
+                <div className="mt-3 pt-3" style={{ borderTop: '1px solid var(--border-subtle)' }}>
+                  <p className="text-[10px] font-medium mb-2" style={{ color: 'var(--text-muted)' }}>
+                    <Plus className="w-3 h-3 inline mr-0.5" />
+                    Acheter des requêtes supplémentaires :
+                  </p>
+                  <div className="flex gap-2">
+                    {[
+                      { k: 'quota50',  label: '50',  price: billing.prices.quota50 },
+                      { k: 'quota200', label: '200', price: billing.prices.quota200 },
+                      { k: 'quota500', label: '500', price: billing.prices.quota500 },
+                    ].filter(p => billing.links[p.k]).map(pack => (
+                      <a key={pack.k} href={billing.links[pack.k]} target="_blank" rel="noreferrer"
+                        className="flex-1 py-2 rounded-lg text-center transition-all hover:scale-[1.02]"
+                        style={{ backgroundColor: 'var(--bg-inset)', border: '1px solid var(--border)' }}>
+                        <p className="text-xs font-semibold">{pack.label} req.</p>
+                        <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>{pack.price}</p>
+                      </a>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Tab switcher */}
           <div className="flex rounded-xl p-0.5 mb-5" style={{ backgroundColor: 'var(--bg-inset)' }}>

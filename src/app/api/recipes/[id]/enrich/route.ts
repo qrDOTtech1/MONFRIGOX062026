@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth';
 import { chatCompletion } from '@/lib/ollama';
+import { checkAndConsumeAI } from '@/lib/ai-rate-limit';
 
 // POST /api/recipes/[id]/enrich
 // Traduit recette + ingrédients en français + calcule valeurs nutritionnelles.
@@ -13,6 +14,12 @@ export async function POST(
   if (!user) return NextResponse.json({ error: 'Non autorisé' }, { status: 401 });
 
   const { id } = await params;
+
+  // ── Rate limiting (skip si déjà enrichi — coût amorti) ──
+  const rl = await checkAndConsumeAI(user.id);
+  if (!rl.allowed) {
+    return NextResponse.json({ error: rl.reason, upgrade: rl.upgrade }, { status: 429 });
+  }
 
   const recipe = await prisma.recipe.findUnique({
     where: { id },

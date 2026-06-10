@@ -40,9 +40,19 @@ model User {
   kidAgeMonths    Int?
   defaultServings Int       @default(4)
   // Goûts & onboarding
-  tasteProfile    String    @default("")  // JSON: { flavors: [], cuisines: [] }
-  onboardingDone  Boolean   @default(false)
-  fridgeItems     FridgeItem[]
+  tasteProfile     String    @default("")
+  onboardingDone   Boolean   @default(false)
+  // Abonnement & facturation
+  plan             String    @default("FREE")   // FREE | PREMIUM | VIP
+  planExpiresAt    DateTime?
+  stripeCustomerId String?   @unique
+  extraQuota       Int       @default(0)        // requêtes IA bonus achetées
+  // Compteurs IA (reset quotidien/mensuel)
+  aiCallsToday     Int       @default(0)
+  aiCallsTodayDate String    @default("")       // YYYY-MM-DD
+  aiCallsMonth     Int       @default(0)
+  aiCallsMonthDate String    @default("")       // YYYY-MM
+  fridgeItems      FridgeItem[]
   favorites       Favorite[]
   shoppingLists   ShoppingList[]
   mealPlans       MealPlan[]
