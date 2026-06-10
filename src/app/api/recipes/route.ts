@@ -1,7 +1,31 @@
-import { NextRequest, NextResponse } from 'next/server';
+﻿import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth';
 import { analyzeRecipeDietary } from '@/lib/dietary';
+
+const CUISINE_MAP: Record<string, string[]> = {
+  'Française':       ['FR'],
+  'Italienne':       ['IT'],
+  'Asiatique':       ['JP', 'CN', 'TH', 'VN', 'KR'],
+  'Mexicaine':       ['MX'],
+  'Méditerranéenne': ['GR', 'ES', 'IT'],
+  'Indienne':        ['IN'],
+  'Américaine':      ['US'],
+  'Japonaise':       ['JP'],
+  'Marocaine':       ['MA'],
+  'Libanaise':       ['LB'],
+};
+
+const SKILL_TO_DIFFICULTY: Record<string, string[]> = {
+  debutant:      ['FACILE'],
+  intermediaire: ['FACILE', 'MOYEN'],
+  passione:      ['FACILE', 'MOYEN', 'DIFFICILE'],
+  chef:          ['FACILE', 'MOYEN', 'DIFFICILE'],
+};
+
+const TIME_TO_MAX: Record<string, number> = {
+  rapide: 15, court: 30, modere: 60, long: 9999,
+};
 
 export async function GET(req: NextRequest) {
   const user = await getCurrentUser();
@@ -10,26 +34,36 @@ export async function GET(req: NextRequest) {
   const favOnly = req.nextUrl.searchParams.get('favorites') === 'true';
   const search = req.nextUrl.searchParams.get('q')?.trim().toLowerCase() || '';
 
-  // Préférences alimentaires de l'utilisateur (tolérant si colonnes pas migrées)
   let userAllergens: string[] = [];
   let dietMode = '';
+  let tasteProfile: { cuisines?: string[]; skillLevel?: string; timePref?: string; goals?: string[] } = {};
   try {
     const prefs = await prisma.user.findUnique({
       where: { id: user.id },
-      select: { allergens: true, dietMode: true },
+      select: { allergens: true, dietMode: true, tasteProfile: true },
     });
     if (prefs?.allergens) {
       try { userAllergens = JSON.parse(prefs.allergens); } catch { userAllergens = []; }
     }
     dietMode = prefs?.dietMode || '';
+    if (prefs?.tasteProfile) {
+      try { tasteProfile = JSON.parse(prefs.tasteProfile); } catch { /* ignore */ }
+    }
   } catch { /* colonnes pas encore migrées */ }
+
+  const prefCuisines = tasteProfile.cuisines ?? [];
+  const prefSkill    = tasteProfile.skillLevel ?? '';
+  const prefTime     = tasteProfile.timePref   ?? '';
+  const prefGoals    = tasteProfile.goals      ?? [];
+  const allowedDiff  = prefSkill ? (SKILL_TO_DIFFICULTY[prefSkill] ?? null) : null;
+  const maxPrepTime  = prefTime  ? (TIME_TO_MAX[prefTime] ?? 9999) : 9999;
+  const prefCodes    = prefCuisines.flatMap((c: string) => (CUISINE_MAP[c] ?? []).map((x: string) => x.toUpperCase()));
 
   const userFridge = await prisma.fridgeItem.findMany({
     where: { userId: user.id },
     select: { ingredientId: true, expiresAt: true },
   });
   const fridgeIds = new Set(userFridge.map(f => f.ingredientId));
-  // Ingrédients qui périment dans <= 4 jours (anti-gaspi)
   const now = Date.now();
   const expiringIds = new Set(
     userFridge
@@ -37,7 +71,6 @@ export async function GET(req: NextRequest) {
       .map(f => f.ingredientId),
   );
 
-  // Visibilité : recettes officielles (authorId null), publiques, ou les miennes
   const visibility = {
     OR: [
       { authorId: null },
@@ -60,16 +93,28 @@ export async function GET(req: NextRequest) {
   });
 
   const result = recipes.map(r => {
-    const total = r.ingredients.length;
+    const total     = r.ingredients.length;
     const available = r.ingredients.filter(i => fridgeIds.has(i.ingredientId)).length;
     const matchPercent = total > 0 ? Math.round((available / total) * 100) : 0;
     const ingredientNames = r.ingredients.map(i => i.ingredient.name);
-
-    // Analyse allergènes / régime
     const dietary = analyzeRecipeDietary(ingredientNames, userAllergens, dietMode, r.carbs);
-
-    // Combien d'ingrédients périssables cette recette utilise-t-elle ?
     const usesExpiring = r.ingredients.filter(i => expiringIds.has(i.ingredientId)).length;
+
+    // Taste-profile bonus
+    let prefScore = 0;
+    if (prefCodes.length > 0 && prefCodes.includes(r.cuisine?.toUpperCase() ?? '')) prefScore += 30;
+    if (allowedDiff) {
+      prefScore += allowedDiff.includes(r.difficulty) ? 20 : -10;
+    }
+    if (r.prepTime <= maxPrepTime) prefScore += 20; else prefScore -= 15;
+    if ((prefGoals.includes('sante') || prefGoals.includes('poids')) && r.calories && r.calories < 400) prefScore += 15;
+    if (prefGoals.includes('rapide') && r.prepTime <= 20) prefScore += 15;
+    if (prefGoals.includes('budget') && r.difficulty === 'FACILE') prefScore += 10;
+
+    const score = usesExpiring * 50
+      + matchPercent * 3
+      + Math.max(-30, Math.min(60, prefScore))
+      + (dietary.dietConflict ? -50 : 0);
 
     return {
       id: r.id,
@@ -83,24 +128,21 @@ export async function GET(req: NextRequest) {
       matchCount: `${available}/${total} ingrédients`,
       isFavorite: r.favorites.length > 0,
       ingredients: r.ingredients,
-      // Diététique
       allergenWarnings: dietary.allergenWarnings,
       dietConflict: dietary.dietConflict,
       dietLabel: dietary.dietLabel,
-      // Anti-gaspi
       usesExpiring,
       nutriScore: r.nutriScore,
       kidFriendly: r.kidFriendly,
       babyFriendly: r.babyFriendly,
       isRevisite: r.isRevisite,
-      // Communauté
       isCommunity: !!r.authorId,
       isMine: r.authorId === user.id,
       author: r.author?.name || null,
+      _score: score,
     };
   });
 
-  // Recherche texte (nom + cuisine)
   let filtered = result;
   if (search) {
     filtered = result.filter(r =>
@@ -110,43 +152,29 @@ export async function GET(req: NextRequest) {
     );
   }
 
-  // Tri : recettes anti-gaspi d'abord, puis compatibilité, puis sans conflit régime
-  filtered.sort((a, b) => {
-    if (b.usesExpiring !== a.usesExpiring) return b.usesExpiring - a.usesExpiring;
-    if (a.dietConflict !== b.dietConflict) return a.dietConflict ? 1 : -1;
-    return b.matchPercent - a.matchPercent;
-  });
+  filtered.sort((a, b) => b._score - a._score);
 
-  // FREE : première moitié accessible, seconde moitié visible mais verrouillée (flou + cadenas)
   const userRecord = await prisma.user.findUnique({ where: { id: user.id }, select: { role: true, plan: true, planExpiresAt: true } });
   const effectivePlan = (userRecord?.planExpiresAt && userRecord.planExpiresAt < new Date()) ? 'FREE' : (userRecord?.plan || 'FREE');
 
-  // ADMIN : accès total, aucun verrou
-  if (userRecord?.role === 'ADMIN') return NextResponse.json(filtered.map(r => ({ ...r, isLocked: false })));
+  if (userRecord?.role === 'ADMIN') {
+    return NextResponse.json(filtered.map(r => ({ ...r, isLocked: false, _score: undefined })));
+  }
 
   if (effectivePlan === 'FREE' && !favOnly) {
     const half = Math.ceil(filtered.length / 2);
-    const withLock = filtered.map((r, i) => ({ ...r, isLocked: i >= half }));
-    return NextResponse.json(withLock);
+    return NextResponse.json(filtered.map((r, i) => ({ ...r, isLocked: i >= half, _score: undefined })));
   }
 
-  return NextResponse.json(filtered.map(r => ({ ...r, isLocked: false })));
+  return NextResponse.json(filtered.map(r => ({ ...r, isLocked: false, _score: undefined })));
 }
 
-/**
- * POST /api/recipes — un utilisateur partage sa propre recette (communauté).
- * Body: { name, description, instructions, cuisine, difficulty, prepTime, servings,
- *         isPublic, ingredients: [{name, quantity, unit}] }
- */
 export async function POST(req: NextRequest) {
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: 'Non autorisé' }, { status: 401 });
 
   const body = await req.json();
-  const {
-    name, description, instructions, cuisine,
-    difficulty, prepTime, servings, isPublic, ingredients, imageUrl,
-  } = body;
+  const { name, description, instructions, cuisine, difficulty, prepTime, servings, isPublic, ingredients } = body;
 
   if (!name?.trim() || !instructions?.trim()) {
     return NextResponse.json({ error: 'Nom et préparation requis' }, { status: 400 });
@@ -164,9 +192,8 @@ export async function POST(req: NextRequest) {
         difficulty: validDiff as any,
         prepTime: Number(prepTime) > 0 ? Number(prepTime) : 30,
         servings: Number(servings) > 0 ? Number(servings) : 4,
-        imageUrl: typeof imageUrl === 'string' ? imageUrl : '',
         authorId: user.id,
-        isPublic: isPublic !== false, // public par défaut
+        isPublic: isPublic !== false,
       },
     });
 
@@ -174,7 +201,6 @@ export async function POST(req: NextRequest) {
       for (const ing of ingredients) {
         const ingName = String(ing?.name || '').trim();
         if (!ingName) continue;
-
         let ingredient = await prisma.ingredient.findFirst({
           where: { name: { equals: ingName, mode: 'insensitive' } },
         });
@@ -183,10 +209,8 @@ export async function POST(req: NextRequest) {
             data: { name: ingName, category: 'Communauté', emoji: '🍳' },
           });
         }
-
         const qtyMatch = String(ing?.quantity ?? '').replace(',', '.').match(/[\d.]+/);
         const quantity = qtyMatch ? parseFloat(qtyMatch[0]) : 1;
-
         await prisma.recipeIngredient.create({
           data: {
             recipeId: recipe.id,

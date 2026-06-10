@@ -1,10 +1,10 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import AppShell from '@/components/AppShell';
 import RecipeCard from '@/components/RecipeCard';
-import { Search, ChefHat, SlidersHorizontal } from 'lucide-react';
+import { Search, ChefHat, SlidersHorizontal, Refrigerator, Sparkles, Globe } from 'lucide-react';
 
 interface Recipe {
   id: string;
@@ -29,19 +29,35 @@ interface Recipe {
 }
 
 const DIFFICULTIES = ['Tous', 'Facile', 'Moyen', 'Difficile'];
-const TIMES = ['Tous', '< 15 min', '< 30 min', '< 45 min'];
-const CUISINES = ['Toutes', 'FR', 'IT', 'JP', 'MX', 'IN', 'MA', 'TH', 'VN', 'CN', 'US', 'ES', 'GR'];
-const DIETARY = ['Tous', 'Anti-gaspi', 'Compatible régime', 'Revisités', 'Communauté'];
+const TIMES        = ['Tous', '< 15 min', '< 30 min', '< 45 min'];
+const CUISINES     = ['Toutes', 'FR', 'IT', 'JP', 'MX', 'IN', 'MA', 'TH', 'VN', 'CN', 'US', 'ES', 'GR'];
+const DIETARY      = ['Tous', 'Anti-gaspi', 'Compatible régime', 'Revisités', 'Communauté'];
+
+function SectionLabel({ icon, label, count, color }: { icon: React.ReactNode; label: string; count: number; color?: string }) {
+  return (
+    <div className="flex items-center gap-2 mb-2 mt-5 first:mt-0">
+      <span>{icon}</span>
+      <span className="text-xs font-semibold uppercase tracking-wide" style={{ color: color ?? 'var(--text-muted)' }}>
+        {label}
+      </span>
+      <span className="text-xs px-1.5 py-0.5 rounded-full font-medium ml-auto"
+        style={{ backgroundColor: 'var(--bg-inset)', color: 'var(--text-muted)' }}>
+        {count}
+      </span>
+    </div>
+  );
+}
 
 export default function ExplorerPage() {
-  const [recipes, setRecipes] = useState<Recipe[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState('');
-  const [difficulty, setDifficulty] = useState('Tous');
-  const [time, setTime] = useState('Tous');
-  const [cuisine, setCuisine] = useState('Toutes');
-  const [dietary, setDietary] = useState('Tous');
+  const [recipes, setRecipes]         = useState<Recipe[]>([]);
+  const [loading, setLoading]         = useState(true);
+  const [search, setSearch]           = useState('');
+  const [difficulty, setDifficulty]   = useState('Tous');
+  const [time, setTime]               = useState('Tous');
+  const [cuisine, setCuisine]         = useState('Toutes');
+  const [dietary, setDietary]         = useState('Tous');
   const [showFilters, setShowFilters] = useState(false);
+  const [sectionMode, setSectionMode] = useState(true);
 
   const load = useCallback(async () => {
     const res = await fetch('/api/recipes');
@@ -55,21 +71,53 @@ export default function ExplorerPage() {
     if (search && !r.name.toLowerCase().includes(search.toLowerCase()) &&
         !r.description?.toLowerCase().includes(search.toLowerCase()) &&
         !r.cuisine.toLowerCase().includes(search.toLowerCase())) return false;
-    if (difficulty === 'Facile' && r.difficulty !== 'FACILE') return false;
-    if (difficulty === 'Moyen' && r.difficulty !== 'MOYEN') return false;
+    if (difficulty === 'Facile'    && r.difficulty !== 'FACILE')    return false;
+    if (difficulty === 'Moyen'     && r.difficulty !== 'MOYEN')     return false;
     if (difficulty === 'Difficile' && r.difficulty !== 'DIFFICILE') return false;
     if (time === '< 15 min' && r.prepTime > 15) return false;
     if (time === '< 30 min' && r.prepTime > 30) return false;
     if (time === '< 45 min' && r.prepTime > 45) return false;
     if (cuisine !== 'Toutes' && r.cuisine !== cuisine) return false;
-    if (dietary === 'Anti-gaspi' && (r.usesExpiring ?? 0) === 0) return false;
+    if (dietary === 'Anti-gaspi'        && (r.usesExpiring ?? 0) === 0) return false;
     if (dietary === 'Compatible régime' && (r.dietConflict || (r.allergenWarnings?.length ?? 0) > 0)) return false;
-    if (dietary === 'Revisités' && !r.isRevisite) return false;
-    if (dietary === 'Communauté' && !r.isCommunity) return false;
+    if (dietary === 'Revisités'         && !r.isRevisite) return false;
+    if (dietary === 'Communauté'        && !r.isCommunity) return false;
     return true;
   });
 
   const activeFilters = [difficulty !== 'Tous', time !== 'Tous', cuisine !== 'Toutes', dietary !== 'Tous'].filter(Boolean).length;
+  const isSearching   = !!search || activeFilters > 0;
+
+  const ready   = filtered.filter(r => r.matchPercent >= 80);
+  const partial = filtered.filter(r => r.matchPercent >= 40 && r.matchPercent < 80);
+  const explore = filtered.filter(r => r.matchPercent < 40);
+
+  const CardList = ({ list }: { list: Recipe[] }) => (
+    <div className="space-y-2">
+      {list.map(r => (
+        <RecipeCard
+          key={r.id}
+          id={r.id}
+          name={r.name}
+          difficulty={r.difficulty}
+          prepTime={r.prepTime}
+          cuisine={r.cuisine}
+          imageUrl={r.imageUrl}
+          matchPercent={r.matchPercent}
+          matchCount={r.matchCount}
+          emoji={r.ingredients?.[0]?.ingredient?.emoji}
+          isFavorite={r.isFavorite}
+          isLocked={r.isLocked}
+          allergenWarnings={r.allergenWarnings}
+          dietConflict={r.dietConflict}
+          dietLabel={r.dietLabel}
+          usesExpiring={r.usesExpiring}
+          isRevisite={r.isRevisite}
+          isCommunity={r.isCommunity}
+        />
+      ))}
+    </div>
+  );
 
   if (loading) {
     return (
@@ -87,12 +135,23 @@ export default function ExplorerPage() {
       <div className="flex items-center gap-2.5 mb-4">
         <ChefHat className="w-5 h-5" style={{ color: 'var(--text-secondary)' }} />
         <h1 className="font-semibold text-base">Explorer</h1>
-        <span className="text-xs ml-auto" style={{ color: 'var(--text-muted)' }}>
-          {filtered.length} recette{filtered.length !== 1 ? 's' : ''}
-        </span>
+        <div className="ml-auto flex items-center gap-2">
+          {!isSearching && (
+            <button
+              onClick={() => setSectionMode(m => !m)}
+              className="text-xs px-2 py-1 rounded-lg transition-all"
+              style={sectionMode
+                ? { backgroundColor: 'var(--accent)', color: 'var(--accent-text)' }
+                : { backgroundColor: 'var(--bg-inset)', color: 'var(--text-muted)', border: '1px solid var(--border)' }}>
+              Sections
+            </button>
+          )}
+          <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
+            {filtered.length} recette{filtered.length !== 1 ? 's' : ''}
+          </span>
+        </div>
       </div>
 
-      {/* Barre de recherche */}
       <div className="flex gap-2 mb-3">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: 'var(--text-muted)' }} />
@@ -109,8 +168,7 @@ export default function ExplorerPage() {
           className="relative px-3 rounded-lg text-sm font-medium transition-colors flex items-center gap-1.5"
           style={showFilters || activeFilters > 0
             ? { backgroundColor: 'var(--accent)', color: 'var(--accent-text)' }
-            : { backgroundColor: 'var(--bg-inset)', color: 'var(--text-secondary)', border: '1px solid var(--border)' }}
-        >
+            : { backgroundColor: 'var(--bg-inset)', color: 'var(--text-secondary)', border: '1px solid var(--border)' }}>
           <SlidersHorizontal className="w-4 h-4" />
           {activeFilters > 0 && (
             <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full text-[9px] font-bold flex items-center justify-center bg-red-500 text-white">
@@ -120,7 +178,6 @@ export default function ExplorerPage() {
         </button>
       </div>
 
-      {/* Filtres dépliables */}
       {showFilters && (
         <div className="card p-3.5 mb-3 space-y-3 fade-in">
           <div>
@@ -188,47 +245,72 @@ export default function ExplorerPage() {
         </div>
       )}
 
-      {/* Résultats */}
       {filtered.length === 0 ? (
         <div className="text-center py-16">
           <ChefHat className="w-10 h-10 mx-auto mb-3" style={{ color: 'var(--text-muted)', opacity: 0.3 }} />
           <p className="text-sm font-medium mb-1">Aucun résultat</p>
           <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Essaie un autre terme ou modifie les filtres</p>
         </div>
-      ) : (
-        <>
-          <div className="space-y-2">
-            {filtered.map(r => (
-              <RecipeCard
-                key={r.id}
-                id={r.id}
-                name={r.name}
-                difficulty={r.difficulty}
-                prepTime={r.prepTime}
-                cuisine={r.cuisine}
-                imageUrl={r.imageUrl}
-                matchPercent={r.matchPercent}
-                matchCount={r.matchCount}
-                emoji={r.ingredients?.[0]?.ingredient?.emoji}
-                isFavorite={r.isFavorite}
-                isLocked={r.isLocked}
-                allergenWarnings={r.allergenWarnings}
-                dietConflict={r.dietConflict}
-                dietLabel={r.dietLabel}
-                usesExpiring={r.usesExpiring}
-                isRevisite={r.isRevisite}
-                isCommunity={r.isCommunity}
-              />
-            ))}
-          </div>
-          {filtered.some(r => r.isLocked) && (
-            <Link href="/profile"
-              className="block mt-3 p-4 rounded-xl text-center text-sm font-medium transition-all"
-              style={{ backgroundColor: 'rgba(245,158,11,0.07)', border: '1px solid rgba(245,158,11,0.25)', color: 'var(--text-secondary)' }}>
-              🔓 Débloquer toutes les recettes avec <span className="font-semibold text-amber-600 dark:text-amber-400">Premium</span>
-            </Link>
+      ) : sectionMode && !isSearching ? (
+        <div className="fade-in">
+          {ready.length === 0 && partial.length === 0 && (
+            <div className="p-4 rounded-xl mb-4 text-center"
+              style={{ backgroundColor: 'color-mix(in srgb, var(--accent) 8%, transparent)', border: '1px solid color-mix(in srgb, var(--accent) 20%, transparent)' }}>
+              <p className="text-sm font-medium mb-1">Frigo vide ?</p>
+              <p className="text-xs mb-3" style={{ color: 'var(--text-muted)' }}>
+                Ajoute des ingrédients pour voir quelles recettes tu peux cuisiner maintenant.
+              </p>
+              <Link href="/fridge"
+                className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-xl transition-all"
+                style={{ backgroundColor: 'var(--accent)', color: 'var(--accent-text)' }}>
+                <Refrigerator className="w-3.5 h-3.5" />
+                Remplir mon frigo
+              </Link>
+            </div>
           )}
-        </>
+          {ready.length > 0 && (
+            <>
+              <SectionLabel
+                icon={<Refrigerator className="w-4 h-4" style={{ color: '#22c55e' }} />}
+                label="Prêt à cuisiner"
+                count={ready.length}
+                color="#22c55e"
+              />
+              <CardList list={ready} />
+            </>
+          )}
+          {partial.length > 0 && (
+            <>
+              <SectionLabel
+                icon={<Sparkles className="w-4 h-4" style={{ color: '#f59e0b' }} />}
+                label="Presque complet"
+                count={partial.length}
+                color="#f59e0b"
+              />
+              <CardList list={partial} />
+            </>
+          )}
+          {explore.length > 0 && (
+            <>
+              <SectionLabel
+                icon={<Globe className="w-4 h-4" style={{ color: 'var(--text-muted)' }} />}
+                label="À explorer"
+                count={explore.length}
+              />
+              <CardList list={explore} />
+            </>
+          )}
+        </div>
+      ) : (
+        <CardList list={filtered} />
+      )}
+
+      {filtered.some(r => r.isLocked) && (
+        <Link href="/profile"
+          className="block mt-3 p-4 rounded-xl text-center text-sm font-medium transition-all"
+          style={{ backgroundColor: 'rgba(245,158,11,0.07)', border: '1px solid rgba(245,158,11,0.25)', color: 'var(--text-secondary)' }}>
+          🔓 Débloquer toutes les recettes avec <span className="font-semibold text-amber-600 dark:text-amber-400">Premium</span>
+        </Link>
       )}
     </AppShell>
   );
