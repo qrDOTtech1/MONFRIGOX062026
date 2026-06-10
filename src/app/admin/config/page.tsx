@@ -1,7 +1,10 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Settings, Save, Check, Key, Globe, Brain, RefreshCw, Wifi, WifiOff, Shield, ChevronDown, Zap, Database, Utensils, Barcode, FlaskConical } from 'lucide-react';
+import { Settings, Save, Check, Key, Globe, Brain, RefreshCw, Wifi, WifiOff, Shield, ChevronDown, Zap, Database, Utensils, Barcode, FlaskConical, ImagePlus, ExternalLink, Loader2 } from 'lucide-react';
+
+interface EnrichStats { total: number; withImage: number; withBarcode: number; missingImage: number; }
+interface EnrichResult { ok: boolean; processed: number; enriched: number; skipped: number; remaining: number; }
 
 interface OllamaModel {
   name: string;
@@ -43,6 +46,11 @@ export default function AdminConfigPage() {
   const [apiStatus, setApiStatus] = useState<Record<string, ApiStatusEntry>>({});
   const [activeTab, setActiveTab] = useState<'ollama' | 'apis'>('ollama');
 
+  // Enrichissement OFF
+  const [enrichStats, setEnrichStats]   = useState<EnrichStats | null>(null);
+  const [enriching, setEnriching]       = useState(false);
+  const [enrichResult, setEnrichResult] = useState<EnrichResult | null>(null);
+
   useEffect(() => {
     fetch('/api/admin/config')
       .then(r => r.ok ? r.json() : [])
@@ -60,7 +68,23 @@ export default function AdminConfigPage() {
     fetch('/api/external/status')
       .then(r => r.ok ? r.json() : {})
       .then(setApiStatus);
+    fetch('/api/admin/enrich-ingredients')
+      .then(r => r.ok ? r.json() : null)
+      .then(setEnrichStats);
   }, []);
+
+  async function runEnrichment() {
+    setEnriching(true); setEnrichResult(null);
+    const res = await fetch('/api/admin/enrich-ingredients', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ limit: 30 }),
+    });
+    const data = await res.json();
+    setEnrichResult(data);
+    setEnriching(false);
+    // Refresh stats
+    fetch('/api/admin/enrich-ingredients').then(r => r.ok ? r.json() : null).then(setEnrichStats);
+  }
 
   async function testConnection() {
     setTesting(true);
@@ -430,6 +454,61 @@ export default function AdminConfigPage() {
                 className="input-field font-mono text-sm"
               />
             </div>
+          </div>
+
+          {/* ── Enrichissement Open Food Facts ── */}
+          <div className="card p-5">
+            <div className="flex items-center gap-2.5 mb-1">
+              <ImagePlus className="w-4 h-4" style={{ color: 'var(--text-secondary)' }} />
+              <h2 className="font-medium">Enrichir les ingrédients depuis OFF</h2>
+              <span className="text-[10px] px-1.5 py-0.5 rounded font-medium text-emerald-600 dark:text-emerald-400" style={{ backgroundColor: 'rgba(16,185,129,0.1)' }}>
+                GRATUIT
+              </span>
+            </div>
+            <p className="text-xs mb-4" style={{ color: 'var(--text-muted)' }}>
+              Cherche les photos, marques et données sur Open Food Facts pour chaque ingrédient sans image dans la base.
+              Lance par batch de 30. Relancer plusieurs fois pour tout couvrir.
+            </p>
+
+            {enrichStats && (
+              <div className="grid grid-cols-3 gap-2 mb-4">
+                {[
+                  { label: 'Total',         value: enrichStats.total },
+                  { label: 'Avec photo',    value: enrichStats.withImage },
+                  { label: 'Sans photo',    value: enrichStats.missingImage },
+                ].map(s => (
+                  <div key={s.label} className="rounded-lg p-2.5 text-center" style={{ backgroundColor: 'var(--bg-inset)' }}>
+                    <p className="text-base font-bold">{s.value}</p>
+                    <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>{s.label}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <button onClick={runEnrichment} disabled={enriching}
+              className="btn-primary flex items-center gap-2 disabled:opacity-40 w-full justify-center">
+              {enriching
+                ? <><Loader2 className="w-4 h-4 animate-spin" /> Enrichissement en cours (30 ingrédients)…</>
+                : <><ImagePlus className="w-4 h-4" /> Lancer l&apos;enrichissement (batch 30)</>
+              }
+            </button>
+
+            {enrichResult && (
+              <div className="mt-3 rounded-lg p-3 text-sm" style={{
+                backgroundColor: enrichResult.enriched > 0 ? 'rgba(16,185,129,0.08)' : 'var(--bg-inset)',
+                border: `1px solid ${enrichResult.enriched > 0 ? 'rgba(16,185,129,0.2)' : 'var(--border)'}`,
+              }}>
+                ✅ {enrichResult.enriched} enrichis · ⏭ {enrichResult.skipped} ignorés · 📦 {enrichResult.remaining} restants
+              </div>
+            )}
+
+            <p className="text-[10px] mt-2" style={{ color: 'var(--text-muted)' }}>
+              <a href="https://world.openfoodfacts.org/data" target="_blank" rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 underline">
+                Open Food Facts <ExternalLink className="w-2.5 h-2.5" />
+              </a>
+              {' '}— base libre, 3M+ produits
+            </p>
           </div>
         </>
       )}
