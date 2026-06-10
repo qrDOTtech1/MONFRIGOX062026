@@ -1,9 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import AppShell from '@/components/AppShell';
-import { ArrowLeft, Plus, X, Loader2, ChefHat, Globe, Lock } from 'lucide-react';
+import { ArrowLeft, Plus, X, Loader2, ChefHat, Globe, Lock, Camera, ImagePlus } from 'lucide-react';
 
 interface IngredientRow {
   name: string;
@@ -34,8 +34,42 @@ export default function NewRecipePage() {
   const [instructions, setInstructions] = useState('');
   const [isPublic, setIsPublic] = useState(true);
   const [ingredients, setIngredients] = useState<IngredientRow[]>([{ name: '', quantity: '', unit: '' }]);
+  const [image, setImage] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const photoRef = useRef<HTMLInputElement>(null);
+
+  // Compresse la photo du résultat (max 800px, JPEG) pour limiter le poids
+  async function compressImage(file: File): Promise<string> {
+    return new Promise(resolve => {
+      const reader = new FileReader();
+      reader.onload = e => {
+        const img = new Image();
+        img.onload = () => {
+          const max = 800;
+          let { width, height } = img;
+          if (width > max || height > max) {
+            if (width > height) { height = Math.round(height * max / width); width = max; }
+            else { width = Math.round(width * max / height); height = max; }
+          }
+          const canvas = document.createElement('canvas');
+          canvas.width = width; canvas.height = height;
+          canvas.getContext('2d')!.drawImage(img, 0, 0, width, height);
+          resolve(canvas.toDataURL('image/jpeg', 0.75));
+        };
+        img.src = e.target!.result as string;
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+
+  async function handlePhoto(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const compressed = await compressImage(file);
+    setImage(compressed);
+    if (photoRef.current) photoRef.current.value = '';
+  }
 
   // Autocomplétion des ingrédients
   const [activeRow, setActiveRow] = useState<number | null>(null);
@@ -77,7 +111,7 @@ export default function NewRecipePage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name, description, cuisine, difficulty, prepTime, servings, isPublic,
-          instructions,
+          instructions, imageUrl: image,
           ingredients: ingredients.filter(i => i.name.trim()),
         }),
       });
@@ -139,6 +173,42 @@ export default function NewRecipePage() {
             <input type="number" min={1} value={servings} onChange={e => setServings(parseInt(e.target.value) || 0)} className="input-field" />
           </div>
         </div>
+      </div>
+
+      {/* Photo du résultat */}
+      <div className="card p-4 mb-3">
+        <label className="text-xs font-medium block mb-2.5" style={{ color: 'var(--text-secondary)' }}>Photo du résultat</label>
+        <input ref={photoRef} type="file" accept="image/*" capture="environment" onChange={handlePhoto} className="hidden" />
+        {image ? (
+          <div className="relative rounded-xl overflow-hidden">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={image} alt="Aperçu du plat" className="w-full h-48 object-cover" />
+            <button
+              onClick={() => setImage('')}
+              className="absolute top-2 right-2 w-8 h-8 rounded-full flex items-center justify-center"
+              style={{ backgroundColor: 'rgba(0,0,0,0.6)' }}
+            >
+              <X className="w-4 h-4 text-white" />
+            </button>
+            <button
+              onClick={() => photoRef.current?.click()}
+              className="absolute bottom-2 right-2 px-2.5 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1.5"
+              style={{ backgroundColor: 'rgba(0,0,0,0.6)', color: 'white' }}
+            >
+              <Camera className="w-3.5 h-3.5" /> Changer
+            </button>
+          </div>
+        ) : (
+          <button
+            onClick={() => photoRef.current?.click()}
+            className="w-full flex flex-col items-center justify-center gap-2 py-8 rounded-xl transition-colors hover:bg-[var(--bg-inset)]"
+            style={{ border: '2px dashed var(--border)' }}
+          >
+            <ImagePlus className="w-7 h-7" style={{ color: 'var(--text-muted)' }} />
+            <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>Ajouter une photo de ton plat</span>
+            <span className="text-[10px]" style={{ color: 'var(--text-muted)' }}>Appareil photo ou galerie</span>
+          </button>
+        )}
       </div>
 
       {/* Ingrédients */}

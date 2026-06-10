@@ -44,6 +44,7 @@ interface Recipe {
   prepTime: number;
   cuisine: string;
   servings: number;
+  imageUrl?: string;
   calories: number | null;
   protein: number | null;
   fat: number | null;
@@ -344,6 +345,14 @@ export default function RecipeDetailPage() {
       <button onClick={() => router.back()} className="flex items-center gap-1.5 text-sm mb-4 transition-colors" style={{ color: 'var(--text-muted)' }}>
         <ArrowLeft className="w-4 h-4" /> Retour
       </button>
+
+      {recipe.imageUrl && (
+        <div className="rounded-xl overflow-hidden mb-4">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={recipe.imageUrl} alt={recipe.name} className="w-full h-52 object-cover"
+            onError={e => { (e.target as HTMLImageElement).parentElement!.style.display = 'none'; }} />
+        </div>
+      )}
 
       <div className="mb-5">
         <h1 className="text-xl font-semibold mb-1.5">{recipe.name}</h1>

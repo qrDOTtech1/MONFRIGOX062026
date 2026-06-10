@@ -145,7 +145,7 @@ export async function POST(req: NextRequest) {
   const body = await req.json();
   const {
     name, description, instructions, cuisine,
-    difficulty, prepTime, servings, isPublic, ingredients,
+    difficulty, prepTime, servings, isPublic, ingredients, imageUrl,
   } = body;
 
   if (!name?.trim() || !instructions?.trim()) {
@@ -164,6 +164,7 @@ export async function POST(req: NextRequest) {
         difficulty: validDiff as any,
         prepTime: Number(prepTime) > 0 ? Number(prepTime) : 30,
         servings: Number(servings) > 0 ? Number(servings) : 4,
+        imageUrl: typeof imageUrl === 'string' ? imageUrl : '',
         authorId: user.id,
         isPublic: isPublic !== false, // public par défaut
       },
