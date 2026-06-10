@@ -348,17 +348,15 @@ function ScanPageInner() {
           </>
         )}
 
-        {cameraActive && (
-          <div className="relative rounded-xl overflow-hidden mb-4">
-            <video ref={videoRef} autoPlay playsInline className="w-full rounded-xl" />
-            <div className="absolute bottom-4 left-0 right-0 flex justify-center gap-3">
-              <button onClick={stopCamera} className="btn-secondary !py-2 !px-4 text-sm">Terminé</button>
-              <button onClick={capturePhoto} className="btn-primary !py-2 !px-4 text-sm flex items-center gap-1.5">
-                <Camera className="w-4 h-4" /> Capturer
-              </button>
-            </div>
+        <div className={`relative rounded-xl overflow-hidden mb-4 ${cameraActive ? '' : 'hidden'}`}>
+          <video ref={videoRef} autoPlay playsInline className="w-full rounded-xl" />
+          <div className="absolute bottom-4 left-0 right-0 flex justify-center gap-3">
+            <button onClick={stopCamera} className="btn-secondary !py-2 !px-4 text-sm">Terminé</button>
+            <button onClick={capturePhoto} className="btn-primary !py-2 !px-4 text-sm flex items-center gap-1.5">
+              <Camera className="w-4 h-4" /> Capturer
+            </button>
           </div>
-        )}
+        </div>
 
         {scanning && (
           <div className="flex items-center justify-center gap-2.5 py-8">
@@ -410,21 +408,21 @@ function ScanPageInner() {
       </div>
 
       {/* Caméra barcode */}
-      {barCamera ? (
-        <div className="relative rounded-xl overflow-hidden mb-4">
-          <video ref={barVideoRef} autoPlay playsInline className="w-full rounded-xl" />
-          {/* Viseur */}
-          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-            <div className="w-64 h-24 rounded-lg" style={{ border: '2px solid rgba(255,255,255,0.8)', boxShadow: '0 0 0 9999px rgba(0,0,0,0.45)' }} />
-          </div>
-          <div className="absolute bottom-4 left-0 right-0 flex justify-center">
-            <button onClick={stopBarcodeCamera} className="btn-secondary !py-2 !px-5 text-sm">Annuler</button>
-          </div>
-          <p className="absolute top-3 left-0 right-0 text-center text-xs text-white/80">
-            Pointe vers le code-barres
-          </p>
+      {/* Caméra barcode — toujours dans le DOM, cachée si inactive */}
+      <div className={`relative rounded-xl overflow-hidden mb-4 ${barCamera ? '' : 'hidden'}`}>
+        <video ref={barVideoRef} autoPlay playsInline className="w-full rounded-xl" />
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+          <div className="w-64 h-24 rounded-lg" style={{ border: '2px solid rgba(255,255,255,0.8)', boxShadow: '0 0 0 9999px rgba(0,0,0,0.45)' }} />
         </div>
-      ) : (
+        <div className="absolute bottom-4 left-0 right-0 flex justify-center">
+          <button onClick={stopBarcodeCamera} className="btn-secondary !py-2 !px-5 text-sm">Annuler</button>
+        </div>
+        <p className="absolute top-3 left-0 right-0 text-center text-xs text-white/80">
+          Pointe vers le code-barres
+        </p>
+      </div>
+
+      {!barCamera && (
         <div className="space-y-3 mb-4">
           <button onClick={startBarcodeCamera}
             className="card w-full p-4 flex items-center gap-3 hover:shadow-sm transition-all text-left">
@@ -460,6 +458,7 @@ function ScanPageInner() {
           </form>
         </div>
       )}
+
 
       {barcodeLoading && (
         <div className="flex items-center justify-center gap-2.5 py-8">
