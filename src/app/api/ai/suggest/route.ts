@@ -37,10 +37,44 @@ export async function POST() {
       recipes = [];
     }
 
+    // Règles de cohérence minimale par type de recette
+    const COHERENCE_RULES: Array<{ keywords: string[]; requires: string[]; label: string }> = [
+      { keywords: ['crêpe', 'crepe', 'galette de froment'], requires: ['farine', 'lait', 'oeuf', 'œuf'], label: 'crêpes' },
+      { keywords: ['gâteau', 'cake', 'fondant', 'brownie', 'moelleux'], requires: ['farine', 'oeuf', 'œuf', 'sucre'], label: 'gâteau' },
+      { keywords: ['pizza'], requires: ['farine', 'tomate', 'fromage'], label: 'pizza' },
+      { keywords: ['pâte à pain', 'pain maison', 'baguette'], requires: ['farine', 'levure', 'eau'], label: 'pain' },
+      { keywords: ['quiche', 'tarte salée'], requires: ['farine', 'oeuf', 'œuf', 'crème'], label: 'quiche' },
+      { keywords: ['tarte', 'tartelette'], requires: ['farine', 'beurre'], label: 'tarte' },
+    ];
+
+    function checkCoherence(recipe: { name: string; ingredients: Array<{ name: string }> }): string | null {
+      const nameLower = recipe.name.toLowerCase();
+      const ingNames  = (recipe.ingredients || []).map((i: { name: string }) => i.name.toLowerCase());
+      for (const rule of COHERENCE_RULES) {
+        if (!rule.keywords.some(kw => nameLower.includes(kw))) continue;
+        const missing = rule.requires.filter(req =>
+          !ingNames.some(ing => ing.includes(req))
+        );
+        if (missing.length > 0) {
+          return `"${recipe.name}" est une recette de ${rule.label} mais il manque : ${missing.join(', ')}`;
+        }
+      }
+      return null;
+    }
+
     // Save AI-generated recipes to DB
     const saved = [];
+    const warnings: string[] = [];
     for (const r of recipes) {
       if (!r.name || !r.instructions) continue;
+
+      // Vérif cohérence avant sauvegarde
+      const incoherence = checkCoherence(r);
+      if (incoherence) {
+        warnings.push(incoherence);
+        console.warn('[suggest] Recette incohérente ignorée :', incoherence);
+        continue; // skip cette recette plutôt que la sauvegarder corrompue
+      }
 
       const existing = await prisma.recipe.findFirst({ where: { name: r.name } });
       if (existing) { saved.push(existing); continue; }
@@ -105,7 +139,7 @@ export async function POST() {
       saved.push(recipe);
     }
 
-    return NextResponse.json({ recipes: saved, raw: recipes });
+    return NextResponse.json({ recipes: saved, raw: recipes, warnings });
   } catch (err) {
     console.error('AI suggest error:', err);
     return NextResponse.json({ error: 'Erreur IA — vérifie la config Ollama dans le portail admin' }, { status: 500 });

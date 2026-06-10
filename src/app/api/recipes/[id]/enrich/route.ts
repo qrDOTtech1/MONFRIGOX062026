@@ -55,15 +55,15 @@ Voici une recette (peut être en anglais) :
 
 Ta tâche :
 1. Traduis EN FRANÇAIS le nom, la description, les instructions et chaque ingrédient si ce n'est pas déjà le cas.
-2. Corrige les quantités et unités pour qu'elles soient RÉALISTES et PRÉCISES pour ${recipe.servings} portion(s).
-   - JAMAIS "unité" sauf pour des objets entiers comptables (oeuf, oignon, citron...)
-   - Huiles et liquides → cs (cuillère à soupe) ou ml
-   - Épices, sel, sucre → cc (cuillère à café) ou g ou pincée
+2. Vérifie la COHÉRENCE culinaire : si la recette s'appelle "crêpes" et qu'il manque la farine, le lait ou les œufs dans la liste, signale-le mais travaille avec ce qui est fourni.
+3. Corrige les quantités et unités pour ${recipe.servings} portion(s) — JAMAIS "unité" sauf objets entiers :
+   - Huiles → cs. Ex: 2 cs d'huile d'olive
+   - Épices, sel → cc ou pincée
    - Viandes, féculents, légumes pesés → g
    - Herbes fraîches → brins ou g
-   - Bouillons, sauces → ml
-   - Beurre → g ou noix (pour une noix de beurre)
-3. Estime les valeurs nutritionnelles PAR PORTION.
+   - Liquides (bouillon, lait, crème) → ml
+   - Beurre → g
+4. Estime les valeurs nutritionnelles PAR PORTION.
 
 Réponds UNIQUEMENT en JSON valide, sans commentaire, sans balise markdown :
 {

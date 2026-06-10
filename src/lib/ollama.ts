@@ -121,11 +121,26 @@ export async function listModels() {
   }
 }
 
+// Ingrédients de base toujours supposés disponibles dans un placard
+const PANTRY_STAPLES = [
+  'sel', 'poivre', 'huile d\'olive', 'huile de tournesol', 'beurre',
+  'farine', 'sucre', 'sucre glace', 'levure chimique', 'bicarbonate',
+  'maïzena', 'bouillon cube', 'vinaigre', 'moutarde',
+  'ail en poudre', 'oignon en poudre', 'paprika', 'cumin', 'thym', 'laurier',
+  'herbes de provence', 'cannelle', 'noix de muscade',
+  'concentré de tomates', 'sauce soja',
+];
+
 export async function suggestRecipes(ingredients: string[]) {
+  const allIngredients = [
+    ...ingredients,
+    ...PANTRY_STAPLES.filter(p => !ingredients.some(i => i.toLowerCase().includes(p.split(' ')[0]))),
+  ];
+
   return chatCompletion([
     {
       role: 'system',
-      content: `Tu es un chef cuisinier professionnel français. Tu génères des recettes détaillées et réalistes.
+      content: `Tu es un chef cuisinier professionnel français. Tu génères des recettes COMPLÈTES, cohérentes et réalistes.
 
 Réponds UNIQUEMENT en JSON valide avec ce format exact :
 [{
@@ -136,37 +151,45 @@ Réponds UNIQUEMENT en JSON valide avec ce format exact :
   "cuisine": "FR",
   "servings": 4,
   "ingredients": [
-    {"name": "huile d'olive", "quantity": 2, "unit": "cs"},
-    {"name": "oignon", "quantity": 1, "unit": "pièce"},
-    {"name": "ail", "quantity": 3, "unit": "gousses"},
-    {"name": "tomates pelées", "quantity": 400, "unit": "g"},
-    {"name": "sel", "quantity": 1, "unit": "pincée"},
-    {"name": "thym", "quantity": 2, "unit": "brins"}
+    {"name": "farine", "quantity": 250, "unit": "g"},
+    {"name": "lait", "quantity": 500, "unit": "ml"},
+    {"name": "œufs", "quantity": 3, "unit": "pièce"},
+    {"name": "beurre", "quantity": 30, "unit": "g"},
+    {"name": "sel", "quantity": 1, "unit": "pincée"}
   ],
-  "instructions": "Étape 1 détaillée.\\nÉtape 2 détaillée.\\nÉtape 3 détaillée."
+  "instructions": "Étape 1 détaillée.\\nÉtape 2 détaillée.\\nÉtape 3 détaillée.\\nÉtape 4 détaillée."
 }]
 
-RÈGLES ABSOLUES pour les ingrédients — JAMAIS "1 unité" sauf pour des fruits/légumes entiers :
-- Huiles, sauces liquides → cuillères à soupe (cs) ou ml. Ex: 2 cs d'huile d'olive pour dorer des oignons
-- Épices, herbes sèches → cc (cuillère à café) ou g. Ex: 1 cc de cumin, 5 g de sel
-- Herbes fraîches → brins, feuilles ou g. Ex: 3 brins de thym, 10 feuilles de basilic
-- Viandes, poissons → g. Ex: 400 g de bœuf haché
-- Légumes pesés → g. Ex: 300 g de courgettes
-- Légumes entiers comptables → pièce. Ex: 2 oignons, 1 poivron
-- Fromages → g. Ex: 80 g de parmesan râpé
-- Farine, sucre, riz, pâtes → g. Ex: 200 g de riz
-- Bouillon, lait, crème → ml. Ex: 250 ml de bouillon de volaille
-- Beurre → g. Ex: 30 g de beurre
-- Ail → gousses. Ex: 2 gousses d'ail
-- Œufs → pièce. Ex: 3 œufs
+⚠️ RÈGLE N°1 — COMPLÉTUDE : TOUJOURS inclure TOUS les ingrédients nécessaires à la recette.
+Des crêpes DOIVENT avoir farine, lait, œufs. Un gâteau DOIT avoir farine, sucre, œufs.
+Ne jamais omettre un ingrédient parce qu'il n'est pas dans la liste fournie.
+Si la recette nécessite farine, sel, beurre, huile → les inclure même s'ils ne sont pas listés.
 
-Unités autorisées : g, ml, cs (cuillère à soupe), cc (cuillère à café), pièce, gousses, brins, feuilles, pincée, kg, L, tranche, botte, sachet, boîte, noix (pour le beurre), poignée
-Suggère 3-5 recettes. Privilégie les ingrédients listés.
-IMPORTANT instructions : minimum 4 étapes, chaque étape sur une ligne séparée (\\n). Pas de numéros en début d'étape.`,
+⚠️ RÈGLE N°2 — COHÉRENCE : vérifie que la recette est culinairement correcte.
+- Crêpes = farine + lait + œufs + beurre + sel (minimum)
+- Pâte à pizza = farine + eau + levure + sel + huile
+- Vinaigrette = huile + vinaigre + moutarde + sel
+- Pâte sablée = farine + beurre + sucre + œuf + sel
+Une recette manquant d'un ingrédient structurel est INTERDITE.
+
+⚠️ RÈGLE N°3 — QUANTITÉS PRÉCISES (jamais "1 unité" sauf objets entiers) :
+- Huiles → cs. Ex: 2 cs d'huile d'olive
+- Épices, sel → cc ou pincée. Ex: 1 cc de cumin, 2 pincées de sel
+- Viandes, poissons, fromages, féculents, légumes pesés → g
+- Légumes/fruits entiers comptables → pièce. Ex: 2 oignons
+- Liquides (lait, bouillon, crème) → ml
+- Beurre → g. Ex: 40 g de beurre
+- Ail → gousses. Ex: 2 gousses d'ail
+- Œufs → pièce
+
+Unités autorisées : g, ml, cs, cc, pièce, gousses, brins, feuilles, pincée, kg, L, tranche, botte, sachet, boîte, noix, poignée
+
+Suggère 3-5 recettes qui UTILISENT EN PRIORITÉ les ingrédients marqués [FRIGO].
+Instructions : minimum 4 étapes claires, chaque étape sur une ligne (\\n), pas de numéros.`,
     },
     {
       role: 'user',
-      content: `Ingrédients disponibles : ${ingredients.join(', ')}. Génère des recettes réalistes avec des quantités précises.`,
+      content: `Ingrédients [FRIGO] : ${ingredients.join(', ')}\nIngrédients placard (toujours dispo) : ${PANTRY_STAPLES.join(', ')}\n\nGénère des recettes complètes et cohérentes avec des quantités précises.`,
     },
   ]);
 }
