@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import AppShell from '@/components/AppShell';
 import {
@@ -26,7 +26,7 @@ interface BarcodeResult {
 
 type Mode = 'choose' | 'scan' | 'barcode';
 
-export default function ScanPage() {
+function ScanPageInner() {
   const searchParams = useSearchParams();
   const [mode, setMode] = useState<Mode>(() =>
     searchParams.get('mode') === 'barcode' ? 'barcode' : 'choose'
@@ -496,5 +496,13 @@ export default function ScanPage() {
         </div>
       )}
     </AppShell>
+  );
+}
+
+export default function ScanPage() {
+  return (
+    <Suspense fallback={null}>
+      <ScanPageInner />
+    </Suspense>
   );
 }
