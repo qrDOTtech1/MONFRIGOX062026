@@ -1,7 +1,8 @@
 'use client';
 
 import Link from 'next/link';
-import { Clock, Heart } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { Clock, Heart, Lock } from 'lucide-react';
 
 interface RecipeCardProps {
   id: string;
@@ -14,6 +15,7 @@ interface RecipeCardProps {
   matchCount?: string;
   emoji?: string;
   isFavorite?: boolean;
+  isLocked?: boolean;
   onToggleFavorite?: () => void;
 }
 
@@ -43,8 +45,65 @@ function getMatchTextColor(pct: number) {
 
 export default function RecipeCard({
   id, name, difficulty, prepTime, cuisine, imageUrl, matchPercent, matchCount,
-  emoji, isFavorite, onToggleFavorite,
+  emoji, isFavorite, isLocked, onToggleFavorite,
 }: RecipeCardProps) {
+  const router = useRouter();
+
+  if (isLocked) {
+    return (
+      <div
+        className="card overflow-hidden relative cursor-pointer select-none"
+        onClick={() => router.push('/profile')}
+        style={{ padding: imageUrl ? '0' : undefined }}
+      >
+        {/* Contenu flouté */}
+        <div className="blur-sm pointer-events-none opacity-60">
+          {imageUrl ? (
+            <div className="flex gap-3.5 items-center">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={imageUrl} alt="" className="w-20 h-20 object-cover shrink-0"
+                style={{ borderRadius: '0.625rem 0 0 0.625rem' }} />
+              <div className="flex-1 min-w-0 py-3 pr-3">
+                <h3 className="font-medium text-sm truncate mb-1">{name}</h3>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className={difficultyColors[difficulty] || 'badge-easy'}>{difficultyLabels[difficulty] || difficulty}</span>
+                  <span className="flex items-center gap-1 text-xs" style={{ color: 'var(--text-muted)' }}>
+                    <Clock className="w-3 h-3" /> {prepTime} min
+                  </span>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="p-4 flex gap-3.5 items-center">
+              <div className="w-12 h-12 rounded-lg flex items-center justify-center text-xl shrink-0"
+                style={{ backgroundColor: 'var(--bg-inset)' }}>
+                {emoji || '🍽️'}
+              </div>
+              <div className="flex-1 min-w-0">
+                <h3 className="font-medium text-sm truncate">{name}</h3>
+                <div className="flex items-center gap-2 mt-1.5">
+                  <span className={difficultyColors[difficulty] || 'badge-easy'}>{difficultyLabels[difficulty] || difficulty}</span>
+                  <span className="flex items-center gap-1 text-xs" style={{ color: 'var(--text-muted)' }}>
+                    <Clock className="w-3 h-3" /> {prepTime} min
+                  </span>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Overlay cadenas */}
+        <div className="absolute inset-0 flex items-center justify-end pr-4 gap-2">
+          <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold"
+            style={{ backgroundColor: 'var(--accent)', color: 'var(--accent-text)' }}>
+            <Lock className="w-3 h-3" />
+            Premium
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <Link
       href={`/recipes/${id}`}
@@ -52,7 +111,6 @@ export default function RecipeCard({
       style={{ padding: imageUrl ? '0' : undefined }}
     >
       {imageUrl ? (
-        /* Carte avec image */
         <>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
@@ -86,7 +144,6 @@ export default function RecipeCard({
           </div>
         </>
       ) : (
-        /* Carte sans image — emoji */
         <div className="p-4 flex gap-3.5 items-center w-full">
           <div className="w-12 h-12 rounded-lg flex items-center justify-center text-xl shrink-0"
             style={{ backgroundColor: 'var(--bg-inset)' }}>

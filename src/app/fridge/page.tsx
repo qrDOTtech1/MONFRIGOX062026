@@ -28,6 +28,7 @@ interface Recipe {
   matchCount: string;
   ingredients: Array<{ ingredient: { emoji: string } }>;
   isFavorite: boolean;
+  isLocked?: boolean;
 }
 
 function daysUntil(date: string) {
@@ -390,7 +391,8 @@ export default function FridgePage() {
                 <RecipeCard key={r.id} id={r.id} name={r.name} difficulty={r.difficulty}
                   prepTime={r.prepTime} cuisine={r.cuisine} imageUrl={r.imageUrl}
                   matchPercent={r.matchPercent} matchCount={r.matchCount}
-                  emoji={r.ingredients?.[0]?.ingredient?.emoji} />
+                  emoji={r.ingredients?.[0]?.ingredient?.emoji}
+                  isLocked={r.isLocked} />
               ))}
             </div>
           )}

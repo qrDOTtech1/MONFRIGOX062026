@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import Link from 'next/link';
 import AppShell from '@/components/AppShell';
 import RecipeCard from '@/components/RecipeCard';
 import { Search, ChefHat, SlidersHorizontal } from 'lucide-react';
@@ -17,6 +18,7 @@ interface Recipe {
   matchCount: string;
   ingredients: Array<{ ingredient: { emoji: string } }>;
   isFavorite: boolean;
+  isLocked?: boolean;
 }
 
 const DIFFICULTIES = ['Tous', 'Facile', 'Moyen', 'Difficile'];
@@ -167,23 +169,33 @@ export default function ExplorerPage() {
           <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Essaie un autre terme ou modifie les filtres</p>
         </div>
       ) : (
-        <div className="space-y-2">
-          {filtered.map(r => (
-            <RecipeCard
-              key={r.id}
-              id={r.id}
-              name={r.name}
-              difficulty={r.difficulty}
-              prepTime={r.prepTime}
-              cuisine={r.cuisine}
-              imageUrl={r.imageUrl}
-              matchPercent={r.matchPercent}
-              matchCount={r.matchCount}
-              emoji={r.ingredients?.[0]?.ingredient?.emoji}
-              isFavorite={r.isFavorite}
-            />
-          ))}
-        </div>
+        <>
+          <div className="space-y-2">
+            {filtered.map(r => (
+              <RecipeCard
+                key={r.id}
+                id={r.id}
+                name={r.name}
+                difficulty={r.difficulty}
+                prepTime={r.prepTime}
+                cuisine={r.cuisine}
+                imageUrl={r.imageUrl}
+                matchPercent={r.matchPercent}
+                matchCount={r.matchCount}
+                emoji={r.ingredients?.[0]?.ingredient?.emoji}
+                isFavorite={r.isFavorite}
+                isLocked={r.isLocked}
+              />
+            ))}
+          </div>
+          {filtered.some(r => r.isLocked) && (
+            <Link href="/profile"
+              className="block mt-3 p-4 rounded-xl text-center text-sm font-medium transition-all"
+              style={{ backgroundColor: 'rgba(245,158,11,0.07)', border: '1px solid rgba(245,158,11,0.25)', color: 'var(--text-secondary)' }}>
+              🔓 Débloquer toutes les recettes avec <span className="font-semibold text-amber-600 dark:text-amber-400">Premium</span>
+            </Link>
+          )}
+        </>
       )}
     </AppShell>
   );
