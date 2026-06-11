@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import AppShell from '@/components/AppShell';
 import { useTheme } from '@/components/ThemeProvider';
 import InfoBubble from '@/components/InfoBubble';
-import { UserCircle, LogOut, Shield, Heart, ShoppingCart, Refrigerator, Sun, Moon, Save, Check, AlertTriangle, Baby, Users, History, Sparkles, ChefHat, Zap, Crown, Star, Plus, Loader2, CalendarDays, ChevronRight } from 'lucide-react';
+import { UserCircle, LogOut, Shield, Heart, ShoppingCart, Refrigerator, Sun, Moon, Save, Check, AlertTriangle, Baby, Users, History, Sparkles, ChefHat, Zap, Crown, Star, Plus, Loader2, CalendarDays, ChevronRight, PiggyBank, Leaf, Flame } from 'lucide-react';
 
 // Bouton qui crée une Checkout Session Stripe et redirige
 function CheckoutButton({ priceId, label, sub, color, Icon, compact = false }:
@@ -109,6 +109,7 @@ export default function ProfilePage() {
   const { theme, toggle } = useTheme();
   const [user, setUser] = useState<User | null>(null);
   const [stats, setStats] = useState<Stats>({ fridgeCount: 0, favCount: 0, listCount: 0 });
+  const [impact, setImpact] = useState<{ sessionsCooked: number; sessionsThisMonth: number; mealsCooked: number; moneyCooked: number; savedVsTakeout: number; avgCaloriesPerServing: number; topCuisine: string | null; trackedExpiry: number } | null>(null);
   const [activeTab, setActiveTab] = useState<'prefs'|'history'|'badges'>('prefs');
   const [cookLogs, setCookLogs] = useState<CookLogEntry[]>([]);
   const [cookCounts, setCookCounts] = useState<Record<string,number>>({});
@@ -139,6 +140,7 @@ export default function ProfilePage() {
   useEffect(() => {
     fetch('/api/auth/me').then(r => r.ok ? r.json() : null).then(d => d && setUser(d.user));
     fetch('/api/profile/stats').then(r => r.ok ? r.json() : null).then(d => d && setStats(d));
+    fetch('/api/profile/impact').then(r => r.ok ? r.json() : null).then(d => d && setImpact(d));
     fetch('/api/billing/status').then(r => r.ok ? r.json() : null).then(d => d && setBilling(d));
     fetch('/api/profile').then(r => r.ok ? r.json() : null).then(d => {
       if (d) {
@@ -248,6 +250,52 @@ export default function ProfilePage() {
               <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>Listes</p>
             </div>
           </div>
+
+          {/* ── Mon impact ── */}
+          {impact && impact.sessionsCooked > 0 && (
+            <div className="card p-4 mb-5">
+              <div className="flex items-center gap-2 mb-3">
+                <Sparkles className="w-4 h-4 text-emerald-500" />
+                <h2 className="font-semibold text-sm">Mon impact</h2>
+                <span className="text-[10px] ml-auto" style={{ color: 'var(--text-muted)' }}>
+                  {impact.sessionsThisMonth} ce mois-ci
+                </span>
+              </div>
+              <div className="grid grid-cols-2 gap-2 mb-2">
+                <div className="rounded-lg p-3 flex items-center gap-2.5" style={{ backgroundColor: 'rgba(16,185,129,0.08)' }}>
+                  <PiggyBank className="w-5 h-5 text-emerald-500 shrink-0" />
+                  <div>
+                    <p className="text-lg font-bold leading-none">{impact.savedVsTakeout} €</p>
+                    <p className="text-[10px] mt-0.5" style={{ color: 'var(--text-muted)' }}>économisés vs livraison</p>
+                  </div>
+                </div>
+                <div className="rounded-lg p-3 flex items-center gap-2.5" style={{ backgroundColor: 'rgba(99,102,241,0.08)' }}>
+                  <ChefHat className="w-5 h-5 text-indigo-400 shrink-0" />
+                  <div>
+                    <p className="text-lg font-bold leading-none">{impact.sessionsCooked}</p>
+                    <p className="text-[10px] mt-0.5" style={{ color: 'var(--text-muted)' }}>repas cuisinés</p>
+                  </div>
+                </div>
+                <div className="rounded-lg p-3 flex items-center gap-2.5" style={{ backgroundColor: 'rgba(234,179,8,0.08)' }}>
+                  <Leaf className="w-5 h-5 text-amber-500 shrink-0" />
+                  <div>
+                    <p className="text-lg font-bold leading-none">{impact.trackedExpiry}</p>
+                    <p className="text-[10px] mt-0.5" style={{ color: 'var(--text-muted)' }}>aliments anti-gaspi suivis</p>
+                  </div>
+                </div>
+                <div className="rounded-lg p-3 flex items-center gap-2.5" style={{ backgroundColor: 'rgba(239,68,68,0.06)' }}>
+                  <Flame className="w-5 h-5 text-orange-500 shrink-0" />
+                  <div>
+                    <p className="text-lg font-bold leading-none">{impact.avgCaloriesPerServing || '—'}</p>
+                    <p className="text-[10px] mt-0.5" style={{ color: 'var(--text-muted)' }}>kcal moy. / portion</p>
+                  </div>
+                </div>
+              </div>
+              <p className="text-[10px] text-center" style={{ color: 'var(--text-muted)' }}>
+                Estimations basées sur tes recettes cuisinées{impact.topCuisine ? ` · cuisine préférée : ${impact.topCuisine}` : ''}.
+              </p>
+            </div>
+          )}
 
           {/* ── Repas & Courses ── */}
           <button onClick={() => router.push('/shopping')}
