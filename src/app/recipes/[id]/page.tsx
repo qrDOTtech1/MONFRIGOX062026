@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
@@ -101,6 +101,7 @@ export default function RecipeDetailPage() {
   const [servings, setServings] = useState<number>(4);
   const [enriching, setEnriching] = useState(false);
   const enrichTriggered = useRef(false);
+  const [showNutritionDetails, setShowNutritionDetails] = useState(false);
 
   // Coût estimé
   const [cost, setCost] = useState<CostEstimate | null>(null);
@@ -495,37 +496,193 @@ export default function RecipeDetailPage() {
 
         {recipe.calories !== null ? (
           <>
+            {/* NutriScore band */}
+            {recipe.nutriScore && (() => {
+              const NS_DATA: Record<string, { color: string; bg: string; label: string; desc: string }> = {
+                A: { color: '#fff', bg: '#1a7f37', label: 'Excellent', desc: 'Qualité nutritionnelle excellente' },
+                B: { color: '#fff', bg: '#5aab28', label: 'Bon',       desc: 'Bonne qualité nutritionnelle' },
+                C: { color: '#333', bg: '#f5c400', label: 'Moyen',     desc: 'Qualité nutritionnelle moyenne' },
+                D: { color: '#fff', bg: '#e67e00', label: 'Mauvais',   desc: 'Qualité nutritionnelle insuffisante' },
+                E: { color: '#fff', bg: '#d63031', label: 'À éviter',  desc: 'Qualité nutritionnelle médiocre' },
+              };
+              const grades = ['A','B','C','D','E'];
+              const current = recipe.nutriScore;
+              const info = NS_DATA[current];
+              return (
+                <div className="mb-3 rounded-xl overflow-hidden border" style={{ borderColor: 'var(--border)' }}>
+                  <div className="flex">
+                    {grades.map(g => (
+                      <div key={g} className="flex-1 py-1.5 text-center text-xs font-bold transition-all"
+                        style={{
+                          backgroundColor: g === current ? NS_DATA[g].bg : 'var(--bg-inset)',
+                          color: g === current ? NS_DATA[g].color : 'var(--text-muted)',
+                          fontSize: g === current ? '13px' : '11px',
+                          fontWeight: g === current ? '800' : '500',
+                        }}>{g}</div>
+                    ))}
+                  </div>
+                  {info && (
+                    <div className="px-3 py-1.5 flex items-center gap-2">
+                      <span className="text-xs font-semibold" style={{ color: info.bg }}>{info.label}</span>
+                      <span className="text-[10px]" style={{ color: 'var(--text-muted)' }}>— {info.desc}</span>
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
+
+            {/* 4 macro tiles */}
             <div className="grid grid-cols-4 gap-2 mb-3">
-              <div className="text-center p-2 rounded-lg" style={{ backgroundColor: 'var(--bg-inset)' }}>
-                <Flame className="w-4 h-4 mx-auto mb-1 text-orange-500" />
-                <p className="text-sm font-semibold">{Math.round(recipe.calories)}</p>
-                <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>kcal</p>
-              </div>
-              <div className="text-center p-2 rounded-lg" style={{ backgroundColor: 'var(--bg-inset)' }}>
-                <Beef className="w-4 h-4 mx-auto mb-1 text-red-500" />
-                <p className="text-sm font-semibold">{recipe.protein != null ? recipe.protein.toFixed(1) : '–'}g</p>
-                <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>Protéines</p>
-              </div>
-              <div className="text-center p-2 rounded-lg" style={{ backgroundColor: 'var(--bg-inset)' }}>
-                <Wheat className="w-4 h-4 mx-auto mb-1 text-amber-500" />
-                <p className="text-sm font-semibold">{recipe.carbs != null ? recipe.carbs.toFixed(1) : '–'}g</p>
-                <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>Glucides</p>
-              </div>
-              <div className="text-center p-2 rounded-lg" style={{ backgroundColor: 'var(--bg-inset)' }}>
-                <Droplets className="w-4 h-4 mx-auto mb-1 text-yellow-500" />
-                <p className="text-sm font-semibold">{recipe.fat != null ? recipe.fat.toFixed(1) : '–'}g</p>
-                <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>Lipides</p>
-              </div>
+              {(() => {
+                const AJR_KCAL = 2000;
+                const pct = Math.round((recipe.calories / AJR_KCAL) * 100);
+                return (
+                  <div className="text-center p-2 rounded-lg" style={{ backgroundColor: 'var(--bg-inset)' }}>
+                    <Flame className="w-4 h-4 mx-auto mb-1 text-orange-500" />
+                    <p className="text-sm font-semibold">{Math.round(recipe.calories)}</p>
+                    <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>kcal</p>
+                    <p className="text-[9px] mt-0.5 text-orange-400 font-medium">{pct}% AJR</p>
+                  </div>
+                );
+              })()}
+              {(() => {
+                const AJR_PROT = 50;
+                const pct = recipe.protein != null ? Math.round((recipe.protein / AJR_PROT) * 100) : null;
+                return (
+                  <div className="text-center p-2 rounded-lg" style={{ backgroundColor: 'var(--bg-inset)' }}>
+                    <Beef className="w-4 h-4 mx-auto mb-1 text-red-500" />
+                    <p className="text-sm font-semibold">{recipe.protein != null ? recipe.protein.toFixed(1) : '–'}g</p>
+                    <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>Protéines</p>
+                    {pct != null && <p className="text-[9px] mt-0.5 text-red-400 font-medium">{pct}% AJR</p>}
+                  </div>
+                );
+              })()}
+              {(() => {
+                const AJR_CARBS = 260;
+                const pct = recipe.carbs != null ? Math.round((recipe.carbs / AJR_CARBS) * 100) : null;
+                return (
+                  <div className="text-center p-2 rounded-lg" style={{ backgroundColor: 'var(--bg-inset)' }}>
+                    <Wheat className="w-4 h-4 mx-auto mb-1 text-amber-500" />
+                    <p className="text-sm font-semibold">{recipe.carbs != null ? recipe.carbs.toFixed(1) : '–'}g</p>
+                    <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>Glucides</p>
+                    {pct != null && <p className="text-[9px] mt-0.5 text-amber-400 font-medium">{pct}% AJR</p>}
+                  </div>
+                );
+              })()}
+              {(() => {
+                const AJR_FAT = 70;
+                const pct = recipe.fat != null ? Math.round((recipe.fat / AJR_FAT) * 100) : null;
+                return (
+                  <div className="text-center p-2 rounded-lg" style={{ backgroundColor: 'var(--bg-inset)' }}>
+                    <Droplets className="w-4 h-4 mx-auto mb-1 text-yellow-500" />
+                    <p className="text-sm font-semibold">{recipe.fat != null ? recipe.fat.toFixed(1) : '–'}g</p>
+                    <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>Lipides</p>
+                    {pct != null && <p className="text-[9px] mt-0.5 text-yellow-400 font-medium">{pct}% AJR</p>}
+                  </div>
+                );
+              })()}
             </div>
+
+            {/* Progress bars AJR */}
+            <div className="space-y-1.5 mb-3">
+              {[
+                { label: 'Calories', value: recipe.calories, ajr: 2000, unit: 'kcal', color: '#f97316' },
+                { label: 'Protéines', value: recipe.protein, ajr: 50, unit: 'g', color: '#ef4444' },
+                { label: 'Glucides', value: recipe.carbs, ajr: 260, unit: 'g', color: '#f59e0b' },
+                { label: 'Lipides', value: recipe.fat, ajr: 70, unit: 'g', color: '#eab308' },
+              ].map(({ label, value, ajr, unit, color }) => {
+                if (value == null) return null;
+                const pct = Math.min(100, Math.round((value / ajr) * 100));
+                return (
+                  <div key={label}>
+                    <div className="flex justify-between text-[10px] mb-0.5" style={{ color: 'var(--text-muted)' }}>
+                      <span>{label}</span>
+                      <span>{value.toFixed(0)}{unit} / {ajr}{unit} <span style={{ color }}> ({pct}%)</span></span>
+                    </div>
+                    <div className="h-1.5 rounded-full overflow-hidden" style={{ backgroundColor: 'var(--bg-inset)' }}>
+                      <div className="h-full rounded-full transition-all" style={{ width: `{pct}%`, backgroundColor: color }} />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Calorie equivalents */}
+            {recipe.calories != null && recipe.calories > 0 && (
+              <div className="rounded-lg px-3 py-2 mb-3 text-[11px] flex flex-wrap gap-2" style={{ backgroundColor: 'var(--bg-inset)', color: 'var(--text-muted)' }}>
+                <span>🚶 {Math.round(recipe.calories / 4.5)} min de marche</span>
+                <span>🏃 {Math.round(recipe.calories / 10)} min de course</span>
+                <span>🚴 {Math.round(recipe.calories / 8)} min de vélo</span>
+              </div>
+            )}
+
+            {/* Fibres + Sel */}
             {(recipe.fiber != null || recipe.salt != null) && (
-              <div className="flex gap-4 text-xs justify-center" style={{ color: 'var(--text-muted)' }}>
-                {recipe.fiber != null && <span>Fibres : {recipe.fiber.toFixed(1)}g</span>}
-                {recipe.salt != null && <span>Sel : {recipe.salt.toFixed(1)}g</span>}
+              <div className="flex gap-4 text-xs justify-center mb-3" style={{ color: 'var(--text-muted)' }}>
+                {recipe.fiber != null && <span>🌾 Fibres : <strong>{recipe.fiber.toFixed(1)}g</strong>{recipe.fiber >= 3 ? ' ✅' : ''}</span>}
+                {recipe.salt != null && <span>🧂 Sel : <strong>{recipe.salt.toFixed(1)}g</strong>{recipe.salt > 2.5 ? ' ⚠️' : ' ✅'}</span>}
+              </div>
+            )}
+
+            {/* Bouton Plus de détails */}
+            <button
+              onClick={() => setShowNutritionDetails(v => !v)}
+              className="w-full text-xs flex items-center justify-center gap-1 py-1.5 rounded-lg transition-colors"
+              style={{ color: 'var(--text-muted)', backgroundColor: 'var(--bg-inset)' }}
+            >
+              {showNutritionDetails ? '▲ Moins de détails' : '▼ Plus de détails'}
+            </button>
+
+            {/* Détails étendus */}
+            {showNutritionDetails && (
+              <div className="mt-3 space-y-2 text-[11px]" style={{ color: 'var(--text-muted)' }}>
+                <p className="font-semibold text-xs mb-2" style={{ color: 'var(--text-primary)' }}>Détails nutritionnels</p>
+
+                {recipe.fiber != null && (
+                  <div className="rounded-lg p-2.5" style={{ backgroundColor: 'var(--bg-inset)' }}>
+                    <div className="flex justify-between mb-1">
+                      <span>🌾 Fibres alimentaires</span>
+                      <span className="font-medium">{recipe.fiber.toFixed(1)}g / 25g AJR</span>
+                    </div>
+                    <div className="h-1.5 rounded-full overflow-hidden" style={{ backgroundColor: 'var(--border)' }}>
+                      <div className="h-full rounded-full" style={{ width: `{Math.min(100, (recipe.fiber / 25) * 100)}%`, backgroundColor: '#22c55e' }} />
+                    </div>
+                    <p className="mt-1 text-[10px]">{recipe.fiber < 2 ? 'Faible teneur en fibres' : recipe.fiber < 5 ? 'Bonne source de fibres' : 'Excellente source de fibres'}</p>
+                  </div>
+                )}
+
+                {recipe.salt != null && (
+                  <div className="rounded-lg p-2.5" style={{ backgroundColor: 'var(--bg-inset)' }}>
+                    <div className="flex justify-between mb-1">
+                      <span>🧂 Sel (sodium)</span>
+                      <span className="font-medium">{recipe.salt.toFixed(1)}g / 6g max OMS</span>
+                    </div>
+                    <div className="h-1.5 rounded-full overflow-hidden" style={{ backgroundColor: 'var(--border)' }}>
+                      <div className="h-full rounded-full" style={{ width: `{Math.min(100, (recipe.salt / 6) * 100)}%`, backgroundColor: recipe.salt > 3 ? '#ef4444' : recipe.salt > 1.5 ? '#f59e0b' : '#22c55e' }} />
+                    </div>
+                    <p className="mt-1 text-[10px]">{recipe.salt > 3 ? '⚠️ Teneur en sel élevée' : recipe.salt > 1.5 ? 'Teneur en sel modérée' : '✅ Teneur en sel raisonnable'}</p>
+                  </div>
+                )}
+
+                {recipe.fat != null && (
+                  <div className="rounded-lg p-2.5" style={{ backgroundColor: 'var(--bg-inset)' }}>
+                    <span>💧 Lipides : {recipe.fat.toFixed(1)}g → {(recipe.fat * 9).toFixed(0)} kcal ({Math.round((recipe.fat * 9 / (recipe.calories ?? 1)) * 100)}% des calories)</span>
+                  </div>
+                )}
+
+                {recipe.carbs != null && (
+                  <div className="rounded-lg p-2.5" style={{ backgroundColor: 'var(--bg-inset)' }}>
+                    <span>🌾 Glucides : {recipe.carbs.toFixed(1)}g → {(recipe.carbs * 4).toFixed(0)} kcal ({Math.round((recipe.carbs * 4 / (recipe.calories ?? 1)) * 100)}% des calories)</span>
+                  </div>
+                )}
+
+                <p className="text-[10px] italic pt-1" style={{ color: 'var(--text-muted)' }}>
+                  AJR = Apports Journaliers de Référence pour un adulte moyen (2000 kcal/j). Les besoins varient selon l&apos;âge, le sexe et l&apos;activité physique.
+                </p>
               </div>
             )}
           </>
         ) : enriching ? (
-          /* Skeleton pendant le calcul IA */
           <div className="grid grid-cols-4 gap-2">
             {[...Array(4)].map((_, i) => (
               <div key={i} className="rounded-lg p-2 text-center" style={{ backgroundColor: 'var(--bg-inset)' }}>
