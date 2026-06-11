@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import AppShell from '@/components/AppShell';
+import InfoBubble from '@/components/InfoBubble';
 import {
   CalendarDays, ShoppingCart, ChevronLeft, ChevronRight, ChevronDown,
   Plus, X, Search, Check, Refrigerator, Share2,
@@ -247,6 +248,17 @@ export default function ShoppingPage() {
   /* ── RENDER ── */
   return (
     <AppShell>
+
+      {/* Titre + aide */}
+      <div className="flex items-center gap-2.5 mb-3">
+        <CalendarDays className="w-5 h-5" style={{ color: 'var(--text-secondary)' }} />
+        <h1 className="text-lg font-semibold">Repas &amp; Courses</h1>
+        <InfoBubble
+          align="left"
+          label="Repas & Courses"
+          text="« Planning » : choisis tes recettes pour chaque jour de la semaine. « Courses » : la liste des ingrédients à acheter est générée automatiquement à partir de ton planning."
+        />
+      </div>
 
       {/* Tabs */}
       <div className="flex rounded-xl p-0.5 mb-5"

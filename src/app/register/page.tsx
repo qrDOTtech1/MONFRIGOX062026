@@ -27,7 +27,8 @@ export default function RegisterPage() {
       });
       const data = await res.json();
       if (!res.ok) { setError(data.error); return; }
-      router.push('/dashboard');
+      // Onboarding lancé automatiquement juste après la création du compte
+      router.push('/onboarding');
     } catch {
       setError('Erreur de connexion au serveur');
     } finally {

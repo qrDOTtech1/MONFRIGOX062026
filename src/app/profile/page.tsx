@@ -4,7 +4,8 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import AppShell from '@/components/AppShell';
 import { useTheme } from '@/components/ThemeProvider';
-import { UserCircle, LogOut, Shield, Heart, ShoppingCart, Refrigerator, Sun, Moon, Save, Check, AlertTriangle, Baby, Users, History, Sparkles, ChefHat, Zap, Crown, Star, Plus, Loader2 } from 'lucide-react';
+import InfoBubble from '@/components/InfoBubble';
+import { UserCircle, LogOut, Shield, Heart, ShoppingCart, Refrigerator, Sun, Moon, Save, Check, AlertTriangle, Baby, Users, History, Sparkles, ChefHat, Zap, Crown, Star, Plus, Loader2, CalendarDays, ChevronRight } from 'lucide-react';
 
 // Bouton qui crée une Checkout Session Stripe et redirige
 function CheckoutButton({ priceId, label, sub, color, Icon, compact = false }:
@@ -248,6 +249,27 @@ export default function ProfilePage() {
             </div>
           </div>
 
+          {/* ── Repas & Courses ── */}
+          <button onClick={() => router.push('/shopping')}
+            className="w-full card p-4 mb-3 flex items-center gap-3 text-left hover:scale-[1.01] transition-all">
+            <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
+              style={{ backgroundColor: 'var(--accent)', color: 'var(--accent-text)' }}>
+              <CalendarDays className="w-4 h-4" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold flex items-center gap-1.5">
+                Repas &amp; Courses
+                <InfoBubble
+                  align="left"
+                  label="Repas & Courses"
+                  text="Planifie tes repas de la semaine, puis génère automatiquement ta liste de courses à partir des recettes choisies."
+                />
+              </p>
+              <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>Planning de la semaine &amp; liste de courses</p>
+            </div>
+            <ChevronRight className="w-4 h-4" style={{ color: 'var(--text-muted)' }} />
+          </button>
+
           {/* ── Coach IA ── */}
           <button onClick={() => router.push('/coach')}
             className="w-full card p-4 mb-5 flex items-center gap-3 text-left hover:scale-[1.01] transition-all"
@@ -488,6 +510,11 @@ export default function ProfilePage() {
             <h2 className="font-semibold text-sm mb-4 flex items-center gap-2">
               <AlertTriangle className="w-4 h-4 text-amber-500" />
               Mes allergènes
+              <InfoBubble
+                align="left"
+                label="Mes allergènes"
+                text="Coche les aliments que tu ne peux pas manger. Les recettes qui en contiennent seront signalées par un avertissement."
+              />
             </h2>
             <p className="text-xs mb-3" style={{ color: 'var(--text-muted)' }}>
               Les recettes contenant ces allergènes seront signalées

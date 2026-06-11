@@ -1,11 +1,16 @@
 ﻿'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import AppShell from '@/components/AppShell';
 import RecipeCard from '@/components/RecipeCard';
-import { Search, ChefHat, SlidersHorizontal, Refrigerator, Sparkles, Globe, Users, ChevronDown, X, Dice5, Crown, Star, Lock } from 'lucide-react';
+import CommunityFeed from '@/components/CommunityFeed';
+import InfoBubble from '@/components/InfoBubble';
+import { Search, ChefHat, SlidersHorizontal, Refrigerator, Sparkles, Globe, Users, ChevronDown, X, Dice5, Crown, MessageSquare, Loader2 } from 'lucide-react';
+
+// Nombre de recettes affichées au départ puis par paquet (chargement progressif)
+const PAGE_SIZE = 12;
 
 interface Recipe {
   id: string;
@@ -130,6 +135,11 @@ export default function ExplorerPage() {
   const [guestAllergens, setGuestAllergens] = useState<string[]>([]);
   const [kidMode, setKidMode]               = useState<'' | 'kid' | 'baby'>('');
   const [userPlan, setUserPlan]             = useState<string>('');
+  // Onglet Explorer : recettes ou communauté (communauté incorporée pour réduire la nav)
+  const [view, setView]                     = useState<'recipes' | 'community'>('recipes');
+  // Chargement progressif : on n'affiche pas toutes les recettes d'un coup
+  const [visibleLimit, setVisibleLimit]     = useState(PAGE_SIZE);
+  const sentinelRef = useRef<HTMLDivElement>(null);
 
   const load = useCallback(async () => {
     const res = await fetch('/api/recipes');
@@ -200,6 +210,34 @@ export default function ExplorerPage() {
   const partial = filtered.filter(r => r.matchPercent >= 40 && r.matchPercent < 80);
   const explore = filtered.filter(r => r.matchPercent < 40);
 
+  // ── Chargement progressif ──────────────────────────────────────────
+  // On ne rend qu'un sous-ensemble des recettes, puis on agrandit la
+  // fenêtre au défilement. Évite d'afficher des centaines de cartes d'un
+  // coup (ce qui rendait Explorer très lent à l'ouverture).
+  const hasMore = visibleLimit < filtered.length;
+  const readyShown      = ready.slice(0, visibleLimit);
+  const remAfterReady   = Math.max(0, visibleLimit - readyShown.length);
+  const partialShown    = partial.slice(0, remAfterReady);
+  const remAfterPartial = Math.max(0, remAfterReady - partialShown.length);
+  const exploreShown    = explore.slice(0, remAfterPartial);
+
+  // Réinitialise la fenêtre quand la recherche, les filtres ou l'onglet changent
+  useEffect(() => {
+    setVisibleLimit(PAGE_SIZE);
+  }, [search, difficulty, time, cuisine, dietary, budget, customBudget, guestDiet, guestAllergens, kidMode, sectionMode, view]);
+
+  // Agrandit la fenêtre quand le bas de liste devient visible (scroll infini)
+  useEffect(() => {
+    const el = sentinelRef.current;
+    if (!el) return;
+    const obs = new IntersectionObserver(
+      entries => { if (entries[0].isIntersecting) setVisibleLimit(v => v + PAGE_SIZE); },
+      { rootMargin: '400px' },
+    );
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, [hasMore, view, sectionMode, isSearching]);
+
   function resetGuest() {
     setGuestDiet('');
     setGuestAllergens([]);
@@ -247,9 +285,15 @@ export default function ExplorerPage() {
 
   return (
     <AppShell>
-      <div className="flex items-center gap-2.5 mb-4">
+      <div className="flex items-center gap-2.5 mb-3">
         <ChefHat className="w-5 h-5" style={{ color: 'var(--text-secondary)' }} />
         <h1 className="font-semibold text-base">Explorer</h1>
+        <InfoBubble
+          align="left"
+          label="Explorer"
+          text="Tes recettes sont triées selon le contenu de ton frigo : celles que tu peux cuisiner maintenant apparaissent en premier. L'onglet « Communauté » regroupe les partages des autres membres."
+        />
+        {view === 'recipes' && (
         <div className="ml-auto flex items-center gap-2">
           <button
             disabled={surprising}
@@ -284,7 +328,35 @@ export default function ExplorerPage() {
             {filtered.length} recette{filtered.length !== 1 ? 's' : ''}
           </span>
         </div>
+        )}
       </div>
+
+      {/* Onglets Recettes / Communauté (communauté incorporée dans Explorer) */}
+      <div className="flex gap-1 p-0.5 rounded-xl mb-4" style={{ backgroundColor: 'var(--bg-inset)' }}>
+        <button
+          onClick={() => setView('recipes')}
+          className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-sm font-medium transition-all"
+          style={view === 'recipes'
+            ? { backgroundColor: 'var(--bg-raised)', color: 'var(--text)', boxShadow: '0 1px 3px rgba(0,0,0,.12)' }
+            : { color: 'var(--text-muted)' }}>
+          <ChefHat className="w-4 h-4" /> Recettes
+        </button>
+        <button
+          onClick={() => setView('community')}
+          className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-sm font-medium transition-all"
+          style={view === 'community'
+            ? { backgroundColor: 'var(--bg-raised)', color: 'var(--text)', boxShadow: '0 1px 3px rgba(0,0,0,.12)' }
+            : { color: 'var(--text-muted)' }}>
+          <MessageSquare className="w-4 h-4" /> Communauté
+        </button>
+      </div>
+
+      {/* ════════ ONGLET COMMUNAUTÉ ════════ */}
+      {view === 'community' && <CommunityFeed />}
+
+      {/* ════════ ONGLET RECETTES ════════ */}
+      {view === 'recipes' && (
+      <>
 
       {/* Banner upgrade FREE */}
       {userPlan === 'FREE' && (
@@ -578,27 +650,41 @@ export default function ExplorerPage() {
               </Link>
             </div>
           )}
-          {ready.length > 0 && (
+          {readyShown.length > 0 && (
             <>
               <SectionLabel icon={<Refrigerator className="w-4 h-4" style={{ color: '#22c55e' }} />} label="Prêt à cuisiner" count={ready.length} color="#22c55e" />
-              <CardList list={ready} />
+              <CardList list={readyShown} />
             </>
           )}
-          {partial.length > 0 && (
+          {partialShown.length > 0 && (
             <>
               <SectionLabel icon={<Sparkles className="w-4 h-4" style={{ color: '#f59e0b' }} />} label="Presque complet" count={partial.length} color="#f59e0b" />
-              <CardList list={partial} />
+              <CardList list={partialShown} />
             </>
           )}
-          {explore.length > 0 && (
+          {exploreShown.length > 0 && (
             <>
               <SectionLabel icon={<Globe className="w-4 h-4" style={{ color: 'var(--text-muted)' }} />} label="À explorer" count={explore.length} />
-              <CardList list={explore} />
+              <CardList list={exploreShown} />
             </>
           )}
         </div>
       ) : (
-        <CardList list={filtered} />
+        <CardList list={filtered.slice(0, visibleLimit)} />
+      )}
+
+      {/* Chargement progressif : sentinelle (scroll) + bouton de secours */}
+      {hasMore && (
+        <>
+          <div ref={sentinelRef} aria-hidden className="h-1" />
+          <button
+            onClick={() => setVisibleLimit(v => v + PAGE_SIZE)}
+            className="w-full mt-2 mb-1 flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-medium transition-all"
+            style={{ backgroundColor: 'var(--bg-inset)', color: 'var(--text-secondary)', border: '1px solid var(--border)' }}>
+            <Loader2 className="w-4 h-4" />
+            Voir plus de recettes ({filtered.length - visibleLimit} restantes)
+          </button>
+        </>
       )}
 
       {filtered.some(r => r.isLocked) && (
@@ -607,6 +693,9 @@ export default function ExplorerPage() {
           style={{ backgroundColor: 'rgba(245,158,11,0.07)', border: '1px solid rgba(245,158,11,0.25)', color: 'var(--text-secondary)' }}>
           🔓 Débloquer toutes les recettes avec <span className="font-semibold text-amber-600 dark:text-amber-400">Premium</span>
         </Link>
+      )}
+
+      </>
       )}
     </AppShell>
   );
