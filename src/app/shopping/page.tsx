@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import AppShell from '@/components/AppShell';
 import {
-  CalendarDays, ShoppingCart, ChevronLeft, ChevronRight,
+  CalendarDays, ShoppingCart, ChevronLeft, ChevronRight, ChevronDown,
   Plus, X, Search, Check, Refrigerator, Share2,
   Loader2, UtensilsCrossed, Sparkles,
 } from 'lucide-react';
@@ -27,10 +27,12 @@ interface ShoppingEntry {
   ingredientId: string; name: string; emoji: string;
   qty: number; unit: string; recipes: string[];
   inFridge: boolean; fridgeQty?: number; fridgeUnit?: string;
+  cost?: number;
 }
 interface ShoppingData {
   categories: Record<string, ShoppingEntry[]>;
   totalItems: number; inFridgeCount: number; missingCount: number; planCount: number;
+  totalCost?: number; missingCost?: number;
 }
 
 /* ── Constants ── */
@@ -91,6 +93,9 @@ export default function ShoppingPage() {
   // Auto planning
   const [autoPlanning, setAutoPlanning] = useState(false);
   const [autoPlanError, setAutoPlanError] = useState('');
+
+  // Shopping collapsed categories
+  const [collapsedCats, setCollapsedCats] = useState<Set<string>>(new Set());
 
   const weekDays = getWeekDays(weekOffset);
   const startDate = dateKey(weekDays[0]);
@@ -190,9 +195,19 @@ export default function ShoppingPage() {
       const res = await fetch('/api/meal-plan/auto', { method: 'POST' });
       if (res.ok) {
         const data = await res.json();
-        if (data.saved > 0) {
-          setWeekOffset(1); // jump to next week
-          setTimeout(loadPlans, 300);
+        if (data.saved > 0 && data.weekStart) {
+          // Calculate which weekOffset matches the generated week
+          const genMonday = new Date(data.weekStart + 'T00:00:00');
+          const now = new Date();
+          const dow = now.getDay();
+          const diff = dow === 0 ? -6 : 1 - dow;
+          const thisMonday = new Date(now);
+          thisMonday.setDate(now.getDate() + diff);
+          thisMonday.setHours(0, 0, 0, 0);
+          const weekDiff = Math.round((genMonday.getTime() - thisMonday.getTime()) / (7 * 86400000));
+          setWeekOffset(weekDiff);
+        } else if (data.saved > 0) {
+          setWeekOffset(1);
         }
       } else {
         const err = await res.json();
@@ -444,6 +459,9 @@ export default function ShoppingPage() {
                     <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
                       {shopData.inFridgeCount > 0 && `${shopData.inFridgeCount} déjà dans le frigo · `}
                       {shopData.missingCount} à acheter
+                      {typeof shopData.missingCost === 'number' && shopData.missingCost > 0 && (
+                        <span className="font-semibold text-emerald-600 dark:text-emerald-400"> · ~{shopData.missingCost.toFixed(2)}€</span>
+                      )}
                     </p>
                   </div>
                   <div className="flex items-center gap-1.5">
@@ -491,6 +509,14 @@ export default function ShoppingPage() {
                   <div className="h-full rounded-full transition-all duration-500"
                     style={{ width: `${progress}%`, backgroundColor: progress === 100 ? '#10b981' : 'var(--accent)' }} />
                 </div>
+
+                {/* Cost summary */}
+                {typeof shopData.totalCost === 'number' && shopData.totalCost > 0 && (
+                  <div className="flex items-center justify-between mt-3 pt-3" style={{ borderTop: '1px solid var(--border-subtle)' }}>
+                    <span className="text-xs" style={{ color: 'var(--text-muted)' }}>Budget total estimé</span>
+                    <span className="text-sm font-bold" style={{ color: 'var(--text)' }}>~{shopData.totalCost.toFixed(2)}€</span>
+                  </div>
+                )}
               </div>
 
               {/* Fridge added banner */}
@@ -502,81 +528,121 @@ export default function ShoppingPage() {
                 </div>
               )}
 
-              {/* Categories */}
-              <div className="space-y-4 pb-28">
-                {Object.entries(shopData.categories).map(([cat, entries]) => (
-                  <div key={cat}>
-                    <div className="flex items-center gap-2 mb-1.5">
-                      <span className="text-base">{CAT_EMOJI[cat] || '📦'}</span>
-                      <h3 className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>{cat}</h3>
-                      <span className="text-[10px] px-1.5 rounded-full" style={{ backgroundColor: 'var(--bg-inset)', color: 'var(--text-muted)' }}>{entries.length}</span>
+              {/* Categories — collapsible by rayon */}
+              <div className="space-y-2.5 pb-28">
+                {Object.entries(shopData.categories).map(([cat, entries]) => {
+                  const isCollapsed = collapsedCats.has(cat);
+                  const catCost = entries.reduce((s, e) => s + (e.cost || 0), 0);
+                  const catChecked = entries.filter(e => checked.has(e.ingredientId) || e.inFridge).length;
+
+                  return (
+                    <div key={cat} className="card overflow-hidden">
+                      {/* Category header — clickable to collapse */}
+                      <button
+                        onClick={() => setCollapsedCats(prev => {
+                          const next = new Set(prev);
+                          if (next.has(cat)) next.delete(cat); else next.add(cat);
+                          return next;
+                        })}
+                        className="w-full flex items-center gap-2.5 px-3.5 py-3 text-left transition-colors hover:bg-[var(--bg-inset)]"
+                        style={{ borderBottom: isCollapsed ? undefined : '1px solid var(--border-subtle)' }}
+                      >
+                        <span className="text-lg">{CAT_EMOJI[cat] || '📦'}</span>
+                        <div className="flex-1 min-w-0">
+                          <h3 className="text-sm font-semibold">{cat}</h3>
+                          <p className="text-[10px] mt-0.5" style={{ color: 'var(--text-muted)' }}>
+                            {entries.length} article{entries.length > 1 ? 's' : ''}
+                            {catChecked > 0 && ` · ${catChecked} ok`}
+                          </p>
+                        </div>
+                        {catCost > 0 && (
+                          <span className="text-xs font-semibold px-2 py-0.5 rounded-full"
+                            style={{ backgroundColor: 'rgba(16,185,129,0.08)', color: 'rgb(16,185,129)' }}>
+                            ~{catCost.toFixed(2)}€
+                          </span>
+                        )}
+                        <span className="text-[10px] px-1.5 py-0.5 rounded-full font-medium"
+                          style={{ backgroundColor: 'var(--bg-inset)', color: 'var(--text-muted)' }}>
+                          {entries.length}
+                        </span>
+                        <ChevronDown
+                          className="w-4 h-4 shrink-0 transition-transform duration-200"
+                          style={{ color: 'var(--text-muted)', transform: isCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)' }}
+                        />
+                      </button>
+
+                      {/* Items — hidden when collapsed */}
+                      {!isCollapsed && (
+                        <div>
+                          {entries.map((item, idx) => {
+                            const isBought = checked.has(item.ingredientId);
+                            const inFridge = item.inFridge;
+
+                            return (
+                              <button key={item.ingredientId}
+                                onClick={() => {
+                                  if (inFridge) return;
+                                  setChecked(prev => {
+                                    const next = new Set(prev);
+                                    if (next.has(item.ingredientId)) next.delete(item.ingredientId);
+                                    else next.add(item.ingredientId);
+                                    return next;
+                                  });
+                                }}
+                                className="w-full flex items-center gap-3 px-3.5 py-2.5 transition-colors text-left"
+                                style={{
+                                  borderTop: idx > 0 ? '1px solid var(--border-subtle)' : undefined,
+                                  cursor: inFridge ? 'default' : 'pointer',
+                                  backgroundColor: inFridge ? 'rgba(16,185,129,0.03)' : undefined,
+                                }}>
+
+                                {/* Checkbox */}
+                                <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center shrink-0 transition-all ${
+                                  inFridge ? 'border-emerald-400' : isBought ? 'border-[var(--accent)]' : ''
+                                }`}
+                                  style={!inFridge && !isBought ? { borderColor: 'var(--border)' }
+                                    : inFridge ? { backgroundColor: 'rgba(16,185,129,0.12)' }
+                                    : { backgroundColor: 'var(--accent)' }}>
+                                  {inFridge && <Refrigerator className="w-2.5 h-2.5 text-emerald-500" />}
+                                  {!inFridge && isBought && <Check className="w-2.5 h-2.5 text-white" />}
+                                </div>
+
+                                {/* Emoji */}
+                                <span className="text-base w-6 shrink-0">{item.emoji}</span>
+
+                                {/* Name + recipes */}
+                                <div className="flex-1 min-w-0">
+                                  <span className={`text-sm ${(isBought || inFridge) ? 'line-through' : 'font-medium'}`}
+                                    style={{ color: (isBought || inFridge) ? 'var(--text-muted)' : 'var(--text)' }}>
+                                    {item.name}
+                                  </span>
+                                  {item.recipes.length > 0 && (
+                                    <p className="text-[10px] truncate mt-0.5" style={{ color: 'var(--text-muted)' }}>
+                                      {item.recipes.slice(0,2).join(', ')}{item.recipes.length > 2 ? ` +${item.recipes.length-2}` : ''}
+                                    </p>
+                                  )}
+                                </div>
+
+                                {/* Quantity + cost + fridge indicator */}
+                                <div className="text-right shrink-0">
+                                  <span className="text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
+                                    {item.qty} {item.unit}
+                                  </span>
+                                  {typeof item.cost === 'number' && item.cost > 0 && !inFridge && (
+                                    <p className="text-[10px]" style={{ color: 'rgb(16,185,129)' }}>~{item.cost.toFixed(2)}€</p>
+                                  )}
+                                  {inFridge && (
+                                    <p className="text-[10px] text-emerald-500">frigo ✓</p>
+                                  )}
+                                </div>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
                     </div>
-
-                    <div className="card overflow-hidden">
-                      {entries.map((item, idx) => {
-                        const isBought = checked.has(item.ingredientId);
-                        const inFridge = item.inFridge;
-
-                        return (
-                          <button key={item.ingredientId}
-                            onClick={() => {
-                              if (inFridge) return;
-                              setChecked(prev => {
-                                const next = new Set(prev);
-                                if (next.has(item.ingredientId)) next.delete(item.ingredientId);
-                                else next.add(item.ingredientId);
-                                return next;
-                              });
-                            }}
-                            className="w-full flex items-center gap-3 px-3.5 py-2.5 transition-colors text-left"
-                            style={{
-                              borderTop: idx > 0 ? '1px solid var(--border-subtle)' : undefined,
-                              cursor: inFridge ? 'default' : 'pointer',
-                              backgroundColor: inFridge ? 'rgba(16,185,129,0.03)' : undefined,
-                            }}>
-
-                            {/* Checkbox */}
-                            <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center shrink-0 transition-all ${
-                              inFridge ? 'border-emerald-400' : isBought ? 'border-[var(--accent)]' : ''
-                            }`}
-                              style={!inFridge && !isBought ? { borderColor: 'var(--border)' }
-                                : inFridge ? { backgroundColor: 'rgba(16,185,129,0.12)' }
-                                : { backgroundColor: 'var(--accent)' }}>
-                              {inFridge && <Refrigerator className="w-2.5 h-2.5 text-emerald-500" />}
-                              {!inFridge && isBought && <Check className="w-2.5 h-2.5 text-white" />}
-                            </div>
-
-                            {/* Emoji */}
-                            <span className="text-base w-6 shrink-0">{item.emoji}</span>
-
-                            {/* Name + recipes */}
-                            <div className="flex-1 min-w-0">
-                              <span className={`text-sm ${(isBought || inFridge) ? 'line-through' : 'font-medium'}`}
-                                style={{ color: (isBought || inFridge) ? 'var(--text-muted)' : 'var(--text)' }}>
-                                {item.name}
-                              </span>
-                              {item.recipes.length > 0 && (
-                                <p className="text-[10px] truncate mt-0.5" style={{ color: 'var(--text-muted)' }}>
-                                  {item.recipes.slice(0,2).join(', ')}{item.recipes.length > 2 ? ` +${item.recipes.length-2}` : ''}
-                                </p>
-                              )}
-                            </div>
-
-                            {/* Quantity + fridge indicator */}
-                            <div className="text-right shrink-0">
-                              <span className="text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
-                                {item.qty} {item.unit}
-                              </span>
-                              {inFridge && (
-                                <p className="text-[10px] text-emerald-500">frigo ✓</p>
-                              )}
-                            </div>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
 
               {/* Bottom sticky CTA */}

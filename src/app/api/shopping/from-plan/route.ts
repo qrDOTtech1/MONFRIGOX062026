@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth';
+import { estimateIngredientCost } from '@/lib/recipe-cost';
 
 // POST /api/shopping/from-plan
 // body: { startDate: "2026-06-09", endDate: "2026-06-15" }
@@ -84,6 +85,7 @@ export async function POST(req: NextRequest) {
     inFridge: boolean;
     fridgeQty?: number;
     fridgeUnit?: string;
+    cost: number;
   };
 
   const categories: Record<string, ShoppingEntry[]> = {};
@@ -92,16 +94,19 @@ export async function POST(req: NextRequest) {
     const cat = entry.ingredient.category || 'Autre';
     if (!categories[cat]) categories[cat] = [];
     const fridgeItem = fridgeMap.get(entry.ingredient.id);
+    const qty = Math.round(entry.totalQty * 10) / 10;
+    const cost = estimateIngredientCost(entry.ingredient.name, qty, entry.unit);
     categories[cat].push({
       ingredientId: entry.ingredient.id,
       name: entry.ingredient.name,
       emoji: entry.ingredient.emoji,
-      qty: Math.round(entry.totalQty * 10) / 10,
+      qty,
       unit: entry.unit,
       recipes: entry.recipes,
       inFridge: !!fridgeItem,
       fridgeQty: fridgeItem?.quantity,
       fridgeUnit: fridgeItem?.unit,
+      cost,
     });
   }
 
@@ -113,11 +118,17 @@ export async function POST(req: NextRequest) {
   const totalItems = Array.from(mergeMap.values()).length;
   const inFridgeCount = Array.from(mergeMap.values()).filter(e => fridgeMap.has(e.ingredient.id)).length;
 
+  const allItems = Object.values(categories).flat();
+  const totalCost = parseFloat(allItems.reduce((s, e) => s + (e.cost || 0), 0).toFixed(2));
+  const missingCost = parseFloat(allItems.filter(e => !e.inFridge).reduce((s, e) => s + (e.cost || 0), 0).toFixed(2));
+
   return NextResponse.json({
     categories,
     totalItems,
     inFridgeCount,
     missingCount: totalItems - inFridgeCount,
     planCount: plans.length,
+    totalCost,
+    missingCost,
   });
 }

@@ -67,11 +67,13 @@ Utilise UNIQUEMENT les IDs de la liste fournie.`,
     const match = raw.match(/\[[\s\S]*\]/);
     const plan: Array<{ day: number; meal: string; recipeId: string }> = match ? JSON.parse(match[0]) : [];
 
-    // Get next Monday
+    // Get next Monday (or this Monday if today is Monday and no plans yet this week)
     const today = new Date();
     const dayOfWeek = today.getDay();
+    const daysUntilNextMonday = dayOfWeek === 0 ? 1 : dayOfWeek === 1 ? 7 : (8 - dayOfWeek);
     const nextMonday = new Date(today);
-    nextMonday.setDate(today.getDate() + ((8 - dayOfWeek) % 7 || 7));
+    nextMonday.setDate(today.getDate() + daysUntilNextMonday);
+    nextMonday.setHours(0, 0, 0, 0);
 
     const validMeals = ['BREAKFAST', 'LUNCH', 'DINNER'];
     const recipeIds = new Set(recipes.map(r => r.id));

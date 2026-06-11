@@ -221,6 +221,23 @@ export interface CostEstimate {
 // ---------------------------------------------------------------------------
 // Fonction principale
 // ---------------------------------------------------------------------------
+export function estimateIngredientCost(name: string, quantity: number, unit: string): number {
+  const entry = lookupEntry(name);
+  if (!entry) return 0;
+  const { value, base } = toBaseUnit(quantity, unit);
+  let price: number;
+  if ((entry.unit === 'kg' && (base === 'kg' || base === 'L')) ||
+      (entry.unit === 'L' && (base === 'L' || base === 'kg')) ||
+      (entry.unit === 'pce' && base === 'pce')) {
+    price = value * entry.price;
+  } else {
+    price = entry.price * 0.5;
+  }
+  const isSpice = ['kg', 'L'].includes(entry.unit) && entry.price >= 8 && value < 0.05;
+  if (isSpice) price = Math.min(price, 0.80);
+  return Math.max(0, parseFloat(price.toFixed(2)));
+}
+
 export function estimateRecipeCost(
   ingredients: Array<{ name: string; emoji: string; quantity: number; unit: string }>,
   servings: number,
