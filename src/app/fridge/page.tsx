@@ -86,6 +86,12 @@ export default function FridgePage() {
     return () => clearTimeout(t);
   }, [searchIngredient]);
 
+  function notifyBadgeUpdate() {
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.ready.then(r => r.active?.postMessage('update-badge'));
+    }
+  }
+
   async function addToFridge(ingredientId: string) {
     await fetch('/api/fridge', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -93,6 +99,7 @@ export default function FridgePage() {
     });
     setSearchIngredient(''); setSuggestions([]); setShowAdd(false);
     loadData();
+    notifyBadgeUpdate();
   }
 
   async function createAndAdd() {
@@ -116,6 +123,7 @@ export default function FridgePage() {
   async function removeFromFridge(id: string) {
     await fetch(`/api/fridge/${id}`, { method: 'DELETE' });
     loadData();
+    notifyBadgeUpdate();
   }
 
   async function saveExpiry(id: string) {
@@ -127,6 +135,7 @@ export default function FridgePage() {
     setSavingExpiry(false);
     setEditExpiryId(null);
     loadData();
+    notifyBadgeUpdate();
   }
 
   function openExpiryEdit(item: FridgeItem) {
