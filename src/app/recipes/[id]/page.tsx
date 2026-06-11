@@ -7,7 +7,7 @@ import {
   ArrowLeft, Clock, Users, Heart, ShoppingCart, Check, X, ChefHat,
   Minus, Plus, Flame, Wheat, Droplets, Beef, Sparkles,
   MessageSquare, Globe, Lock, Send, Trash2, ImagePlus, Loader2,
-  Euro, ExternalLink, Wand2, Crown, AlertTriangle, Ban, CalendarPlus,
+  Euro, ExternalLink, Wand2, Crown, AlertTriangle, Ban, CalendarPlus, FolderHeart,
 } from 'lucide-react';
 import { ALLERGEN_LABELS } from '@/lib/dietary';
 
@@ -149,6 +149,43 @@ export default function RecipeDetailPage() {
   const [planDate, setPlanDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [planMeal, setPlanMeal] = useState('DINNER');
   const [planSaved, setPlanSaved] = useState(false);
+
+  // Carnets / collections
+  const [showCollections, setShowCollections] = useState(false);
+  const [collections, setCollections] = useState<Array<{ id: string; name: string; emoji: string; hasRecipe?: boolean }>>([]);
+  const [newColName, setNewColName] = useState('');
+
+  async function openCollections() {
+    setShowCollections(true);
+    const res = await fetch(`/api/collections?recipeId=${id}`);
+    if (res.ok) setCollections(await res.json());
+  }
+  async function toggleCollection(collectionId: string) {
+    const res = await fetch('/api/collections/toggle', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ collectionId, recipeId: id }),
+    });
+    if (res.ok) {
+      const { inCollection } = await res.json();
+      setCollections(prev => prev.map(c => c.id === collectionId ? { ...c, hasRecipe: inCollection } : c));
+    }
+  }
+  async function createCollectionAndAdd() {
+    if (!newColName.trim()) return;
+    const res = await fetch('/api/collections', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: newColName }),
+    });
+    if (res.ok) {
+      const col = await res.json();
+      await fetch('/api/collections/toggle', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ collectionId: col.id, recipeId: id }),
+      });
+      setNewColName('');
+      setCollections(prev => [{ id: col.id, name: col.name, emoji: col.emoji, hasRecipe: true }, ...prev]);
+    }
+  }
 
   useEffect(() => {
     fetch(`/api/recipes/${id}`)
@@ -532,6 +569,11 @@ export default function RecipeDetailPage() {
             </button>
           </div>
         )}
+
+        {/* Ajouter à un carnet */}
+        <button onClick={openCollections} className="btn-secondary w-full flex items-center justify-center gap-2 mt-2">
+          <FolderHeart className="w-4 h-4" /> Ajouter à un carnet
+        </button>
 
         {/* Bouton "J'ai cuisiné" + notation */}
         <button
@@ -1219,6 +1261,48 @@ export default function RecipeDetailPage() {
                 )}
               </div>
             ))}
+          </div>
+        </div>
+      )}
+
+      {/* Modal carnets */}
+      {showCollections && (
+        <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }} onClick={() => setShowCollections(false)}>
+          <div className="w-full max-w-sm rounded-t-2xl sm:rounded-2xl p-4 max-h-[80vh] flex flex-col" style={{ backgroundColor: 'var(--bg-raised)' }} onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="font-semibold text-sm flex items-center gap-2">
+                <FolderHeart className="w-4 h-4" style={{ color: 'var(--text-secondary)' }} /> Ajouter à un carnet
+              </h2>
+              <button onClick={() => setShowCollections(false)} className="w-7 h-7 rounded-lg flex items-center justify-center hover:bg-[var(--bg-inset)]">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="overflow-y-auto flex-1 space-y-1.5 mb-3">
+              {collections.length === 0 ? (
+                <p className="text-xs text-center py-4" style={{ color: 'var(--text-muted)' }}>Aucun carnet. Crée-en un ci-dessous.</p>
+              ) : collections.map(c => (
+                <button key={c.id} onClick={() => toggleCollection(c.id)}
+                  className="w-full flex items-center gap-3 p-2.5 rounded-lg transition-colors hover:bg-[var(--bg-inset)]"
+                  style={c.hasRecipe ? { backgroundColor: 'color-mix(in srgb, var(--accent) 10%, transparent)' } : undefined}>
+                  <span className="text-lg">{c.emoji}</span>
+                  <span className="text-sm flex-1 text-left">{c.name}</span>
+                  <div className="w-5 h-5 rounded-md border-2 flex items-center justify-center shrink-0"
+                    style={c.hasRecipe ? { backgroundColor: 'var(--accent)', borderColor: 'var(--accent)' } : { borderColor: 'var(--border)' }}>
+                    {c.hasRecipe && <Check className="w-3.5 h-3.5" style={{ color: 'var(--accent-text)' }} />}
+                  </div>
+                </button>
+              ))}
+            </div>
+
+            <div className="flex gap-2 pt-2 border-t" style={{ borderColor: 'var(--border-subtle)' }}>
+              <input value={newColName} onChange={e => setNewColName(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && createCollectionAndAdd()}
+                placeholder="Nouveau carnet…" className="input-field !py-2 text-sm flex-1" />
+              <button onClick={createCollectionAndAdd} disabled={!newColName.trim()} className="btn-primary !px-3 disabled:opacity-40">
+                <Plus className="w-4 h-4" />
+              </button>
+            </div>
           </div>
         </div>
       )}

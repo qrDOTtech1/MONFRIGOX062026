@@ -318,6 +318,20 @@ export default function ProfilePage() {
             <ChevronRight className="w-4 h-4" style={{ color: 'var(--text-muted)' }} />
           </button>
 
+          {/* ── Mes carnets ── */}
+          <button onClick={() => router.push('/collections')}
+            className="w-full card p-4 mb-3 flex items-center gap-3 text-left hover:scale-[1.01] transition-all">
+            <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
+              style={{ backgroundColor: 'var(--bg-inset)' }}>
+              <Star className="w-4 h-4" style={{ color: 'var(--text-secondary)' }} />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold">Mes carnets</p>
+              <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>Organise tes recettes en collections</p>
+            </div>
+            <ChevronRight className="w-4 h-4" style={{ color: 'var(--text-muted)' }} />
+          </button>
+
           {/* ── Coach IA ── */}
           <button onClick={() => router.push('/coach')}
             className="w-full card p-4 mb-5 flex items-center gap-3 text-left hover:scale-[1.01] transition-all"
