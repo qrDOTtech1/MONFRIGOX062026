@@ -1,0 +1,43 @@
+import { MetadataRoute } from 'next';
+
+const BASE = process.env.NEXT_PUBLIC_APP_URL || 'https://monfrigo.app';
+
+const SEO_SLUGS = [
+  'recette-avec-ce-que-j-ai',
+  'courses-moins-cheres',
+  'anti-gaspillage-alimentaire',
+  'planning-repas-semaine',
+  'recette-pas-cher',
+  'que-manger-ce-soir',
+  'scanner-frigo-ia',
+  'liste-courses-intelligente',
+  'recette-rapide-facile',
+  'cuisiner-les-restes',
+  'batch-cooking-meal-prep',
+  'recette-vegetarienne',
+  'recette-vegan',
+  'recette-sans-gluten',
+  'recette-halal',
+  'economiser-alimentation',
+  'nutriscore-recette',
+  'application-cuisine-gratuite',
+];
+
+export default function sitemap(): MetadataRoute.Sitemap {
+  const now = new Date().toISOString();
+
+  const staticPages = [
+    { url: BASE, lastModified: now, changeFrequency: 'weekly' as const, priority: 1.0 },
+    { url: `${BASE}/register`, lastModified: now, changeFrequency: 'monthly' as const, priority: 0.9 },
+    { url: `${BASE}/login`, lastModified: now, changeFrequency: 'monthly' as const, priority: 0.5 },
+  ];
+
+  const seoPages = SEO_SLUGS.map(slug => ({
+    url: `${BASE}/s/${slug}`,
+    lastModified: now,
+    changeFrequency: 'weekly' as const,
+    priority: 0.9,
+  }));
+
+  return [...staticPages, ...seoPages];
+}
