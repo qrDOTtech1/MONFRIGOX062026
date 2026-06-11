@@ -6,7 +6,7 @@ import AppShell from '@/components/AppShell';
 import Link from 'next/link';
 import {
   Camera, Upload, ScanLine, Loader2, Check, Plus,
-  Trash2, ImagePlus, Info, Barcode, X, Lock,
+  Trash2, ImagePlus, Info, Barcode, X, Lock, ReceiptText,
 } from 'lucide-react';
 
 interface DetectedItem {
@@ -120,6 +120,8 @@ function ScanPageInner() {
   const [mode, setMode] = useState<Mode>(() =>
     searchParams.get('mode') === 'barcode' ? 'barcode' : 'choose'
   );
+  // Type de scan photo : frigo (objets) ou ticket de caisse (OCR)
+  const [scanType, setScanType] = useState<'fridge' | 'receipt'>('fridge');
   useEffect(() => {
     if (searchParams.get('mode') === 'barcode') setMode('barcode');
   }, [searchParams]);
@@ -203,9 +205,10 @@ function ScanPageInner() {
   async function analyzeAllImages() {
     setScanning(true); setResults([]); setAddedCount(null);
     const seen = new Set<string>(); const all: DetectedItem[] = [];
+    const endpoint = scanType === 'receipt' ? '/api/scan/receipt' : '/api/scan';
     for (const img of images) {
       try {
-        const res = await fetch('/api/scan', {
+        const res = await fetch(endpoint, {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ image: img.split(',')[1] }),
         });
@@ -390,7 +393,7 @@ function ScanPageInner() {
         <h1 className="text-lg font-semibold">Ajouter au frigo</h1>
       </div>
       <div className="space-y-3">
-        <button onClick={() => setMode('scan')}
+        <button onClick={() => { setScanType('fridge'); setMode('scan'); }}
           className="card w-full p-5 flex items-center gap-4 hover:shadow-sm transition-all text-left relative overflow-hidden">
           <div className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0" style={{ backgroundColor: 'var(--bg-inset)' }}>
             <Camera className="w-6 h-6" style={{ color: 'var(--text-secondary)' }} />
@@ -398,6 +401,18 @@ function ScanPageInner() {
           <div className="flex-1">
             <p className="font-semibold text-sm">Scanner le frigo / placard</p>
             <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>Prends une ou plusieurs photos, l&apos;IA identifie les aliments</p>
+          </div>
+          <span className="text-[10px] font-semibold px-2 py-1 rounded-full shrink-0"
+            style={{ backgroundColor: 'rgba(245,158,11,0.12)', color: 'rgb(180,120,0)' }}>Premium</span>
+        </button>
+        <button onClick={() => { setScanType('receipt'); setMode('scan'); }}
+          className="card w-full p-5 flex items-center gap-4 hover:shadow-sm transition-all text-left relative overflow-hidden">
+          <div className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0" style={{ backgroundColor: 'var(--bg-inset)' }}>
+            <ReceiptText className="w-6 h-6" style={{ color: 'var(--text-secondary)' }} />
+          </div>
+          <div className="flex-1">
+            <p className="font-semibold text-sm">Scanner un ticket de caisse</p>
+            <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>Photo du reçu, l&apos;IA ajoute tous tes achats d&apos;un coup</p>
           </div>
           <span className="text-[10px] font-semibold px-2 py-1 rounded-full shrink-0"
             style={{ backgroundColor: 'rgba(245,158,11,0.12)', color: 'rgb(180,120,0)' }}>Premium</span>
@@ -435,18 +450,28 @@ function ScanPageInner() {
             className="p-1.5 rounded-lg transition-colors hover:bg-[var(--bg-inset)]">
             <X className="w-4 h-4" style={{ color: 'var(--text-muted)' }} />
           </button>
-          <ScanLine className="w-5 h-5" style={{ color: 'var(--text-secondary)' }} />
-          <h1 className="text-base font-semibold">Scanner le frigo</h1>
+          {scanType === 'receipt'
+            ? <ReceiptText className="w-5 h-5" style={{ color: 'var(--text-secondary)' }} />
+            : <ScanLine className="w-5 h-5" style={{ color: 'var(--text-secondary)' }} />}
+          <h1 className="text-base font-semibold">{scanType === 'receipt' ? 'Scanner un ticket' : 'Scanner le frigo'}</h1>
         </div>
 
         <div className="rounded-lg p-3.5 mb-4" style={{ backgroundColor: 'var(--bg-inset)', border: '1px solid var(--border-subtle)' }}>
           <div className="flex items-start gap-2.5">
             <Info className="w-4 h-4 shrink-0 mt-0.5" style={{ color: 'var(--text-secondary)' }} />
-            <ul className="text-xs space-y-1" style={{ color: 'var(--text-muted)' }}>
-              <li>📸 Plusieurs photos sous différents angles</li>
-              <li>💡 Bon éclairage, étiquettes visibles</li>
-              <li>🗄️ Fonctionne aussi pour un placard ou garde-manger</li>
-            </ul>
+            {scanType === 'receipt' ? (
+              <ul className="text-xs space-y-1" style={{ color: 'var(--text-muted)' }}>
+                <li>🧾 Photographie le ticket bien à plat</li>
+                <li>💡 Bon éclairage, texte net et lisible</li>
+                <li>🛒 L&apos;IA extrait seulement les produits alimentaires</li>
+              </ul>
+            ) : (
+              <ul className="text-xs space-y-1" style={{ color: 'var(--text-muted)' }}>
+                <li>📸 Plusieurs photos sous différents angles</li>
+                <li>💡 Bon éclairage, étiquettes visibles</li>
+                <li>🗄️ Fonctionne aussi pour un placard ou garde-manger</li>
+              </ul>
+            )}
           </div>
         </div>
 
