@@ -86,13 +86,26 @@ export async function POST(req: NextRequest) {
 
   const nutrients = product.nutrients ?? {};
   const nutritionData = {
-    kcal:      nutrients.calories   || null,
-    protein:   nutrients.protein    || null,
-    fat:       nutrients.fat        || null,
-    carbs:     nutrients.carbs      || null,
-    fiber:     nutrients.fiber      || null,
-    salt:      nutrients.salt       || null,
-    nutriScore: product.nutriScore  || '',
+    kcal:       nutrients.calories   || null,
+    protein:    nutrients.protein    || null,
+    fat:        nutrients.fat        || null,
+    carbs:      nutrients.carbs      || null,
+    fiber:      nutrients.fiber      || null,
+    salt:       nutrients.salt       || null,
+    iron:       nutrients.iron       ?? null,
+    magnesium:  nutrients.magnesium  ?? null,
+    calcium:    nutrients.calcium    ?? null,
+    potassium:  nutrients.potassium  ?? null,
+    zinc:       nutrients.zinc       ?? null,
+    vitaminC:   nutrients.vitaminC   ?? null,
+    vitaminD:   nutrients.vitaminD   ?? null,
+    vitaminB12: nutrients.vitaminB12 ?? null,
+    vitaminB9:  nutrients.vitaminB9  ?? null,
+    omega3:     nutrients.omega3     ?? null,
+    phosphorus: nutrients.phosphorus ?? null,
+    selenium:   nutrients.selenium   ?? null,
+    iodine:     nutrients.iodine     ?? null,
+    nutriScore: product.nutriScore   || '',
   };
 
   // ── Si pas trouvé → créer automatiquement l'ingrédient ──────────────────

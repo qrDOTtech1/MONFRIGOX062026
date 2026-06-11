@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth';
+import { estimateMicronutrients, MICRO_AJR } from '@/lib/micronutrients';
 
 // GET /api/recipes/[id]/nutrition-ean
 // Calculates nutrition from real EAN-scanned ingredient data
@@ -19,7 +20,17 @@ export async function GET(
       servings: true,
       calories: true,
       ingredients: {
-        include: { ingredient: true },
+        include: {
+          ingredient: {
+            select: {
+              id: true, name: true, emoji: true, category: true,
+              kcal: true, protein: true, fat: true, carbs: true, fiber: true, salt: true,
+              iron: true, magnesium: true, calcium: true, potassium: true, zinc: true,
+              vitaminC: true, vitaminD: true, vitaminB12: true, vitaminB9: true,
+              omega3: true, phosphorus: true, selenium: true, iodine: true,
+            },
+          },
+        },
       },
     },
   });
@@ -78,6 +89,22 @@ export async function GET(
 
   const servings = recipe.servings || 1;
 
+  // Micronutrients
+  const microIngredients = recipe.ingredients.map(ri => ({
+    name: ri.ingredient.name,
+    quantityGrams: toGrams(ri.quantity, ri.unit),
+    eanData: ri.ingredient.iron != null ? {
+      iron: ri.ingredient.iron, magnesium: ri.ingredient.magnesium,
+      calcium: ri.ingredient.calcium, potassium: ri.ingredient.potassium,
+      zinc: ri.ingredient.zinc, vitaminC: ri.ingredient.vitaminC,
+      vitaminD: ri.ingredient.vitaminD, vitaminB12: ri.ingredient.vitaminB12,
+      vitaminB9: ri.ingredient.vitaminB9, omega3: ri.ingredient.omega3,
+      phosphorus: ri.ingredient.phosphorus, selenium: ri.ingredient.selenium,
+      iodine: ri.ingredient.iodine,
+    } : undefined,
+  }));
+  const micros = estimateMicronutrients(microIngredients, servings);
+
   return NextResponse.json({
     available: true,
     coverage: Math.round((withData.length / total) * 100),
@@ -99,5 +126,7 @@ export async function GET(
     },
     breakdown: breakdown.sort((a, b) => b.kcal - a.kcal),
     aiEstimate: recipe.calories,
+    micros,
+    microAjr: MICRO_AJR,
   });
 }

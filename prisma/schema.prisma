@@ -63,6 +63,8 @@ model User {
   cookLogs        CookLog[]
   badges          Badge[]
   recipes         Recipe[]         @relation("UserRecipes")
+  coachProfile    CoachProfile?
+  supplements     Supplement[]
 }
 
 model Ingredient {
@@ -80,6 +82,20 @@ model Ingredient {
   carbs       Float?
   fiber       Float?
   salt        Float?
+  // Micronutriments pour 100g
+  iron        Float?   // mg — fer
+  magnesium   Float?   // mg
+  calcium     Float?   // mg
+  potassium   Float?   // mg
+  zinc        Float?   // mg
+  vitaminC    Float?   // mg
+  vitaminD    Float?   // µg
+  vitaminB12  Float?   // µg
+  vitaminB9   Float?   // µg — acide folique
+  omega3      Float?   // g
+  phosphorus  Float?   // mg
+  selenium    Float?   // µg
+  iodine      Float?   // µg
   nutriScore  String   @default("")
   fridgeItems FridgeItem[]
   recipeIngredients RecipeIngredient[]
@@ -248,4 +264,44 @@ model AppConfig {
   id    String @id @default(cuid())
   key   String @unique
   value String
+}
+
+// ── Coach IA personnel (VIP) ──────────────────────────────────────────
+model CoachProfile {
+  id              String   @id @default(cuid())
+  userId          String   @unique
+  // Profil physique (optionnel)
+  height          Int?     // cm
+  weight          Float?   // kg
+  age             Int?
+  sex             String?  // M / F / other
+  // Activité & mode de vie
+  activityLevel   String   @default("moderate") // sedentary, light, moderate, active, very_active
+  sportTypes      String   @default("[]")       // JSON: ["running","musculation",...]
+  sportFrequency  Int?                           // sessions par semaine
+  // Objectifs
+  goal            String   @default("maintain")  // maintain, lose, gain, energy, health
+  targetCalories  Int?                           // override TDEE si défini manuellement
+  // Contraintes horaires (JSON)
+  schedule        String   @default("{}")        // {"breakfast":"7h30","lunch":"12h30","dinner":"20h","busyDays":["mercredi"]}
+  // Calculé
+  tdee            Int?     // Total Daily Energy Expenditure
+  bmr             Int?     // Basal Metabolic Rate
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Supplement {
+  id        String   @id @default(cuid())
+  userId    String
+  name      String   // ex: "Fer", "Vitamine D", "Whey Protein"
+  dosage    String   @default("")  // ex: "14mg", "1000 UI", "30g"
+  timing    String   @default("morning") // morning, noon, evening, pre_workout, post_workout
+  category  String   @default("")  // vitamin, mineral, protein, amino, omega, other
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }

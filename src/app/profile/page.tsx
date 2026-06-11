@@ -248,6 +248,21 @@ export default function ProfilePage() {
             </div>
           </div>
 
+          {/* ── Coach IA ── */}
+          <button onClick={() => router.push('/coach')}
+            className="w-full card p-4 mb-5 flex items-center gap-3 text-left hover:scale-[1.01] transition-all"
+            style={{ background: 'linear-gradient(135deg, rgba(168,85,247,0.06), rgba(59,130,246,0.06))' }}>
+            <div className="w-9 h-9 rounded-full flex items-center justify-center shrink-0"
+              style={{ background: 'linear-gradient(135deg, rgb(168,85,247), rgb(59,130,246))' }}>
+              <Zap className="w-4 h-4 text-white" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold">Mon Coach IA</p>
+              <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>Profil sport, objectifs, compléments</p>
+            </div>
+            <Crown className="w-4 h-4 text-purple-400" />
+          </button>
+
           {/* ── Plan & Usage ── */}
           {billing && (
             <div className="card p-4 mb-5">

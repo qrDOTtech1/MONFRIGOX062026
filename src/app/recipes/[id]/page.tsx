@@ -114,7 +114,12 @@ export default function RecipeDetailPage() {
   const [cookDone, setCookDone] = useState(false);
 
   // EAN nutrition
-  const [eanNutrition, setEanNutrition] = useState<{ available: boolean; coverage: number; perServing: { kcal: number; protein: number; fat: number; carbs: number } } | null>(null);
+  const [eanNutrition, setEanNutrition] = useState<{
+    available: boolean; coverage: number;
+    perServing: { kcal: number; protein: number; fat: number; carbs: number };
+    micros?: Record<string, number>;
+    microAjr?: Record<string, { ajr: number; unit: string; label: string; emoji: string }>;
+  } | null>(null);
 
   // Coût estimé
   const [cost, setCost] = useState<CostEstimate | null>(null);
@@ -793,6 +798,80 @@ export default function RecipeDetailPage() {
           </div>
         </div>
       )}
+
+      {/* Micronutriments / Molécules */}
+      {eanNutrition?.micros && eanNutrition.microAjr && (() => {
+        const micros = eanNutrition.micros;
+        const ajr = eanNutrition.microAjr;
+        const entries = Object.entries(ajr)
+          .map(([key, info]) => ({ key, ...info, value: micros[key] || 0 }))
+          .filter(e => e.value > 0.01)
+          .sort((a, b) => (b.value / b.ajr) - (a.value / a.ajr));
+        if (entries.length === 0) return null;
+        const highlights = entries.filter(e => (e.value / e.ajr) >= 0.15).slice(0, 4);
+        return (
+          <div className="card p-4 mb-3">
+            <div className="flex items-center gap-2 mb-3">
+              <span className="text-lg">🧬</span>
+              <div>
+                <h2 className="font-medium text-sm">Micronutriments & Molécules</h2>
+                <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>
+                  Par portion · Couverture {micros.coverage || 0}% des ingrédients
+                </p>
+              </div>
+            </div>
+
+            {/* Top highlights */}
+            {highlights.length > 0 && (
+              <div className="flex gap-2 mb-3 overflow-x-auto pb-1">
+                {highlights.map(e => {
+                  const pct = Math.round((e.value / e.ajr) * 100);
+                  return (
+                    <div key={e.key} className="shrink-0 px-2.5 py-2 rounded-lg text-center min-w-[70px]"
+                      style={{ backgroundColor: pct >= 50 ? 'rgba(16,185,129,0.08)' : 'var(--bg-inset)' }}>
+                      <span className="text-lg block">{e.emoji}</span>
+                      <p className="text-[10px] font-semibold mt-0.5" style={{ color: pct >= 50 ? 'rgb(16,185,129)' : 'var(--text)' }}>
+                        {e.value < 1 ? e.value.toFixed(2) : e.value < 10 ? e.value.toFixed(1) : Math.round(e.value)}{e.unit}
+                      </p>
+                      <p className="text-[9px]" style={{ color: 'var(--text-muted)' }}>{pct}% AJR</p>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* Full list with bars */}
+            <div className="space-y-2">
+              {entries.map(e => {
+                const pct = Math.min(Math.round((e.value / e.ajr) * 100), 200);
+                const barPct = Math.min(pct, 100);
+                const barColor = pct >= 50 ? '#10b981' : pct >= 25 ? '#f59e0b' : 'var(--text-muted)';
+                return (
+                  <div key={e.key}>
+                    <div className="flex items-center justify-between mb-0.5">
+                      <span className="text-[11px] flex items-center gap-1">
+                        <span>{e.emoji}</span>
+                        <span className="font-medium">{e.label}</span>
+                      </span>
+                      <span className="text-[10px]" style={{ color: 'var(--text-muted)' }}>
+                        {e.value < 1 ? e.value.toFixed(2) : e.value < 10 ? e.value.toFixed(1) : Math.round(e.value)}{e.unit}
+                        <span className="ml-1 font-semibold" style={{ color: barColor }}>{pct}%</span>
+                      </span>
+                    </div>
+                    <div className="h-1 rounded-full overflow-hidden" style={{ backgroundColor: 'var(--bg-inset)' }}>
+                      <div className="h-full rounded-full transition-all" style={{ width: `${barPct}%`, backgroundColor: barColor }} />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            <p className="text-[9px] mt-3 leading-relaxed" style={{ color: 'var(--text-muted)' }}>
+              Estimations basées sur les données EAN scannées et la table CIQUAL/USDA. Les valeurs réelles varient selon les produits utilisés. Consultez un professionnel de santé pour un suivi personnalisé.
+            </p>
+          </div>
+        );
+      })()}
 
       {/* Ingrédients avec grammages ajustés */}
       <div className="card p-4 mb-3">
