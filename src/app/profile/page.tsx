@@ -316,33 +316,49 @@ export default function ProfilePage() {
                       { k: 'premiumAnnual',  label: 'Premium annuel', sub: billing.prices.premiumAnnual  + '/an',   color: 'amber', Icon: Star },
                       { k: 'vipMonthly',     label: 'VIP',            sub: billing.prices.vipMonthly     + '/mois', color: 'purple', Icon: Crown },
                       { k: 'vipAnnual',      label: 'VIP annuel',     sub: billing.prices.vipAnnual      + '/an',   color: 'purple', Icon: Crown },
-                    ].filter(p => billing.priceIds[p.k]).map(p => (
-                      <CheckoutButton key={p.k} priceId={billing.priceIds[p.k]}
-                        label={p.label} sub={p.sub} color={p.color} Icon={p.Icon} />
+                    ].map(p => (
+                      billing.priceIds[p.k]
+                        ? <CheckoutButton key={p.k} priceId={billing.priceIds[p.k]}
+                            label={p.label} sub={p.sub} color={p.color} Icon={p.Icon} />
+                        : <button key={p.k} onClick={() => alert('Paiement bientôt disponible ! Stripe est en cours de configuration.')}
+                            className="flex flex-col items-center py-3 px-2 rounded-xl text-center transition-all hover:scale-[1.02]"
+                            style={{
+                              backgroundColor: p.color === 'amber' ? 'rgba(245,158,11,0.08)' : 'rgba(168,85,247,0.08)',
+                              border: `1.5px solid ${p.color === 'amber' ? 'rgba(245,158,11,0.3)' : 'rgba(168,85,247,0.3)'}`,
+                            }}>
+                            {p.Icon && <p.Icon className={`w-4 h-4 mb-1 ${p.color === 'amber' ? 'text-amber-500' : 'text-purple-500'}`} />}
+                            <span className="text-xs font-semibold">{p.label}</span>
+                            <span className={`text-[10px] ${p.color === 'amber' ? 'text-amber-500' : 'text-purple-500'}`}>{p.sub}</span>
+                          </button>
                     ))}
                   </div>
                 </div>
               )}
 
               {/* Acheter quota bonus */}
-              {(billing.priceIds.quota50 || billing.priceIds.quota200 || billing.priceIds.quota500) && (
-                <div className="mt-3 pt-3" style={{ borderTop: '1px solid var(--border-subtle)' }}>
-                  <p className="text-[10px] font-medium mb-2" style={{ color: 'var(--text-muted)' }}>
-                    <Plus className="w-3 h-3 inline mr-0.5" />
-                    Acheter des requêtes supplémentaires :
-                  </p>
-                  <div className="flex gap-2">
-                    {[
-                      { k: 'quota50',  label: '50 req.',  price: billing.prices.quota50  },
-                      { k: 'quota200', label: '200 req.', price: billing.prices.quota200 },
-                      { k: 'quota500', label: '500 req.', price: billing.prices.quota500 },
-                    ].filter(p => billing.priceIds[p.k]).map(pack => (
-                      <CheckoutButton key={pack.k} priceId={billing.priceIds[pack.k]}
-                        label={pack.label} sub={pack.price} color="gray" compact />
-                    ))}
-                  </div>
+              <div className="mt-3 pt-3" style={{ borderTop: '1px solid var(--border-subtle)' }}>
+                <p className="text-[10px] font-medium mb-2" style={{ color: 'var(--text-muted)' }}>
+                  <Plus className="w-3 h-3 inline mr-0.5" />
+                  Acheter des requêtes supplémentaires :
+                </p>
+                <div className="flex gap-2">
+                  {[
+                    { k: 'quota50',  label: '50 req.',  price: billing.prices.quota50  },
+                    { k: 'quota200', label: '200 req.', price: billing.prices.quota200 },
+                    { k: 'quota500', label: '500 req.', price: billing.prices.quota500 },
+                  ].map(pack => (
+                    billing.priceIds[pack.k]
+                      ? <CheckoutButton key={pack.k} priceId={billing.priceIds[pack.k]}
+                          label={pack.label} sub={pack.price} color="gray" compact />
+                      : <button key={pack.k} onClick={() => alert('Paiement bientôt disponible !')}
+                          className="flex-1 py-2 rounded-lg text-center transition-all hover:scale-[1.02]"
+                          style={{ backgroundColor: 'var(--bg-inset)', border: '1px solid var(--border)' }}>
+                          <p className="text-xs font-semibold">{pack.label}</p>
+                          <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>{pack.price}</p>
+                        </button>
+                  ))}
                 </div>
-              )}
+              </div>
             </div>
           )}
 

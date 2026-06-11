@@ -148,10 +148,13 @@ export default function RecipeCard({
 
         {/* Overlay cadenas */}
         <div className="absolute inset-0 flex items-center justify-end pr-4 gap-2">
-          <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold"
-            style={{ backgroundColor: 'var(--accent)', color: 'var(--accent-text)' }}>
-            <Lock className="w-3 h-3" />
-            Premium
+          <div className="flex flex-col items-center gap-0.5 px-3 py-2 rounded-xl text-center"
+            style={{ background: 'linear-gradient(135deg, rgba(245,158,11,0.95), rgba(168,85,247,0.95))', color: 'white' }}>
+            <div className="flex items-center gap-1">
+              <Lock className="w-3 h-3" />
+              <span className="text-xs font-bold">Premium</span>
+            </div>
+            <span className="text-[9px] opacity-90">dès 3,99€/mois</span>
           </div>
         </div>
       </div>

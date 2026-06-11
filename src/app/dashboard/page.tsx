@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import AppShell from '@/components/AppShell';
 import RecipeCard from '@/components/RecipeCard';
-import { Search, ChefHat, SlidersHorizontal, Refrigerator, Sparkles, Globe, Users, ChevronDown, X, Dice5 } from 'lucide-react';
+import { Search, ChefHat, SlidersHorizontal, Refrigerator, Sparkles, Globe, Users, ChevronDown, X, Dice5, Crown, Star, Lock } from 'lucide-react';
 
 interface Recipe {
   id: string;
@@ -129,6 +129,7 @@ export default function ExplorerPage() {
   const [guestDiet, setGuestDiet]           = useState('');
   const [guestAllergens, setGuestAllergens] = useState<string[]>([]);
   const [kidMode, setKidMode]               = useState<'' | 'kid' | 'baby'>('');
+  const [userPlan, setUserPlan]             = useState<string>('');
 
   const load = useCallback(async () => {
     const res = await fetch('/api/recipes');
@@ -137,6 +138,9 @@ export default function ExplorerPage() {
   }, []);
 
   useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    fetch('/api/billing/status').then(r => r.ok ? r.json() : null).then(d => d && setUserPlan(d.plan || 'FREE'));
+  }, []);
 
   // Vérification côté client si un ingrédient correspond à un allergène
   function recipeHasAllergen(r: Recipe, allergenKey: string): boolean {
@@ -281,6 +285,28 @@ export default function ExplorerPage() {
           </span>
         </div>
       </div>
+
+      {/* Banner upgrade FREE */}
+      {userPlan === 'FREE' && (
+        <div onClick={() => router.push('/profile')}
+          className="flex items-center gap-3 px-4 py-3 rounded-xl mb-4 cursor-pointer transition-all hover:scale-[1.01] fade-in"
+          style={{ background: 'linear-gradient(135deg, rgba(245,158,11,0.12), rgba(168,85,247,0.12))', border: '1.5px solid rgba(168,85,247,0.25)' }}>
+          <div className="w-10 h-10 rounded-full flex items-center justify-center shrink-0"
+            style={{ background: 'linear-gradient(135deg, rgb(245,158,11), rgb(168,85,247))' }}>
+            <Crown className="w-5 h-5 text-white" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold">Passez Premium ou VIP</p>
+            <p className="text-[11px]" style={{ color: 'var(--text-muted)' }}>
+              Toutes les recettes + IA illimitée + planning auto
+            </p>
+          </div>
+          <div className="text-right shrink-0">
+            <p className="text-xs font-bold text-amber-500">3,99€<span className="font-normal text-[10px]">/mois</span></p>
+            <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>ou VIP 6,99€</p>
+          </div>
+        </div>
+      )}
 
       {/* Filtre invité actif → banner */}
       {guestFilters > 0 && (
