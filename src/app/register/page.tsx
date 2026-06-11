@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Mail, Lock, User, Eye, EyeOff } from 'lucide-react';
+import { Mail, Lock, User, Eye, EyeOff, ShieldCheck } from 'lucide-react';
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -83,7 +83,19 @@ export default function RegisterPage() {
           </button>
         </form>
 
-        <p className="text-center text-sm mt-6" style={{ color: 'var(--text-muted)' }}>
+        {/* Message rassurant confidentialité */}
+        <div className="mt-5 rounded-xl px-4 py-3 flex items-start gap-3"
+          style={{ backgroundColor: 'rgba(16,185,129,0.06)', border: '1px solid rgba(16,185,129,0.15)' }}>
+          <ShieldCheck className="w-4 h-4 mt-0.5 shrink-0" style={{ color: 'rgb(16,185,129)' }} />
+          <p className="text-xs leading-relaxed" style={{ color: 'var(--text-muted)' }}>
+            Tes données restent les tiennes. On ne vend rien, on ne fait pas de pub, on ne partage rien.{' '}
+            <Link href="/privacy" className="underline font-medium" style={{ color: 'rgb(16,185,129)' }}>
+              Politique de confidentialité →
+            </Link>
+          </p>
+        </div>
+
+        <p className="text-center text-sm mt-4" style={{ color: 'var(--text-muted)' }}>
           Déjà un compte?{' '}
           <Link href="/login" className="font-medium" style={{ color: 'var(--text)' }}>Se connecter</Link>
         </p>
