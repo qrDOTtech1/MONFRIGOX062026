@@ -88,6 +88,10 @@ export default function ShoppingPage() {
   const [addingToFridge, setAddingToFridge] = useState(false);
   const [fridgeAdded, setFridgeAdded] = useState(false);
 
+  // Auto planning
+  const [autoPlanning, setAutoPlanning] = useState(false);
+  const [autoPlanError, setAutoPlanError] = useState('');
+
   const weekDays = getWeekDays(weekOffset);
   const startDate = dateKey(weekDays[0]);
   const endDate   = dateKey(weekDays[6]);
@@ -178,6 +182,25 @@ export default function ShoppingPage() {
     setTimeout(() => setFridgeAdded(false), 3000);
   }
 
+  /* Auto-generate planning (VIP) */
+  async function autoGeneratePlan() {
+    setAutoPlanning(true);
+    setAutoPlanError('');
+    try {
+      const res = await fetch('/api/meal-plan/auto', { method: 'POST' });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.saved > 0) {
+          setWeekOffset(1); // jump to next week
+          setTimeout(loadPlans, 300);
+        }
+      } else {
+        const err = await res.json();
+        setAutoPlanError(err.error || 'Erreur');
+      }
+    } finally { setAutoPlanning(false); }
+  }
+
   /* Share shopping list as text */
   function shareList() {
     if (!shopData) return;
@@ -248,6 +271,21 @@ export default function ShoppingPage() {
               <ChevronRight className="w-4 h-4" style={{ color: 'var(--text-muted)' }} />
             </button>
           </div>
+
+          {/* Auto-plan button (VIP) */}
+          <button
+            onClick={autoGeneratePlan}
+            disabled={autoPlanning}
+            className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl mb-3 text-xs font-medium transition-all"
+            style={{ backgroundColor: 'rgba(168,85,247,0.08)', color: '#a855f7', border: '1px solid rgba(168,85,247,0.2)' }}
+          >
+            {autoPlanning
+              ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Génération IA en cours…</>
+              : <><Sparkles className="w-3.5 h-3.5" /> Planning auto (VIP) — remplir la semaine prochaine</>}
+          </button>
+          {autoPlanError && (
+            <p className="text-[11px] text-center mb-3" style={{ color: '#ef4444' }}>{autoPlanError}</p>
+          )}
 
           {/* Stats bar */}
           {plannedCount > 0 && (
@@ -413,6 +451,38 @@ export default function ShoppingPage() {
                       className="w-9 h-9 rounded-lg flex items-center justify-center transition-colors hover:bg-[var(--bg-inset)]"
                       title="Copier la liste">
                       <Share2 className="w-4 h-4" style={{ color: 'var(--text-muted)' }} />
+                    </button>
+                    <button onClick={async () => {
+                      const res = await fetch('/api/shopping', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                          name: `Courses ${weekLabel}`,
+                          items: Object.values(shopData?.categories ?? {}).flat().map(e => ({
+                            ingredientId: e.ingredientId, quantity: e.qty, unit: e.unit,
+                          })),
+                        }),
+                      });
+                      if (res.ok) {
+                        const list = await res.json();
+                        const shareRes = await fetch(`/api/shopping/${list.id}/share`, { method: 'POST' });
+                        if (shareRes.ok) {
+                          const { url } = await shareRes.json();
+                          const fullUrl = window.location.origin + url;
+                          if (navigator.share) {
+                            navigator.share({ title: `Courses ${weekLabel}`, url: fullUrl });
+                          } else {
+                            navigator.clipboard.writeText(fullUrl);
+                            alert('Lien copié !');
+                          }
+                        }
+                      }
+                    }}
+                      className="text-[10px] px-2.5 py-1.5 rounded-lg transition-colors"
+                      style={{ backgroundColor: 'var(--bg-inset)', color: 'var(--text-muted)', border: '1px solid var(--border-subtle)' }}
+                      title="Lien QR partageable"
+                    >
+                      🔗 Lien
                     </button>
                   </div>
                 </div>

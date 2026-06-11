@@ -108,10 +108,12 @@ export default function ProfilePage() {
   const { theme, toggle } = useTheme();
   const [user, setUser] = useState<User | null>(null);
   const [stats, setStats] = useState<Stats>({ fridgeCount: 0, favCount: 0, listCount: 0 });
-  const [activeTab, setActiveTab] = useState<'prefs'|'history'>('prefs');
+  const [activeTab, setActiveTab] = useState<'prefs'|'history'|'badges'>('prefs');
   const [cookLogs, setCookLogs] = useState<CookLogEntry[]>([]);
   const [cookCounts, setCookCounts] = useState<Record<string,number>>({});
   const [historyLoaded, setHistoryLoaded] = useState(false);
+  const [badges, setBadges] = useState<Array<{ code: string; emoji: string; label: string; desc: string; unlocked: boolean; unlockedAt: string | null }>>([]);
+  const [badgesLoaded, setBadgesLoaded] = useState(false);
 
   // Billing
   interface BillingStatus {
@@ -159,6 +161,13 @@ export default function ProfilePage() {
       setCookCounts(map);
     }
     setHistoryLoaded(true);
+  }
+
+  async function loadBadges() {
+    if (badgesLoaded) return;
+    const res = await fetch('/api/badges');
+    if (res.ok) setBadges(await res.json());
+    setBadgesLoaded(true);
   }
 
   function toggleAllergen(key: string) {
@@ -342,8 +351,9 @@ export default function ProfilePage() {
             {[
               { id: 'prefs' as const, label: 'Préférences', icon: Sparkles },
               { id: 'history' as const, label: 'Historique', icon: History },
+              { id: 'badges' as const, label: 'Badges', icon: Star },
             ].map(({ id, label, icon: Icon }) => (
-              <button key={id} onClick={() => { setActiveTab(id); if (id === 'history') loadHistory(); }}
+              <button key={id} onClick={() => { setActiveTab(id); if (id === 'history') loadHistory(); if (id === 'badges') loadBadges(); }}
                 className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-sm font-medium transition-all"
                 style={activeTab === id
                   ? { backgroundColor: 'var(--bg-raised)', color: 'var(--text)', boxShadow: '0 1px 3px rgba(0,0,0,.12)' }
@@ -403,6 +413,39 @@ export default function ProfilePage() {
                   ))}
                 </div>
               )}
+            </div>
+          )}
+
+          {/* ─── BADGES TAB ─── */}
+          {activeTab === 'badges' && (
+            <div className="mb-5">
+              <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
+                <Star className="w-4 h-4" style={{ color: '#f59e0b' }} />
+                Tes badges
+              </h3>
+              <p className="text-xs mb-4" style={{ color: 'var(--text-muted)' }}>
+                {badges.filter(b => b.unlocked).length}/{badges.length} débloqués
+              </p>
+              <div className="grid grid-cols-3 gap-2">
+                {badges.map(b => (
+                  <div key={b.code}
+                    className="flex flex-col items-center p-3 rounded-xl text-center transition-all"
+                    style={{
+                      backgroundColor: b.unlocked ? 'rgba(245,158,11,0.06)' : 'var(--bg-inset)',
+                      border: b.unlocked ? '1px solid rgba(245,158,11,0.2)' : '1px solid var(--border-subtle)',
+                      opacity: b.unlocked ? 1 : 0.45,
+                    }}>
+                    <span className="text-2xl mb-1">{b.emoji}</span>
+                    <p className="text-[10px] font-semibold leading-tight">{b.label}</p>
+                    <p className="text-[9px] mt-0.5" style={{ color: 'var(--text-muted)' }}>{b.desc}</p>
+                    {b.unlocked && b.unlockedAt && (
+                      <p className="text-[8px] mt-1 text-amber-500">
+                        {new Date(b.unlockedAt).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}
+                      </p>
+                    )}
+                  </div>
+                ))}
+              </div>
             </div>
           )}
 

@@ -139,6 +139,8 @@ export async function GET(req: NextRequest) {
       isCommunity: !!r.authorId,
       isMine: r.authorId === user.id,
       author: r.author?.name || null,
+      avgRating: r.avgRating || 0,
+      ratingCount: r.ratingCount || 0,
       _score: score,
     };
   });

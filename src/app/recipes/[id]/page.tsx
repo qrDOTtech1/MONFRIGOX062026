@@ -103,6 +103,19 @@ export default function RecipeDetailPage() {
   const enrichTriggered = useRef(false);
   const [showNutritionDetails, setShowNutritionDetails] = useState(false);
 
+  // Substitution IA
+  const [subLoading, setSubLoading] = useState<string | null>(null);
+  const [substitutions, setSubstitutions] = useState<Record<string, { substitute: string; quantity: number; unit: string; reason: string; inFridge: boolean }>>({});
+
+  // Cook log + rating
+  const [showCookLog, setShowCookLog] = useState(false);
+  const [cookRating, setCookRating] = useState(0);
+  const [cookSaving, setCookSaving] = useState(false);
+  const [cookDone, setCookDone] = useState(false);
+
+  // EAN nutrition
+  const [eanNutrition, setEanNutrition] = useState<{ available: boolean; coverage: number; perServing: { kcal: number; protein: number; fat: number; carbs: number } } | null>(null);
+
   // Coût estimé
   const [cost, setCost] = useState<CostEstimate | null>(null);
 
@@ -149,6 +162,42 @@ export default function RecipeDetailPage() {
       .then(r => r.ok ? r.json() : null)
       .then(data => { if (data) setCost(data); });
   }, [id]);
+
+  // Chargement nutrition EAN
+  useEffect(() => {
+    if (!id) return;
+    fetch(`/api/recipes/${id}/nutrition-ean`)
+      .then(r => r.ok ? r.json() : null)
+      .then(data => { if (data?.available) setEanNutrition(data); });
+  }, [id]);
+
+  async function requestSubstitute(ingredientName: string) {
+    setSubLoading(ingredientName);
+    try {
+      const res = await fetch(`/api/recipes/${id}/substitute`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ingredientName }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setSubstitutions(prev => ({ ...prev, [ingredientName]: data }));
+      }
+    } finally { setSubLoading(null); }
+  }
+
+  async function logCook() {
+    setCookSaving(true);
+    await fetch('/api/cook-log', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ recipeId: id, servings, rating: cookRating || undefined }),
+    });
+    setCookSaving(false);
+    setCookDone(true);
+    setShowCookLog(false);
+    setTimeout(() => setCookDone(false), 3000);
+  }
 
   // Chargement des notes
   useEffect(() => {
@@ -478,6 +527,33 @@ export default function RecipeDetailPage() {
             </button>
           </div>
         )}
+
+        {/* Bouton "J'ai cuisiné" + notation */}
+        <button
+          onClick={() => setShowCookLog(!showCookLog)}
+          className="w-full flex items-center justify-center gap-2 mt-2 py-2.5 rounded-xl text-sm font-medium transition-all"
+          style={cookDone
+            ? { backgroundColor: 'rgba(16,185,129,0.1)', color: '#10b981', border: '1px solid rgba(16,185,129,0.2)' }
+            : { backgroundColor: 'rgba(234,179,8,0.08)', color: '#ca8a04', border: '1px solid rgba(234,179,8,0.15)' }}
+        >
+          {cookDone ? <><Check className="w-4 h-4" /> Enregistré !</> : '🍳 J\'ai cuisiné cette recette'}
+        </button>
+
+        {showCookLog && (
+          <div className="card p-3.5 mt-2 fade-in">
+            <p className="text-xs font-medium mb-2" style={{ color: 'var(--text-primary)' }}>Note cette recette</p>
+            <div className="flex gap-1 mb-3 justify-center">
+              {[1, 2, 3, 4, 5].map(star => (
+                <button key={star} onClick={() => setCookRating(star)} className="text-2xl transition-transform hover:scale-110">
+                  {star <= cookRating ? '⭐' : '☆'}
+                </button>
+              ))}
+            </div>
+            <button onClick={logCook} disabled={cookSaving} className="btn-primary w-full flex items-center justify-center gap-2 disabled:opacity-60">
+              {cookSaving ? 'Enregistrement...' : `Valider${cookRating > 0 ? ` (${cookRating}/5)` : ''}`}
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Valeurs nutritionnelles */}
@@ -699,6 +775,25 @@ export default function RecipeDetailPage() {
         )}
       </div>
 
+      {/* Score EAN réel */}
+      {eanNutrition && (
+        <div className="card p-3 mb-3 flex items-center gap-3">
+          <span className="text-lg">📊</span>
+          <div className="flex-1">
+            <p className="text-xs font-semibold" style={{ color: 'var(--text-primary)' }}>Nutrition réelle (EAN)</p>
+            <p className="text-[10px] mt-0.5" style={{ color: 'var(--text-muted)' }}>
+              Calculé depuis les codes-barres scannés — couverture {eanNutrition.coverage}%
+            </p>
+            <div className="flex gap-3 mt-1.5 text-[10px] font-medium">
+              <span className="text-orange-500">{eanNutrition.perServing.kcal} kcal</span>
+              <span className="text-red-400">{eanNutrition.perServing.protein}g prot</span>
+              <span className="text-amber-400">{eanNutrition.perServing.carbs}g gluc</span>
+              <span className="text-yellow-400">{eanNutrition.perServing.fat}g lip</span>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Ingrédients avec grammages ajustés */}
       <div className="card p-4 mb-3">
         <div className="flex items-center justify-between mb-3">
@@ -708,22 +803,49 @@ export default function RecipeDetailPage() {
           </span>
         </div>
         <div className="space-y-1">
-          {recipe.ingredients.map((ing, i) => (
-            <div key={i} className="flex items-center gap-2.5 py-1.5">
-              {ing.inFridge ? (
-                <Check className="w-4 h-4 text-emerald-500 shrink-0" />
-              ) : (
-                <X className="w-4 h-4 text-red-400 shrink-0" />
-              )}
-              <span className="text-sm">{ing.ingredient.emoji}</span>
-              <span className="text-sm flex-1" style={{ color: ing.inFridge ? 'var(--text)' : 'var(--text-muted)' }}>
-                {ing.ingredient.name}
-              </span>
-              <span className="text-xs font-mono tabular-nums" style={{ color: 'var(--text-muted)' }}>
-                {adjustQuantity(ing.quantity)} {ing.unit}
-              </span>
-            </div>
-          ))}
+          {recipe.ingredients.map((ing, i) => {
+            const sub = substitutions[ing.ingredient.name];
+            return (
+              <div key={i}>
+                <div className="flex items-center gap-2.5 py-1.5">
+                  {ing.inFridge ? (
+                    <Check className="w-4 h-4 text-emerald-500 shrink-0" />
+                  ) : (
+                    <X className="w-4 h-4 text-red-400 shrink-0" />
+                  )}
+                  <span className="text-sm">{ing.ingredient.emoji}</span>
+                  <span className="text-sm flex-1" style={{ color: ing.inFridge ? 'var(--text)' : 'var(--text-muted)' }}>
+                    {ing.ingredient.name}
+                  </span>
+                  <span className="text-xs font-mono tabular-nums" style={{ color: 'var(--text-muted)' }}>
+                    {adjustQuantity(ing.quantity)} {ing.unit}
+                  </span>
+                  {!ing.inFridge && !sub && (
+                    <button
+                      onClick={() => requestSubstitute(ing.ingredient.name)}
+                      disabled={subLoading === ing.ingredient.name}
+                      className="text-[9px] px-1.5 py-0.5 rounded-md shrink-0"
+                      style={{ backgroundColor: 'rgba(99,102,241,0.1)', color: '#818cf8' }}
+                      title="Substitut IA"
+                    >
+                      {subLoading === ing.ingredient.name ? '...' : '✂️'}
+                    </button>
+                  )}
+                </div>
+                {sub && (
+                  <div className="ml-9 mb-1 px-2.5 py-1.5 rounded-lg text-[11px] flex items-center gap-2"
+                    style={{ backgroundColor: 'rgba(99,102,241,0.06)', border: '1px solid rgba(99,102,241,0.12)' }}>
+                    <span style={{ color: '#818cf8' }}>✂️</span>
+                    <span className="flex-1">
+                      <strong>{sub.substitute}</strong> ({sub.quantity} {sub.unit})
+                      {sub.inFridge && <span className="ml-1 text-emerald-500">dans ton frigo</span>}
+                      <span className="block text-[10px] mt-0.5" style={{ color: 'var(--text-muted)' }}>{sub.reason}</span>
+                    </span>
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
       </div>
 

@@ -61,6 +61,7 @@ model User {
   recipeNotes     RecipeNote[]
   noteLikes       RecipeNoteLike[]
   cookLogs        CookLog[]
+  badges          Badge[]
   recipes         Recipe[]         @relation("UserRecipes")
 }
 
@@ -117,6 +118,9 @@ model Recipe {
   fiber        Float?
   salt         Float?
   nutriScore   String    @default("")
+  // Notation moyenne
+  avgRating    Float     @default(0)
+  ratingCount  Int       @default(0)
   // Source externe
   externalId   String?
   externalSrc  String    @default("")
@@ -161,12 +165,13 @@ model Favorite {
 }
 
 model ShoppingList {
-  id        String         @id @default(cuid())
-  userId    String
-  name      String
-  createdAt DateTime       @default(now())
-  user      User           @relation(fields: [userId], references: [id], onDelete: Cascade)
-  items     ShoppingItem[]
+  id         String         @id @default(cuid())
+  userId     String
+  name       String
+  shareToken String?        @unique
+  createdAt  DateTime       @default(now())
+  user       User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items      ShoppingItem[]
 }
 
 model ShoppingItem {
@@ -225,8 +230,18 @@ model CookLog {
   recipeId String
   cookedAt DateTime @default(now())
   servings Int      @default(4)
+  rating   Int?     // 1-5 étoiles
   user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   recipe   Recipe   @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+}
+
+model Badge {
+  id        String   @id @default(cuid())
+  userId    String
+  code      String   // ex: "cook_10", "anti_gaspi_5"
+  unlockedAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@unique([userId, code])
 }
 
 model AppConfig {

@@ -23,6 +23,8 @@ interface RecipeCardProps {
   usesExpiring?: number;
   isRevisite?: boolean;
   isCommunity?: boolean;
+  avgRating?: number;
+  ratingCount?: number;
 }
 
 const difficultyColors: Record<string, string> = {
@@ -52,7 +54,7 @@ function getMatchTextColor(pct: number) {
 export default function RecipeCard({
   id, name, difficulty, prepTime, cuisine, imageUrl, matchPercent, matchCount,
   emoji, isFavorite, isLocked, onToggleFavorite,
-  allergenWarnings, dietConflict, dietLabel, usesExpiring, isRevisite, isCommunity,
+  allergenWarnings, dietConflict, dietLabel, usesExpiring, isRevisite, isCommunity, avgRating, ratingCount,
 }: RecipeCardProps) {
   const router = useRouter();
   const hasAllergen = (allergenWarnings?.length ?? 0) > 0;
@@ -127,6 +129,11 @@ export default function RecipeCard({
                   <span className="flex items-center gap-1 text-xs" style={{ color: 'var(--text-muted)' }}>
                     <Clock className="w-3 h-3" /> {prepTime} min
                   </span>
+                  {avgRating != null && avgRating > 0 && (
+                    <span className="flex items-center gap-0.5 text-xs text-amber-500">
+                      ⭐ {avgRating.toFixed(1)}{ratingCount ? <span className="text-[9px]" style={{ color: 'var(--text-muted)' }}>({ratingCount})</span> : null}
+                    </span>
+                  )}
                 </div>
               </div>
             </div>

@@ -2,9 +2,10 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import AppShell from '@/components/AppShell';
 import RecipeCard from '@/components/RecipeCard';
-import { Search, ChefHat, SlidersHorizontal, Refrigerator, Sparkles, Globe, Users, ChevronDown, X } from 'lucide-react';
+import { Search, ChefHat, SlidersHorizontal, Refrigerator, Sparkles, Globe, Users, ChevronDown, X, Dice5 } from 'lucide-react';
 
 interface Recipe {
   id: string;
@@ -100,6 +101,7 @@ function SectionLabel({ icon, label, count, color }: { icon: React.ReactNode; la
 }
 
 export default function ExplorerPage() {
+  const router = useRouter();
   const [recipes, setRecipes]         = useState<Recipe[]>([]);
   const [loading, setLoading]         = useState(true);
   const [search, setSearch]           = useState('');
@@ -107,6 +109,7 @@ export default function ExplorerPage() {
   const [time, setTime]               = useState('Tous');
   const [cuisine, setCuisine]         = useState('Toutes');
   const [dietary, setDietary]         = useState('Tous');
+  const [surprising, setSurprising]   = useState(false);
   const [showFilters, setShowFilters] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [sectionMode, setSectionMode] = useState(true);
@@ -219,6 +222,25 @@ export default function ExplorerPage() {
         <ChefHat className="w-5 h-5" style={{ color: 'var(--text-secondary)' }} />
         <h1 className="font-semibold text-base">Explorer</h1>
         <div className="ml-auto flex items-center gap-2">
+          <button
+            disabled={surprising}
+            onClick={async () => {
+              setSurprising(true);
+              try {
+                const res = await fetch('/api/recipes/surprise');
+                if (res.ok) {
+                  const { id } = await res.json();
+                  router.push(`/recipes/${id}`);
+                }
+              } finally { setSurprising(false); }
+            }}
+            className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium transition-all"
+            style={{ backgroundColor: 'rgba(234,179,8,0.1)', color: '#ca8a04', border: '1px solid rgba(234,179,8,0.2)' }}
+            title="Recette surprise"
+          >
+            <Dice5 className={`w-3.5 h-3.5 ${surprising ? 'animate-spin' : ''}`} />
+            Surprise !
+          </button>
           {!isSearching && (
             <button
               onClick={() => setSectionMode(m => !m)}
