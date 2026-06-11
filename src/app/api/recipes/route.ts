@@ -2,6 +2,7 @@
 import { prisma } from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth';
 import { analyzeRecipeDietary } from '@/lib/dietary';
+import { estimateRecipeCost } from '@/lib/recipe-cost';
 
 const CUISINE_MAP: Record<string, string[]> = {
   'Française':       ['FR'],
@@ -100,6 +101,12 @@ export async function GET(req: NextRequest) {
     const dietary = analyzeRecipeDietary(ingredientNames, userAllergens, dietMode, r.carbs);
     const usesExpiring = r.ingredients.filter(i => expiringIds.has(i.ingredientId)).length;
 
+    // Coût estimé (table de prix, synchrone)
+    const cost = estimateRecipeCost(
+      r.ingredients.map(i => ({ name: i.ingredient.name, emoji: i.ingredient.emoji, quantity: i.quantity, unit: i.unit })),
+      r.servings,
+    );
+
     // Taste-profile bonus
     let prefScore = 0;
     if (prefCodes.length > 0 && prefCodes.includes(r.cuisine?.toUpperCase() ?? '')) prefScore += 30;
@@ -141,6 +148,9 @@ export async function GET(req: NextRequest) {
       author: r.author?.name || null,
       avgRating: r.avgRating || 0,
       ratingCount: r.ratingCount || 0,
+      costTotal: cost.total,
+      costPerServing: cost.perServing,
+      costConfidence: cost.confidence,
       _score: score,
     };
   });
