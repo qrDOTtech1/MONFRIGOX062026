@@ -1,6 +1,6 @@
 // MonFrigo Service Worker — badge des aliments qui périment + cache hors-ligne
 
-const CACHE = 'monfrigo-v2';
+const CACHE = 'monfrigo-v3';
 const BADGE_INTERVAL = 60 * 60 * 1000; // 1 heure
 
 // --- Badge (aliments qui périment) ---
@@ -36,6 +36,33 @@ self.addEventListener('periodicsync', (event) => {
 
 self.addEventListener('message', (event) => {
   if (event.data === 'update-badge') updateBadge();
+});
+
+// --- Notifications push ---
+self.addEventListener('push', (event) => {
+  let data = { title: 'Mon Frigo', body: '', url: '/dashboard', tag: 'monfrigo' };
+  try { if (event.data) data = { ...data, ...event.data.json() }; } catch { /* texte brut */ }
+  event.waitUntil(
+    self.registration.showNotification(data.title, {
+      body: data.body,
+      tag: data.tag,
+      icon: '/icon.png',
+      badge: '/icon.png',
+      data: { url: data.url || '/dashboard' },
+    })
+  );
+});
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const url = (event.notification.data && event.notification.data.url) || '/dashboard';
+  event.waitUntil((async () => {
+    const all = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+    for (const client of all) {
+      if ('focus' in client) { client.navigate(url); return client.focus(); }
+    }
+    if (self.clients.openWindow) return self.clients.openWindow(url);
+  })());
 });
 
 // --- Cache hors-ligne ---

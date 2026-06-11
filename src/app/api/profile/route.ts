@@ -5,6 +5,7 @@ import { getCurrentUser } from '@/lib/auth';
 const SELECT = {
   allergens: true, dietMode: true, kidMode: true, kidAgeMonths: true,
   defaultServings: true, tasteProfile: true, onboardingDone: true,
+  notifyExpiry: true, notifyMeals: true,
 };
 
 export async function GET() {
@@ -35,6 +36,8 @@ export async function PUT(req: NextRequest) {
         defaultServings:body.defaultServings?? undefined,
         tasteProfile:   body.tasteProfile   ?? undefined,
         onboardingDone: body.onboardingDone ?? undefined,
+        notifyExpiry:   body.notifyExpiry   ?? undefined,
+        notifyMeals:    body.notifyMeals    ?? undefined,
       },
       select: SELECT,
     });

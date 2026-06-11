@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import AppShell from '@/components/AppShell';
+import NotificationsToggle from '@/components/NotificationsToggle';
 import { useTheme } from '@/components/ThemeProvider';
 import InfoBubble from '@/components/InfoBubble';
 import { UserCircle, LogOut, Shield, Heart, ShoppingCart, Refrigerator, Sun, Moon, Save, Check, AlertTriangle, Baby, Users, History, Sparkles, ChefHat, Zap, Crown, Star, Plus, Loader2, CalendarDays, ChevronRight, PiggyBank, Leaf, Flame } from 'lucide-react';
@@ -296,6 +297,9 @@ export default function ProfilePage() {
               </p>
             </div>
           )}
+
+          {/* ── Notifications ── */}
+          <NotificationsToggle />
 
           {/* ── Repas & Courses ── */}
           <button onClick={() => router.push('/shopping')}
