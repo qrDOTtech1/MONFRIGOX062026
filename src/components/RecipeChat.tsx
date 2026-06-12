@@ -132,6 +132,7 @@ export default function RecipeChat({ allRecipes }: { allRecipes: RecipeMini[] })
             style={{
               backgroundColor: 'var(--bg)',
               height: '82vh',
+              marginBottom: 'calc(4rem + env(safe-area-inset-bottom))',
               boxShadow: '0 -8px 40px rgba(0,0,0,0.3)',
             }}
           >
