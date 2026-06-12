@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react';
 import Link from 'next/link';
-import { MessageCircle, X, Send, Loader2, ChefHat, Sparkles } from 'lucide-react';
+import { MessageCircle, X, Send, Loader2, ChefHat, Sparkles, Mic, MicOff } from 'lucide-react';
 import RecipeCard from './RecipeCard';
 
 interface Message {
@@ -38,8 +38,17 @@ export default function RecipeChat({ allRecipes }: { allRecipes: RecipeMini[] })
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
+  const [listening, setListening] = useState(false);
+  const [hasSpeech, setHasSpeech] = useState(false);
+  const recognitionRef = useRef<any>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  const sendRef = useRef<(text?: string) => void>(undefined);
+
+  useEffect(() => {
+    setHasSpeech(!!((window as any).SpeechRecognition || (window as any).webkitSpeechRecognition));
+  }, []);
 
   useEffect(() => {
     if (open && messages.length === 0) {
@@ -97,6 +106,28 @@ export default function RecipeChat({ allRecipes }: { allRecipes: RecipeMini[] })
       setLoading(false);
     }
   }, [input, loading, messages, allRecipes]);
+
+  sendRef.current = send;
+
+  function startVoice() {
+    const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SR) return;
+    if (recognitionRef.current) { recognitionRef.current.stop(); setListening(false); return; }
+    const recognition = new SR();
+    recognition.lang = 'fr-FR';
+    recognition.interimResults = false;
+    recognition.maxAlternatives = 1;
+    recognition.onresult = (e: any) => {
+      const text = e.results[0][0].transcript;
+      setInput(text);
+      setTimeout(() => sendRef.current?.(text), 100);
+    };
+    recognition.onend = () => { setListening(false); recognitionRef.current = null; };
+    recognition.onerror = () => { setListening(false); recognitionRef.current = null; };
+    recognitionRef.current = recognition;
+    recognition.start();
+    setListening(true);
+  }
 
   // Keyboard shortcut: Escape ferme
   useEffect(() => {
@@ -266,6 +297,18 @@ export default function RecipeChat({ allRecipes }: { allRecipes: RecipeMini[] })
                   className="input-field flex-1 !py-2.5"
                   disabled={loading}
                 />
+                {hasSpeech && (
+                  <button
+                    type="button"
+                    onClick={startVoice}
+                    className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all ${listening ? 'animate-pulse' : ''}`}
+                    style={listening
+                      ? { backgroundColor: 'rgb(239,68,68)', color: 'white' }
+                      : { backgroundColor: 'var(--bg-inset)', color: 'var(--text-muted)' }}
+                  >
+                    {listening ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
+                  </button>
+                )}
                 <button
                   type="submit"
                   disabled={loading || !input.trim()}

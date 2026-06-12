@@ -6,7 +6,7 @@ import AppShell from '@/components/AppShell';
 import NotificationsToggle from '@/components/NotificationsToggle';
 import { useTheme } from '@/components/ThemeProvider';
 import InfoBubble from '@/components/InfoBubble';
-import { UserCircle, LogOut, Shield, Heart, ShoppingCart, Refrigerator, Sun, Moon, Save, Check, AlertTriangle, Baby, Users, History, Sparkles, ChefHat, Zap, Crown, Star, Plus, Loader2, CalendarDays, ChevronRight, PiggyBank, Leaf, Flame } from 'lucide-react';
+import { UserCircle, LogOut, Shield, Heart, ShoppingCart, Refrigerator, Sun, Moon, Save, Check, AlertTriangle, Baby, Users, History, Sparkles, ChefHat, Zap, Crown, Star, Plus, Loader2, CalendarDays, ChevronRight, PiggyBank, Leaf, Flame, Receipt } from 'lucide-react';
 
 // Bouton qui crée une Checkout Session Stripe et redirige
 function CheckoutButton({ priceId, label, sub, color, Icon, compact = false }:
@@ -117,6 +117,8 @@ export default function ProfilePage() {
   const [historyLoaded, setHistoryLoaded] = useState(false);
   const [badges, setBadges] = useState<Array<{ code: string; emoji: string; label: string; desc: string; unlocked: boolean; unlockedAt: string | null }>>([]);
   const [badgesLoaded, setBadgesLoaded] = useState(false);
+  const [spending, setSpending] = useState<{ monthlyHistory: Array<{ month: string; total: number; sessions: number }>; totalSpent: number } | null>(null);
+  const [spendingLoaded, setSpendingLoaded] = useState(false);
 
   // Billing
   interface BillingStatus {
@@ -165,6 +167,10 @@ export default function ProfilePage() {
       setCookCounts(map);
     }
     setHistoryLoaded(true);
+    if (!spendingLoaded) {
+      fetch('/api/profile/spending').then(r => r.ok ? r.json() : null).then(d => { if (d) setSpending(d); }).catch(() => {});
+      setSpendingLoaded(true);
+    }
   }
 
   async function loadBadges() {
@@ -555,6 +561,39 @@ export default function ProfilePage() {
                       </div>
                     </button>
                   ))}
+                </div>
+              )}
+
+              {/* Historique des dépenses */}
+              {spending && spending.monthlyHistory.length > 0 && (
+                <div className="mt-6">
+                  <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
+                    <Receipt className="w-4 h-4" style={{ color: 'var(--text-muted)' }} />
+                    Dépenses courses estimées
+                  </h3>
+                  <div className="card p-4">
+                    <div className="flex items-center justify-between mb-3">
+                      <span className="text-xs" style={{ color: 'var(--text-muted)' }}>6 derniers mois</span>
+                      <span className="text-sm font-bold">{spending.totalSpent} €</span>
+                    </div>
+                    <div className="space-y-2">
+                      {spending.monthlyHistory.map(m => {
+                        const maxTotal = Math.max(...spending.monthlyHistory.map(x => x.total), 1);
+                        return (
+                          <div key={m.month} className="flex items-center gap-3">
+                            <span className="text-xs w-20 shrink-0 capitalize" style={{ color: 'var(--text-muted)' }}>{m.month}</span>
+                            <div className="flex-1 h-5 rounded-full overflow-hidden" style={{ backgroundColor: 'var(--bg-inset)' }}>
+                              <div className="h-full rounded-full transition-all" style={{ width: `${(m.total / maxTotal) * 100}%`, background: 'linear-gradient(90deg, #10b981, #059669)' }} />
+                            </div>
+                            <span className="text-xs font-medium w-12 text-right">{m.total} €</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    <p className="text-[10px] text-center mt-3" style={{ color: 'var(--text-muted)' }}>
+                      Estimation basée sur les ingrédients des recettes cuisinées
+                    </p>
+                  </div>
                 </div>
               )}
             </div>
