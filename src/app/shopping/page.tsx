@@ -6,7 +6,7 @@ import InfoBubble from '@/components/InfoBubble';
 import {
   CalendarDays, ShoppingCart, ChevronLeft, ChevronRight, ChevronDown,
   Plus, X, Search, Check, Refrigerator, Share2,
-  Loader2, UtensilsCrossed, Sparkles,
+  Loader2, UtensilsCrossed, Sparkles, TrendingUp, AlertCircle,
 } from 'lucide-react';
 
 /* ── Types ── */
@@ -98,6 +98,10 @@ export default function ShoppingPage() {
   // Shopping collapsed categories
   const [collapsedCats, setCollapsedCats] = useState<Set<string>>(new Set());
 
+  // Suggestions d'achat
+  const [suggestions, setSuggestions] = useState<Array<{ ingredientId: string; name: string; emoji: string; count: number }>>([]);
+  const [expiringSugg, setExpiringSugg] = useState<Array<{ ingredientId: string; name: string; emoji: string; expiresAt: string | null }>>([]);
+
   const weekDays = getWeekDays(weekOffset);
   const startDate = dateKey(weekDays[0]);
   const endDate   = dateKey(weekDays[6]);
@@ -135,6 +139,10 @@ export default function ShoppingPage() {
       .then(d => { if (d) setShopData(d); })
       .catch(() => {})
       .finally(() => setShopLoading(false));
+    fetch('/api/shopping/suggestions')
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (d) { setSuggestions(d.suggestions || []); setExpiringSugg(d.expiring || []); } })
+      .catch(() => {});
   }, [tab, startDate, endDate]);
 
   /* Plan week label */
@@ -656,6 +664,49 @@ export default function ShoppingPage() {
                   );
                 })}
               </div>
+
+              {/* Suggestions d'achat intelligentes */}
+              {(suggestions.length > 0 || expiringSugg.length > 0) && (
+                <div className="mt-6 space-y-4">
+                  {suggestions.length > 0 && (
+                    <div className="card p-4">
+                      <div className="flex items-center gap-2 mb-3">
+                        <TrendingUp className="w-4 h-4 text-indigo-400" />
+                        <h3 className="text-sm font-semibold">Suggestions d&apos;achat</h3>
+                        <span className="text-[10px] ml-auto" style={{ color: 'var(--text-muted)' }}>basé sur tes habitudes</span>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {suggestions.slice(0, 10).map(s => (
+                          <span key={s.ingredientId}
+                            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-xs font-medium"
+                            style={{ backgroundColor: 'var(--bg-inset)', border: '1px solid var(--border-subtle)' }}>
+                            {s.emoji} {s.name}
+                            <span className="text-[9px] opacity-50">×{s.count}</span>
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {expiringSugg.length > 0 && (
+                    <div className="card p-4">
+                      <div className="flex items-center gap-2 mb-3">
+                        <AlertCircle className="w-4 h-4 text-amber-500" />
+                        <h3 className="text-sm font-semibold">Bientôt périmés</h3>
+                        <span className="text-[10px] ml-auto" style={{ color: 'var(--text-muted)' }}>à consommer vite</span>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {expiringSugg.map(e => (
+                          <span key={e.ingredientId}
+                            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-xs font-medium"
+                            style={{ backgroundColor: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.3)' }}>
+                            {e.emoji} {e.name}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* Bottom sticky CTA */}
               {checked.size > 0 && (
