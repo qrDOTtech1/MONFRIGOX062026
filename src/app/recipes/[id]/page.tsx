@@ -7,7 +7,7 @@ import {
   ArrowLeft, Clock, Users, Heart, ShoppingCart, Check, X, ChefHat,
   Minus, Plus, Flame, Wheat, Droplets, Beef, Sparkles,
   MessageSquare, Globe, Lock, Send, Trash2, ImagePlus, Loader2,
-  Euro, ExternalLink, Wand2, Crown, AlertTriangle, Ban, CalendarPlus, FolderHeart,
+  Euro, ExternalLink, Wand2, Crown, AlertTriangle, Ban, CalendarPlus, FolderHeart, Share2,
 } from 'lucide-react';
 import { ALLERGEN_LABELS } from '@/lib/dietary';
 
@@ -154,6 +154,138 @@ export default function RecipeDetailPage() {
   const [showCollections, setShowCollections] = useState(false);
   const [collections, setCollections] = useState<Array<{ id: string; name: string; emoji: string; hasRecipe?: boolean }>>([]);
   const [newColName, setNewColName] = useState('');
+  const [sharing, setSharing] = useState(false);
+
+  async function shareAsImage() {
+    if (!recipe || sharing) return;
+    setSharing(true);
+    try {
+      const W = 1080, H = 1350;
+      const canvas = document.createElement('canvas');
+      canvas.width = W; canvas.height = H;
+      const ctx = canvas.getContext('2d')!;
+
+      // Background gradient
+      const grad = ctx.createLinearGradient(0, 0, 0, H);
+      grad.addColorStop(0, '#065f46');
+      grad.addColorStop(0.4, '#047857');
+      grad.addColorStop(1, '#0f172a');
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, W, H);
+
+      // Decorative circles
+      ctx.globalAlpha = 0.06;
+      ctx.fillStyle = '#fff';
+      ctx.beginPath(); ctx.arc(W * 0.85, H * 0.12, 200, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(W * 0.1, H * 0.9, 150, 0, Math.PI * 2); ctx.fill();
+      ctx.globalAlpha = 1;
+
+      // Load image if exists
+      let imgLoaded = false;
+      if (recipe.imageUrl) {
+        try {
+          const img = new Image();
+          img.crossOrigin = 'anonymous';
+          await new Promise<void>((resolve, reject) => {
+            img.onload = () => resolve();
+            img.onerror = () => reject();
+            img.src = recipe.imageUrl!;
+          });
+          const imgH = 480;
+          ctx.save();
+          ctx.beginPath();
+          ctx.roundRect(60, 60, W - 120, imgH, [24, 24, 0, 0]);
+          ctx.clip();
+          const scale = Math.max((W - 120) / img.width, imgH / img.height);
+          const sw = img.width * scale, sh = img.height * scale;
+          ctx.drawImage(img, 60 + (W - 120 - sw) / 2, 60 + (imgH - sh) / 2, sw, sh);
+          ctx.restore();
+          imgLoaded = true;
+        } catch { /* no image fallback */ }
+      }
+
+      let y = imgLoaded ? 580 : 120;
+
+      // Recipe name
+      ctx.fillStyle = '#fff';
+      ctx.font = 'bold 52px system-ui, sans-serif';
+      const nameLines = wrapText(ctx, recipe.name, W - 140);
+      for (const line of nameLines) { ctx.fillText(line, 70, y); y += 62; }
+      y += 10;
+
+      // Metadata line
+      ctx.font = '28px system-ui, sans-serif';
+      ctx.fillStyle = 'rgba(255,255,255,0.75)';
+      const meta = `${recipe.prepTime} min · ${recipe.servings} pers. · ${recipe.difficulty}${recipe.cuisine ? ' · ' + recipe.cuisine : ''}`;
+      ctx.fillText(meta, 70, y); y += 50;
+
+      // Divider
+      ctx.strokeStyle = 'rgba(255,255,255,0.2)';
+      ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(70, y); ctx.lineTo(W - 70, y); ctx.stroke();
+      y += 35;
+
+      // Ingredients
+      ctx.fillStyle = '#fbbf24';
+      ctx.font = 'bold 30px system-ui, sans-serif';
+      ctx.fillText('Ingrédients', 70, y); y += 40;
+      ctx.fillStyle = 'rgba(255,255,255,0.9)';
+      ctx.font = '26px system-ui, sans-serif';
+      const ratio = servings / (recipe.servings || 1);
+      for (const ing of recipe.ingredients.slice(0, 12)) {
+        const qty = ing.quantity * ratio;
+        const qtyStr = qty % 1 === 0 ? qty.toString() : qty.toFixed(1);
+        const line = `${ing.ingredient.emoji} ${qtyStr} ${ing.unit} ${ing.ingredient.name}`;
+        ctx.fillText(line, 90, y); y += 36;
+      }
+      if (recipe.ingredients.length > 12) {
+        ctx.fillStyle = 'rgba(255,255,255,0.5)';
+        ctx.fillText(`+ ${recipe.ingredients.length - 12} autres...`, 90, y); y += 36;
+      }
+
+      // Footer branding
+      ctx.fillStyle = 'rgba(255,255,255,0.4)';
+      ctx.font = '24px system-ui, sans-serif';
+      ctx.fillText('🥦 MonFrigo.app — Cuisine anti-gaspi', 70, H - 50);
+
+      // Nutrition badge
+      if (recipe.calories) {
+        ctx.fillStyle = 'rgba(255,255,255,0.12)';
+        ctx.beginPath(); ctx.roundRect(W - 280, H - 90, 210, 50, 25); ctx.fill();
+        ctx.fillStyle = '#fff';
+        ctx.font = '22px system-ui, sans-serif';
+        ctx.fillText(`🔥 ${recipe.calories} kcal/pers`, W - 265, H - 58);
+      }
+
+      const blob = await new Promise<Blob>((resolve) =>
+        canvas.toBlob(b => resolve(b!), 'image/png', 0.95)
+      );
+      const file = new File([blob], `monfrigo-${recipe.name.slice(0, 30).replace(/\s+/g, '-')}.png`, { type: 'image/png' });
+
+      if (navigator.share && navigator.canShare?.({ files: [file] })) {
+        await navigator.share({ files: [file], title: recipe.name, text: `${recipe.name} — recette sur MonFrigo 🥦` });
+      } else {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a'); a.href = url; a.download = file.name; a.click();
+        URL.revokeObjectURL(url);
+      }
+    } catch (e) {
+      console.error('Share error:', e);
+    } finally { setSharing(false); }
+  }
+
+  function wrapText(ctx: CanvasRenderingContext2D, text: string, maxW: number): string[] {
+    const words = text.split(' ');
+    const lines: string[] = [];
+    let line = '';
+    for (const w of words) {
+      const test = line ? `${line} ${w}` : w;
+      if (ctx.measureText(test).width > maxW && line) { lines.push(line); line = w; }
+      else line = test;
+    }
+    if (line) lines.push(line);
+    return lines;
+  }
 
   async function openCollections() {
     setShowCollections(true);
@@ -545,6 +677,12 @@ export default function RecipeDetailPage() {
             </button>
           )}
         </div>
+
+        {/* Partager en image */}
+        <button onClick={shareAsImage} disabled={sharing} className="btn-secondary w-full flex items-center justify-center gap-2 mt-2">
+          {sharing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Share2 className="w-4 h-4" />}
+          {sharing ? 'Création...' : 'Partager en image'}
+        </button>
 
         {/* Ajouter au planning */}
         <button onClick={() => setShowPlan(!showPlan)} className="btn-secondary w-full flex items-center justify-center gap-2 mt-2">
