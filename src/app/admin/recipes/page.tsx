@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import {
   ChefHat, Trash2, Plus, Clock, Pencil, X, Check,
   Sparkles, Loader2, Languages, Flame, AlertCircle,
+  Download, PackagePlus, Globe,
 } from 'lucide-react';
 
 interface Recipe {
@@ -47,6 +48,14 @@ export default function AdminRecipesPage() {
   // Filter
   const [search, setSearch] = useState('');
   const [filterNoNutrition, setFilterNoNutrition] = useState(false);
+
+  // Import & Seed
+  const [importing, setImporting] = useState(false);
+  const [importResult, setImportResult] = useState<string | null>(null);
+  const [importCuisine, setImportCuisine] = useState('');
+  const [importCount, setImportCount] = useState(20);
+  const [seeding, setSeeding] = useState(false);
+  const [seedResult, setSeedResult] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     const res = await fetch('/api/admin/recipes');
@@ -147,6 +156,33 @@ export default function AdminRecipesPage() {
     }
   }
 
+  async function importRecipes() {
+    setImporting(true); setImportResult(null);
+    try {
+      const res = await fetch('/api/admin/recipes/import', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ count: importCount, cuisine: importCuisine || undefined, translateWithAI: true }),
+      });
+      const data = await res.json();
+      setImportResult(`✅ ${data.imported} importées, ${data.skipped} déjà existantes${data.errors?.length ? `, ${data.errors.length} erreurs` : ''}`);
+      load();
+    } catch {
+      setImportResult('❌ Erreur lors de l\'import');
+    } finally { setImporting(false); }
+  }
+
+  async function seedIngredients() {
+    setSeeding(true); setSeedResult(null);
+    try {
+      const res = await fetch('/api/admin/ingredients/seed', { method: 'POST' });
+      const data = await res.json();
+      setSeedResult(`✅ ${data.created} ingrédients créés, ${data.skipped} déjà existants`);
+    } catch {
+      setSeedResult('❌ Erreur lors du seed');
+    } finally { setSeeding(false); }
+  }
+
   const filtered = recipes.filter(r => {
     const matchSearch = !search || r.name.toLowerCase().includes(search.toLowerCase()) || r.cuisine.toLowerCase().includes(search.toLowerCase());
     const matchNutrition = !filterNoNutrition || r.calories === null;
@@ -175,6 +211,49 @@ export default function AdminRecipesPage() {
         <button onClick={() => setShowAdd(!showAdd)} className="btn-primary !py-1.5 !px-3 text-xs flex items-center gap-1.5">
           <Plus className="w-3.5 h-3.5" /> Ajouter
         </button>
+      </div>
+
+      {/* ── Import & Seed ── */}
+      <div className="rounded-xl p-4 space-y-3" style={{ backgroundColor: 'var(--bg-raised)', border: '1px solid var(--border)' }}>
+        <div className="flex items-center gap-2 mb-1">
+          <Download className="w-4 h-4 text-indigo-400" />
+          <h3 className="text-sm font-semibold">Import & enrichissement</h3>
+        </div>
+
+        {/* Seed ingrédients */}
+        <div className="flex items-center gap-3">
+          <button onClick={seedIngredients} disabled={seeding}
+            className="btn-secondary !py-2 !px-4 text-xs flex items-center gap-1.5">
+            {seeding ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <PackagePlus className="w-3.5 h-3.5" />}
+            {seeding ? 'Ajout...' : 'Seed ingrédients (+200)'}
+          </button>
+          {seedResult && <span className="text-xs" style={{ color: 'var(--text-muted)' }}>{seedResult}</span>}
+        </div>
+
+        {/* Import recettes */}
+        <div className="flex flex-wrap items-center gap-2">
+          <select value={importCuisine} onChange={e => setImportCuisine(e.target.value)}
+            className="input-field !py-2 text-xs !w-auto">
+            <option value="">Cuisine aléatoire</option>
+            {['French','Italian','Japanese','Chinese','Indian','Mexican','Thai','Vietnamese',
+              'Moroccan','Spanish','Greek','Turkish','Portuguese','British','American','Korean',
+              'Brazilian','German','Lebanese','Tunisian','Malaysian','Filipino','Polish','Russian',
+              'Irish','Canadian','Jamaican','Dutch','Egyptian','Croatian'].map(c => (
+              <option key={c} value={c}>{c}</option>
+            ))}
+          </select>
+          <input type="number" min={1} max={50} value={importCount} onChange={e => setImportCount(Number(e.target.value))}
+            className="input-field !py-2 text-xs !w-16" />
+          <button onClick={importRecipes} disabled={importing}
+            className="btn-primary !py-2 !px-4 text-xs flex items-center gap-1.5">
+            {importing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Globe className="w-3.5 h-3.5" />}
+            {importing ? 'Import...' : `Importer ${importCount} recettes`}
+          </button>
+          {importResult && <span className="text-xs" style={{ color: 'var(--text-muted)' }}>{importResult}</span>}
+        </div>
+        <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>
+          Source : TheMealDB (gratuit) · Traduction IA via Ollama · Auto-import 10/jour à 3h
+        </p>
       </div>
 
       {/* Bannière recettes sans nutrition */}
