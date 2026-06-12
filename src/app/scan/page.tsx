@@ -73,7 +73,7 @@ function FullscreenCamera({
         className="absolute bottom-0 left-0 right-0 flex justify-center gap-4 px-6 py-5"
         style={{
           background: 'linear-gradient(to top, rgba(0,0,0,0.75) 0%, transparent 100%)',
-          paddingBottom: 'max(1.25rem, env(safe-area-inset-bottom))',
+          paddingBottom: 'calc(4.5rem + max(0.5rem, env(safe-area-inset-bottom)))',
         }}
       >
         <button
