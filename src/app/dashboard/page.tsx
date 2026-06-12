@@ -380,6 +380,34 @@ export default function ExplorerPage() {
         </div>
       )}
 
+      {/* ⚡ Vide-frigo express : 1 tap → la recette qui sauve ce qui expire */}
+      {(() => {
+        const expressCandidates = recipes.filter(r => (r.usesExpiring ?? 0) > 0 && !r.isLocked);
+        if (expressCandidates.length === 0) return null;
+        const best = [...expressCandidates].sort((a, b) =>
+          (b.usesExpiring ?? 0) - (a.usesExpiring ?? 0) || b.matchPercent - a.matchPercent
+        )[0];
+        const totalExpiring = best.usesExpiring ?? 0;
+        return (
+          <button
+            onClick={() => router.push(`/recipes/${best.id}`)}
+            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl mb-3 text-left transition-all hover:scale-[1.01] fade-in"
+            style={{ background: 'linear-gradient(135deg, rgba(16,185,129,0.12), rgba(234,179,8,0.10))', border: '1.5px solid rgba(16,185,129,0.3)' }}>
+            <div className="w-10 h-10 rounded-full flex items-center justify-center shrink-0"
+              style={{ background: 'linear-gradient(135deg, rgb(16,185,129), rgb(234,179,8))' }}>
+              <span className="text-lg">⚡</span>
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold">Vide-frigo express</p>
+              <p className="text-[11px] truncate" style={{ color: 'var(--text-muted)' }}>
+                « {best.name} » utilise {totalExpiring} ingrédient{totalExpiring > 1 ? 's' : ''} qui périme{totalExpiring > 1 ? 'nt' : ''} bientôt
+              </p>
+            </div>
+            <span className="text-xs font-bold shrink-0" style={{ color: 'rgb(16,185,129)' }}>GO →</span>
+          </button>
+        );
+      })()}
+
       {/* Filtre invité actif → banner */}
       {guestFilters > 0 && (
         <div className="flex items-center gap-2 px-3 py-2 rounded-xl mb-3 fade-in"

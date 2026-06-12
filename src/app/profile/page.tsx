@@ -110,7 +110,7 @@ export default function ProfilePage() {
   const { theme, toggle } = useTheme();
   const [user, setUser] = useState<User | null>(null);
   const [stats, setStats] = useState<Stats>({ fridgeCount: 0, favCount: 0, listCount: 0 });
-  const [impact, setImpact] = useState<{ sessionsCooked: number; sessionsThisMonth: number; mealsCooked: number; moneyCooked: number; savedVsTakeout: number; avgCaloriesPerServing: number; topCuisine: string | null; trackedExpiry: number } | null>(null);
+  const [impact, setImpact] = useState<{ sessionsCooked: number; sessionsThisMonth: number; mealsCooked: number; moneyCooked: number; savedVsTakeout: number; avgCaloriesPerServing: number; topCuisine: string | null; trackedExpiry: number; kgCooked: number; kgCookedMonth: number; kgSaved: number; kgSavedMonth: number; co2Saved: number; co2SavedMonth: number } | null>(null);
   const [activeTab, setActiveTab] = useState<'prefs'|'history'|'badges'>('prefs');
   const [cookLogs, setCookLogs] = useState<CookLogEntry[]>([]);
   const [cookCounts, setCookCounts] = useState<Record<string,number>>({});
@@ -292,6 +292,31 @@ export default function ProfilePage() {
                   </div>
                 </div>
               </div>
+
+              {/* Bilan anti-gaspi du mois */}
+              {(impact.kgSavedMonth ?? 0) > 0 && (
+                <div className="rounded-xl p-3 mb-2"
+                  style={{ background: 'linear-gradient(135deg, rgba(16,185,129,0.08), rgba(34,197,94,0.05))', border: '1px solid rgba(16,185,129,0.2)' }}>
+                  <p className="text-xs font-semibold mb-2 flex items-center gap-1.5">
+                    <Leaf className="w-3.5 h-3.5 text-emerald-500" /> Bilan anti-gaspi de {new Date().toLocaleDateString('fr-FR', { month: 'long' })}
+                  </p>
+                  <div className="flex justify-around text-center">
+                    <div>
+                      <p className="text-base font-bold text-emerald-500">{impact.kgSavedMonth} kg</p>
+                      <p className="text-[9px]" style={{ color: 'var(--text-muted)' }}>nourriture sauvée</p>
+                    </div>
+                    <div>
+                      <p className="text-base font-bold text-emerald-500">{impact.co2SavedMonth} kg</p>
+                      <p className="text-[9px]" style={{ color: 'var(--text-muted)' }}>CO₂ évité</p>
+                    </div>
+                    <div>
+                      <p className="text-base font-bold text-emerald-500">{impact.kgCookedMonth} kg</p>
+                      <p className="text-[9px]" style={{ color: 'var(--text-muted)' }}>cuisinés ce mois</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               <p className="text-[10px] text-center" style={{ color: 'var(--text-muted)' }}>
                 Estimations basées sur tes recettes cuisinées{impact.topCuisine ? ` · cuisine préférée : ${impact.topCuisine}` : ''}.
               </p>
