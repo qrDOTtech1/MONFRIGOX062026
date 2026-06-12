@@ -16,6 +16,21 @@ const CUISINE_MAP: Record<string, string[]> = {
   'Japonaise':       ['JP'],
   'Marocaine':       ['MA'],
   'Libanaise':       ['LB'],
+  'Portugaise':      ['PT'],
+  'Turque':          ['TR'],
+  'Coréenne':        ['KR'],
+  'Brésilienne':     ['BR'],
+  'Thaïlandaise':    ['TH'],
+  'Vietnamienne':    ['VN'],
+  'Chinoise':        ['CN'],
+  'Espagnole':       ['ES'],
+  'Grecque':         ['GR'],
+  'Britannique':     ['GB'],
+  'Allemande':       ['DE'],
+  'Tunisienne':      ['TN'],
+  'Éthiopienne':     ['ET'],
+  'Péruvienne':      ['PE'],
+  'Internationale':  ['INT'],
 };
 
 const SKILL_TO_DIFFICULTY: Record<string, string[]> = {

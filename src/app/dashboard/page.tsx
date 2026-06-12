@@ -39,9 +39,16 @@ interface Recipe {
   costConfidence?: 'high' | 'medium' | 'low';
 }
 
+const CUISINE_CODE_MAP: Record<string, string[]> = {
+  FR: ['FRAN'], IT: ['ITAL'], JP: ['JAPON'], MX: ['MEXIC'], IN: ['INDIEN'],
+  MA: ['MAROC'], TH: ['THA'], VN: ['VIETNAM'], CN: ['CHINOI'], US: ['AMÉRIC', 'AMERIC'],
+  ES: ['ESPAGN'], GR: ['GREC'], PT: ['PORTUG'], TR: ['TURQ'], KR: ['CORÉ', 'CORE'],
+  BR: ['BRÉSIL', 'BRESIL'], DE: ['ALLEMAN'], LB: ['LIBAN'], TN: ['TUNIS'], GB: ['BRITAN'],
+};
+
 const DIFFICULTIES = ['Tous', 'Facile', 'Moyen', 'Difficile'];
 const TIMES        = ['Tous', '< 15 min', '< 30 min', '< 45 min'];
-const CUISINES     = ['Toutes', 'FR', 'IT', 'JP', 'MX', 'IN', 'MA', 'TH', 'VN', 'CN', 'US', 'ES', 'GR'];
+const CUISINES     = ['Toutes', 'FR', 'IT', 'JP', 'MX', 'IN', 'MA', 'TH', 'VN', 'CN', 'US', 'ES', 'GR', 'PT', 'TR', 'KR', 'BR', 'DE', 'LB', 'TN', 'GB'];
 const DIETARY      = ['Tous', 'De saison', 'Anti-gaspi', 'Compatible régime', 'Revisités', 'Communauté'];
 const BUDGETS: { key: string; label: string; max: number | null }[] = [
   { key: 'Tous',   label: 'Tous',     max: null },
@@ -183,7 +190,11 @@ export default function ExplorerPage() {
     if (time === '< 15 min' && r.prepTime > 15) return false;
     if (time === '< 30 min' && r.prepTime > 30) return false;
     if (time === '< 45 min' && r.prepTime > 45) return false;
-    if (cuisine !== 'Toutes' && r.cuisine !== cuisine) return false;
+    if (cuisine !== 'Toutes') {
+      const cUpper = r.cuisine?.toUpperCase() || '';
+      const match = cUpper === cuisine || CUISINE_CODE_MAP[cuisine]?.some(n => cUpper.includes(n));
+      if (!match) return false;
+    }
     if (dietary === 'De saison'         && ((r as any).seasonalCount ?? 0) < 2) return false;
     if (dietary === 'Anti-gaspi'        && (r.usesExpiring ?? 0) === 0) return false;
     if (dietary === 'Compatible régime' && (r.dietConflict || (r.allergenWarnings?.length ?? 0) > 0)) return false;

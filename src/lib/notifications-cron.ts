@@ -99,8 +99,26 @@ export function startNotificationScheduler() {
         const r = await runNotifications('meals');
         console.log(`[notifications] meals envoyées : ${r.mealNotifs}/${r.users} users`);
       }
+      // Auto-import recettes à 3h du matin
+      if (hour === 3 && lastImportDate !== dateKey) {
+        lastImportDate = dateKey;
+        try { await autoImportRecipes(); } catch (e) { console.error('[import] Erreur:', e); }
+      }
     } catch (err) {
       console.error('[notifications] Erreur scheduler :', err);
     }
   }, 10 * 60 * 1000); // check toutes les 10 min
+}
+
+let lastImportDate = '';
+
+async function autoImportRecipes() {
+  const { importRecipesFromMealDB } = await import('./recipe-importer');
+  const cuisines = ['Portuguese', 'French', 'Italian', 'Japanese', 'Chinese', 'Indian', 'Mexican',
+    'Thai', 'Vietnamese', 'Moroccan', 'Spanish', 'Greek', 'Turkish', 'British', 'American',
+    'Malaysian', 'Filipino', 'Croatian', 'Egyptian', 'Kenyan', 'Polish', 'Russian', 'Tunisian',
+    'Irish', 'Canadian', 'Jamaican', 'Dutch'];
+  const pick = cuisines[Math.floor(Math.random() * cuisines.length)];
+  const result = await importRecipesFromMealDB({ count: 10, cuisine: pick, translateWithAI: true });
+  console.log(`[import] Auto-import ${pick}: ${result.imported} importées, ${result.skipped} skip`);
 }
