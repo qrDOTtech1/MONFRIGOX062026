@@ -166,17 +166,31 @@ function ScanPageInner() {
   const zxingControlsRef = useRef<import('@zxing/browser').IScannerControls | null>(null);
 
   // ── Photo helpers ──
-  async function startCamera() {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'environment', width: { ideal: 1920 }, height: { ideal: 1080 } },
-      });
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        setCameraActive(true);
-      }
-    } catch { alert("Impossible d'accéder à la caméra"); }
+  // On affiche d'abord le composant (setCameraActive=true) pour que videoRef soit monté,
+  // puis useEffect démarre le stream une fois le <video> disponible dans le DOM.
+  function startCamera() {
+    setCameraActive(true);
   }
+
+  useEffect(() => {
+    if (!cameraActive) return;
+    let active = true;
+    navigator.mediaDevices.getUserMedia({
+      video: { facingMode: 'environment', width: { ideal: 1920 }, height: { ideal: 1080 } },
+    }).then(stream => {
+      if (active && videoRef.current) {
+        videoRef.current.srcObject = stream;
+      } else {
+        stream.getTracks().forEach(t => t.stop());
+      }
+    }).catch(() => {
+      if (active) {
+        setCameraActive(false);
+        alert("Impossible d'accéder à la caméra");
+      }
+    });
+    return () => { active = false; };
+  }, [cameraActive]);
 
   function capturePhoto() {
     if (!videoRef.current) return;
