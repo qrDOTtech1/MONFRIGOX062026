@@ -3,6 +3,7 @@ import { prisma } from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth';
 import { analyzeRecipeDietary } from '@/lib/dietary';
 import { estimateRecipeCost } from '@/lib/recipe-cost';
+import { countSeasonalIngredients } from '@/lib/seasonal';
 
 const CUISINE_MAP: Record<string, string[]> = {
   'Française':       ['FR'],
@@ -100,6 +101,7 @@ export async function GET(req: NextRequest) {
     const ingredientNames = r.ingredients.map(i => i.ingredient.name);
     const dietary = analyzeRecipeDietary(ingredientNames, userAllergens, dietMode, r.carbs);
     const usesExpiring = r.ingredients.filter(i => expiringIds.has(i.ingredientId)).length;
+    const seasonalCount = countSeasonalIngredients(ingredientNames);
 
     // Coût estimé (table de prix, synchrone)
     const cost = estimateRecipeCost(
@@ -118,9 +120,11 @@ export async function GET(req: NextRequest) {
     if (prefGoals.includes('rapide') && r.prepTime <= 20) prefScore += 15;
     if (prefGoals.includes('budget') && r.difficulty === 'FACILE') prefScore += 10;
 
+    const seasonalBonus = seasonalCount >= 3 ? 25 : seasonalCount >= 1 ? 10 : 0;
     const score = usesExpiring * 50
       + matchPercent * 3
       + Math.max(-30, Math.min(60, prefScore))
+      + seasonalBonus
       + (dietary.dietConflict ? -50 : 0);
 
     return {
@@ -151,6 +155,7 @@ export async function GET(req: NextRequest) {
       costTotal: cost.total,
       costPerServing: cost.perServing,
       costConfidence: cost.confidence,
+      seasonalCount,
       _score: score,
     };
   });

@@ -42,7 +42,7 @@ interface Recipe {
 const DIFFICULTIES = ['Tous', 'Facile', 'Moyen', 'Difficile'];
 const TIMES        = ['Tous', '< 15 min', '< 30 min', '< 45 min'];
 const CUISINES     = ['Toutes', 'FR', 'IT', 'JP', 'MX', 'IN', 'MA', 'TH', 'VN', 'CN', 'US', 'ES', 'GR'];
-const DIETARY      = ['Tous', 'Anti-gaspi', 'Compatible régime', 'Revisités', 'Communauté'];
+const DIETARY      = ['Tous', 'De saison', 'Anti-gaspi', 'Compatible régime', 'Revisités', 'Communauté'];
 const BUDGETS: { key: string; label: string; max: number | null }[] = [
   { key: 'Tous',   label: 'Tous',     max: null },
   { key: '5',      label: '< 5 €',    max: 5 },
@@ -184,6 +184,7 @@ export default function ExplorerPage() {
     if (time === '< 30 min' && r.prepTime > 30) return false;
     if (time === '< 45 min' && r.prepTime > 45) return false;
     if (cuisine !== 'Toutes' && r.cuisine !== cuisine) return false;
+    if (dietary === 'De saison'         && ((r as any).seasonalCount ?? 0) < 2) return false;
     if (dietary === 'Anti-gaspi'        && (r.usesExpiring ?? 0) === 0) return false;
     if (dietary === 'Compatible régime' && (r.dietConflict || (r.allergenWarnings?.length ?? 0) > 0)) return false;
     if (dietary === 'Revisités'         && !r.isRevisite) return false;
@@ -267,6 +268,7 @@ export default function ExplorerPage() {
           isRevisite={r.isRevisite}
           isCommunity={r.isCommunity}
           cost={r.costTotal}
+          seasonalCount={(r as any).seasonalCount}
         />
       ))}
     </div>

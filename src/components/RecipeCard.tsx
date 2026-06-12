@@ -26,6 +26,7 @@ interface RecipeCardProps {
   avgRating?: number;
   ratingCount?: number;
   cost?: number;
+  seasonalCount?: number;
 }
 
 const difficultyColors: Record<string, string> = {
@@ -55,7 +56,7 @@ function getMatchTextColor(pct: number) {
 export default function RecipeCard({
   id, name, difficulty, prepTime, cuisine, imageUrl, matchPercent, matchCount,
   emoji, isFavorite, isLocked, onToggleFavorite,
-  allergenWarnings, dietConflict, dietLabel, usesExpiring, isRevisite, isCommunity, avgRating, ratingCount, cost,
+  allergenWarnings, dietConflict, dietLabel, usesExpiring, isRevisite, isCommunity, avgRating, ratingCount, cost, seasonalCount,
 }: RecipeCardProps) {
   const router = useRouter();
   const hasAllergen = (allergenWarnings?.length ?? 0) > 0;
@@ -66,6 +67,11 @@ export default function RecipeCard({
       {typeof cost === 'number' && cost > 0 && (
         <span className="badge text-[10px] flex items-center gap-1" style={{ backgroundColor: 'rgba(16,185,129,0.12)', color: 'rgb(16,185,129)' }} title="Coût total estimé de la recette">
           ≈ {cost < 10 ? cost.toFixed(1) : Math.round(cost)} €
+        </span>
+      )}
+      {(seasonalCount ?? 0) >= 2 && (
+        <span className="badge text-[10px] flex items-center gap-1" style={{ backgroundColor: 'rgba(245,158,11,0.12)', color: 'rgb(245,158,11)' }} title="Ingrédients de saison">
+          🌿 De saison
         </span>
       )}
       {isCommunity && (
