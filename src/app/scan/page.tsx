@@ -133,6 +133,7 @@ function ScanPageInner() {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [addingToFridge, setAddingToFridge] = useState(false);
   const [addedCount, setAddedCount] = useState<number | null>(null);
+  const [ocrProgress, setOcrProgress] = useState<number | null>(null);
   const fileRef                 = useRef<HTMLInputElement>(null);
   const videoRef                = useRef<HTMLVideoElement>(null);
   const [cameraActive, setCameraActive] = useState(false);
@@ -216,24 +217,64 @@ function ScanPageInner() {
     if (fileRef.current) fileRef.current.value = '';
   }
 
+  // OCR local (Tesseract.js) pour les tickets — zéro consommation IA, gratuit pour tous
+  async function ocrReceiptImages(): Promise<string> {
+    setOcrProgress(0);
+    const { createWorker } = await import('tesseract.js');
+    const worker = await createWorker('fra', 1, {
+      logger: m => {
+        if (m.status === 'recognizing text') setOcrProgress(Math.round(m.progress * 100));
+      },
+    });
+    let fullText = '';
+    try {
+      for (const img of images) {
+        const { data } = await worker.recognize(img);
+        fullText += data.text + '\n';
+      }
+    } finally {
+      await worker.terminate();
+    }
+    return fullText;
+  }
+
   async function analyzeAllImages() {
     setScanning(true); setResults([]); setAddedCount(null);
     const seen = new Set<string>(); const all: DetectedItem[] = [];
-    const endpoint = scanType === 'receipt' ? '/api/scan/receipt' : '/api/scan';
-    for (const img of images) {
+
+    if (scanType === 'receipt') {
+      // Ticket : OCR côté client puis matching texte côté serveur (pas d'IA)
       try {
-        const res = await fetch(endpoint, {
+        const text = await ocrReceiptImages();
+        const res = await fetch('/api/scan/receipt', {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ image: img.split(',')[1] }),
+          body: JSON.stringify({ text }),
         });
-        if (res.status === 403) { setScanning(false); setMode('upgrade'); return; }
         if (res.ok) {
           const data = await res.json();
           for (const item of data.items || []) {
             if (!seen.has(item.name.toLowerCase())) { seen.add(item.name.toLowerCase()); all.push(item); }
           }
+          if (data.message && all.length === 0) alert(data.message);
         }
-      } catch { /* continue */ }
+      } catch { alert('Erreur pendant la lecture du ticket. Réessaie avec une photo plus nette.'); }
+      setOcrProgress(null);
+    } else {
+      for (const img of images) {
+        try {
+          const res = await fetch('/api/scan', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ image: img.split(',')[1] }),
+          });
+          if (res.status === 403) { setScanning(false); setMode('upgrade'); return; }
+          if (res.ok) {
+            const data = await res.json();
+            for (const item of data.items || []) {
+              if (!seen.has(item.name.toLowerCase())) { seen.add(item.name.toLowerCase()); all.push(item); }
+            }
+          }
+        } catch { /* continue */ }
+      }
     }
     setResults(all);
     // Tout pré-sélectionné par défaut
@@ -426,10 +467,10 @@ function ScanPageInner() {
           </div>
           <div className="flex-1">
             <p className="font-semibold text-sm">Scanner un ticket de caisse</p>
-            <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>Photo du reçu, l&apos;IA ajoute tous tes achats d&apos;un coup</p>
+            <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>Photo du reçu, tous tes achats ajoutés d&apos;un coup</p>
           </div>
           <span className="text-[10px] font-semibold px-2 py-1 rounded-full shrink-0"
-            style={{ backgroundColor: 'rgba(245,158,11,0.12)', color: 'rgb(180,120,0)' }}>Premium</span>
+            style={{ backgroundColor: 'rgba(16,185,129,0.12)', color: 'rgb(16,185,129)' }}>Gratuit</span>
         </button>
         <button onClick={() => setMode('barcode')}
           className="card w-full p-5 flex items-center gap-4 hover:shadow-sm transition-all text-left">
@@ -543,9 +584,21 @@ function ScanPageInner() {
         <input ref={fileRef} type="file" accept="image/*" multiple onChange={handleFileUpload} className="hidden" />
 
         {scanning && (
-          <div className="flex items-center justify-center gap-2.5 py-8">
-            <Loader2 className="w-5 h-5 animate-spin" style={{ color: 'var(--text-muted)' }} />
-            <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Analyse en cours…</p>
+          <div className="flex flex-col items-center justify-center gap-3 py-8">
+            <div className="flex items-center gap-2.5">
+              <Loader2 className="w-5 h-5 animate-spin" style={{ color: 'var(--text-muted)' }} />
+              <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
+                {scanType === 'receipt'
+                  ? (ocrProgress !== null ? `Lecture du ticket… ${ocrProgress}%` : 'Préparation OCR…')
+                  : 'Analyse en cours…'}
+              </p>
+            </div>
+            {scanType === 'receipt' && ocrProgress !== null && (
+              <div className="w-48 h-1.5 rounded-full overflow-hidden" style={{ backgroundColor: 'var(--bg-inset)' }}>
+                <div className="h-full rounded-full transition-all"
+                  style={{ width: `${ocrProgress}%`, backgroundColor: 'var(--accent)' }} />
+              </div>
+            )}
           </div>
         )}
 
