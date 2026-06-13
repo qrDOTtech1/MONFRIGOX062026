@@ -37,6 +37,7 @@ interface Template {
 }
 
 const TEMPLATES: Template[] = [
+  { id: 'ticket-80x50', label: 'Ticket 80×50mm', width: 950, height: 600, type: 'print', icon: Printer },
   { id: 'eco-a5', label: 'Éco A5 (print)', width: 1748, height: 2480, type: 'eco', icon: Leaf },
   { id: 'eco-a4', label: 'Éco A4 (print)', width: 2480, height: 3508, type: 'eco', icon: Leaf },
   { id: 'flyer-a5', label: 'Flyer A5 (print)', width: 1748, height: 2480, type: 'print', icon: Printer },
@@ -105,6 +106,94 @@ async function generateQR(url: string, size: number): Promise<HTMLCanvasElement>
     errorCorrectionLevel: 'M',
   });
   return qrCanvas;
+}
+
+async function drawTicketVisual(
+  canvas: HTMLCanvasElement,
+  template: Template,
+  promoCode: string,
+  customTagline: string,
+) {
+  const ctx = canvas.getContext('2d')!;
+  const { width: W, height: H } = template;
+  canvas.width = W;
+  canvas.height = H;
+
+  const black = '#000000';
+  const dark = '#18181b';
+  const gray = '#52525b';
+
+  // White background
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, W, H);
+
+  const padX = 20;
+  const padY = 12;
+  let y = padY;
+
+  // Small mascot top-left corner
+  const mascotSize = 32;
+  try {
+    const mascotImg = await loadImage('/mascot-happy.png');
+    ctx.drawImage(mascotImg, padX, y, mascotSize, mascotSize);
+  } catch {}
+
+  // MonFrigo.app - gros et centré
+  ctx.textAlign = 'center';
+  ctx.fillStyle = dark;
+  ctx.font = `bold 28px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif`;
+  ctx.fillText('MonFrigo.app', W / 2, y + 24);
+  y += 42;
+
+  // Code promo - ÉNORME si renseigné
+  if (promoCode) {
+    ctx.fillStyle = black;
+    ctx.font = `900 48px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif`;
+    ctx.fillText(promoCode.toUpperCase(), W / 2, y + 46);
+    y += 58;
+
+    ctx.fillStyle = gray;
+    ctx.font = `400 12px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif`;
+    ctx.fillText('Code promo exclusif', W / 2, y + 12);
+    y += 18;
+  } else {
+    // Si pas de promo, affiche le tagline compact
+    ctx.fillStyle = dark;
+    ctx.font = `600 18px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif`;
+    const tag = customTagline || 'Gratuit à vie';
+    ctx.fillText(tag, W / 2, y + 18);
+    y += 28;
+  }
+
+  // Tear-off line
+  ctx.strokeStyle = '#d4d4d8';
+  ctx.lineWidth = 1.5;
+  ctx.setLineDash([4, 4]);
+  ctx.beginPath();
+  ctx.moveTo(padX, y);
+  ctx.lineTo(W - padX, y);
+  ctx.stroke();
+  ctx.setLineDash([]);
+  y += 10;
+
+  // QR code petit, coin bas-droit
+  const qrSize = 60;
+  const qrUrl = promoCode ? `${APP_URL}?promo=${promoCode}` : APP_URL;
+  try {
+    const qrCanvas = await generateQR(qrUrl, qrSize);
+    ctx.drawImage(qrCanvas, W - qrSize - 8, H - qrSize - 8, qrSize, qrSize);
+  } catch {}
+
+  // URL minuscule bas-gauche
+  ctx.textAlign = 'left';
+  ctx.fillStyle = gray;
+  ctx.font = `400 10px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif`;
+  ctx.fillText('monfrigo.app', padX, H - 10);
+
+  // Border
+  ctx.strokeStyle = black;
+  ctx.lineWidth = 2;
+  ctx.strokeRect(2, 2, W - 4, H - 4);
 }
 
 async function drawEcoVisual(
@@ -586,21 +675,26 @@ export default function ProspectionPage() {
   const template = TEMPLATES.find(t => t.id === selectedTemplate)!;
   const style = PROMO_STYLES.find(s => s.id === selectedStyle)!;
   const isEco = template.type === 'eco';
+  const isTicket = template.id.startsWith('ticket');
 
   const renderPreview = useCallback(async () => {
     if (!previewRef.current) return;
-    if (isEco) {
+    if (isTicket) {
+      await drawTicketVisual(previewRef.current, template, promoCode, customTagline);
+    } else if (isEco) {
       await drawEcoVisual(previewRef.current, template, promoCode, customTagline);
     } else {
       await drawVisual(previewRef.current, template, style, promoCode, customTagline);
     }
-  }, [template, style, promoCode, customTagline, isEco]);
+  }, [template, style, promoCode, customTagline, isEco, isTicket]);
 
   useEffect(() => { renderPreview(); }, [renderPreview]);
 
   async function downloadPNG() {
     const canvas = document.createElement('canvas');
-    if (isEco) {
+    if (isTicket) {
+      await drawTicketVisual(canvas, template, promoCode, customTagline);
+    } else if (isEco) {
       await drawEcoVisual(canvas, template, promoCode, customTagline);
     } else {
       await drawVisual(canvas, template, style, promoCode, customTagline);
@@ -626,7 +720,9 @@ export default function ProspectionPage() {
     for (const t of TEMPLATES) {
       const canvas = document.createElement('canvas');
       const s = t.type === 'eco' ? ECO_STYLE : style;
-      if (t.type === 'eco') {
+      if (t.id.startsWith('ticket')) {
+        await drawTicketVisual(canvas, t, promoCode, customTagline);
+      } else if (t.type === 'eco') {
         await drawEcoVisual(canvas, t, promoCode, customTagline);
       } else {
         await drawVisual(canvas, t, s, promoCode, customTagline);
