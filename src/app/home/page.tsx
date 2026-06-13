@@ -223,26 +223,25 @@ export default function HomePage() {
 
           {/* ── Header mascotte + chat ── */}
           <div className="card overflow-hidden" style={{ backgroundColor: 'rgba(10,10,15,0.82)', border: '1px solid rgba(255,255,255,0.07)' }}>
-            {/* Salutation + mascotte */}
-            <div className="flex items-end justify-between px-4 pt-4 pb-2">
+            {/* Salutation compacte + mascotte */}
+            <div className="flex items-center justify-between px-4 pt-3 pb-1.5">
               <div>
-                <p className="text-xs font-medium mb-0.5" style={{ color: 'var(--text-muted)' }}>
+                <p className="text-[10px] font-medium" style={{ color: 'var(--text-muted)' }}>
                   {new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })}
                 </p>
-                <h1 className="text-xl font-bold">{greeting}, {firstName} 👋</h1>
+                <h1 className="text-lg font-bold leading-tight">{greeting}, {firstName} 👋</h1>
                 {expiringCount > 0 && (
                   <button onClick={() => router.push('/fridge')}
-                    className="flex items-center gap-1.5 mt-1.5 text-xs font-medium px-3 py-1 rounded-full"
+                    className="flex items-center gap-1 mt-1 text-[10px] font-medium px-2.5 py-0.5 rounded-full"
                     style={{ backgroundColor: 'rgba(245,158,11,0.12)', color: 'rgb(245,158,11)', border: '1px solid rgba(245,158,11,0.25)' }}>
-                    <AlertTriangle className="w-3 h-3" />
+                    <AlertTriangle className="w-2.5 h-2.5" />
                     {expiringCount} ingrédient{expiringCount > 1 ? 's' : ''} à utiliser vite !
                   </button>
                 )}
               </div>
               <Mascot
                 variant={mascotVariant as MascotVariant}
-                message={mascotMessage}
-                size="xl"
+                size="lg"
                 animate="float"
               />
             </div>
