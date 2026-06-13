@@ -36,7 +36,7 @@ const WELCOME: ChatMessage = {
   timestamp: 0,
 };
 
-export default function MascotChat({ allRecipes }: { allRecipes: RecipeMini[] }) {
+export default function MascotChat({ allRecipes, embedded = false }: { allRecipes: RecipeMini[]; embedded?: boolean }) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
@@ -151,41 +151,53 @@ export default function MascotChat({ allRecipes }: { allRecipes: RecipeMini[] })
 
   const showSuggestions = messages.length <= 1 && !loading;
 
+  const bubbleBg   = 'rgba(8,8,12,0.88)';      // bulle assistant
+  const inputBg    = 'rgba(8,8,12,0.82)';      // champ de saisie
+  const suggBg     = 'rgba(18,18,26,0.85)';    // chips suggestions
+
   return (
-    <div className="card overflow-hidden">
-      {/* Header */}
-      <div className="flex items-center gap-3 px-4 pt-3 pb-2.5"
-        style={{ borderBottom: '1px solid var(--border-subtle)' }}>
-        <Mascot
-          variant={mascotState}
-          size="sm"
-          animate={loading ? 'bounce' : 'float'}
-        />
-        <div className="flex-1 min-w-0">
-          <h2 className="text-sm font-bold leading-tight">Assistant culinaire</h2>
-          <p className="text-[10px] leading-tight" style={{ color: 'var(--text-muted)' }}>
-            {loading ? '🤔 En train de réfléchir…' : `${allRecipes.length} recettes disponibles`}
-          </p>
+    <div className={embedded ? '' : 'card overflow-hidden'}>
+      {/* Header — masqué en mode embedded (la card parente fait déjà l'encadrement) */}
+      {!embedded && (
+        <div className="flex items-center gap-3 px-4 pt-3 pb-2.5"
+          style={{ borderBottom: '1px solid var(--border-subtle)' }}>
+          <Mascot variant={mascotState} size="sm" animate={loading ? 'bounce' : 'float'} />
+          <div className="flex-1 min-w-0">
+            <h2 className="text-sm font-bold leading-tight">Assistant culinaire</h2>
+            <p className="text-[10px] leading-tight" style={{ color: 'var(--text-muted)' }}>
+              {loading ? '🤔 En train de réfléchir…' : `${allRecipes.length} recettes disponibles`}
+            </p>
+          </div>
+          <button onClick={clearHistory} className="p-1.5 rounded-lg transition-colors hover:opacity-70"
+            style={{ color: 'var(--text-muted)' }} title="Effacer l'historique">
+            <Trash2 className="w-3.5 h-3.5" />
+          </button>
         </div>
-        <button
-          onClick={clearHistory}
-          className="p-1.5 rounded-lg transition-colors hover:opacity-70"
-          style={{ color: 'var(--text-muted)' }}
-          title="Effacer l'historique"
-        >
-          <Trash2 className="w-3.5 h-3.5" />
-        </button>
-      </div>
+      )}
+
+      {/* Séparateur + statut quand embedded */}
+      {embedded && (
+        <div className="flex items-center justify-between px-4 py-2"
+          style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+          <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>
+            {loading ? '🤔 En train de réfléchir…' : '💬 Assistant culinaire'}
+          </p>
+          <button onClick={clearHistory} className="p-1 rounded-lg hover:opacity-70"
+            style={{ color: 'var(--text-muted)' }} title="Effacer l'historique">
+            <Trash2 className="w-3 h-3" />
+          </button>
+        </div>
+      )}
 
       {/* Messages */}
-      <div className="h-52 overflow-y-auto px-3 py-2.5 space-y-2">
+      <div className="h-48 overflow-y-auto px-3 py-2 space-y-2">
         {messages.map((msg, i) => (
           <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
             <div
               className={`max-w-[85%] px-3 py-2 text-xs leading-relaxed ${msg.role === 'user' ? 'rounded-2xl rounded-tr-sm' : 'rounded-2xl rounded-tl-sm'}`}
               style={msg.role === 'user'
                 ? { backgroundColor: 'var(--accent)', color: 'var(--accent-text)' }
-                : { backgroundColor: 'var(--bg-inset)', color: 'var(--text)' }}
+                : { backgroundColor: bubbleBg, color: 'var(--text)', border: '1px solid rgba(255,255,255,0.06)' }}
             >
               {msg.content}
             </div>
@@ -194,7 +206,8 @@ export default function MascotChat({ allRecipes }: { allRecipes: RecipeMini[] })
 
         {loading && (
           <div className="flex justify-start">
-            <div className="px-3 py-2.5 rounded-2xl rounded-tl-sm" style={{ backgroundColor: 'var(--bg-inset)' }}>
+            <div className="px-3 py-2.5 rounded-2xl rounded-tl-sm"
+              style={{ backgroundColor: bubbleBg, border: '1px solid rgba(255,255,255,0.06)' }}>
               <span className="flex items-center gap-1">
                 {[0, 150, 300].map(delay => (
                   <span key={delay} className="w-1.5 h-1.5 rounded-full animate-bounce"
@@ -213,7 +226,7 @@ export default function MascotChat({ allRecipes }: { allRecipes: RecipeMini[] })
           {SUGGESTIONS.map(s => (
             <button key={s} onClick={() => send(s)}
               className="text-[10px] px-2.5 py-1 rounded-full transition-colors active:scale-95"
-              style={{ backgroundColor: 'var(--bg-inset)', border: '1px solid var(--border-subtle)', color: 'var(--text-secondary)' }}>
+              style={{ backgroundColor: suggBg, border: '1px solid rgba(255,255,255,0.08)', color: 'var(--text-secondary)' }}>
               {s}
             </button>
           ))}
@@ -223,14 +236,13 @@ export default function MascotChat({ allRecipes }: { allRecipes: RecipeMini[] })
       {/* Input row */}
       <div className="flex items-center gap-2 px-3 pb-3 pt-1">
         {hasSpeech && (
-          <button
-            onClick={toggleVoice}
+          <button onClick={toggleVoice}
             className="p-2 rounded-xl shrink-0 transition-all active:scale-95"
             style={{
-              backgroundColor: listening ? 'var(--accent)' : 'var(--bg-inset)',
+              backgroundColor: listening ? 'var(--accent)' : inputBg,
               color: listening ? 'var(--accent-text)' : 'var(--text-muted)',
-            }}
-          >
+              border: '1px solid rgba(255,255,255,0.06)',
+            }}>
             {listening ? <MicOff className="w-3.5 h-3.5" /> : <Mic className="w-3.5 h-3.5" />}
           </button>
         )}
@@ -242,17 +254,14 @@ export default function MascotChat({ allRecipes }: { allRecipes: RecipeMini[] })
           placeholder="Demande-moi quelque chose…"
           className="flex-1 text-xs px-3 py-2 rounded-xl outline-none"
           style={{
-            backgroundColor: 'var(--bg-inset)',
-            border: '1px solid var(--border-subtle)',
+            backgroundColor: inputBg,
+            border: '1px solid rgba(255,255,255,0.08)',
             color: 'var(--text)',
           }}
         />
-        <button
-          onClick={() => send()}
-          disabled={!input.trim() || loading}
+        <button onClick={() => send()} disabled={!input.trim() || loading}
           className="p-2 rounded-xl shrink-0 transition-all active:scale-95 disabled:opacity-40"
-          style={{ backgroundColor: 'var(--accent)', color: 'var(--accent-text)' }}
-        >
+          style={{ backgroundColor: 'var(--accent)', color: 'var(--accent-text)' }}>
           <Send className="w-3.5 h-3.5" />
         </button>
       </div>

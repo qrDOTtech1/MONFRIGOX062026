@@ -153,31 +153,44 @@ export default function HomePage() {
   return (
     <AppShell>
       <FloatingEmojis />
+      <style>{`
+        .home-cards .card {
+          background-color: rgba(10, 10, 15, 0.80) !important;
+          backdrop-filter: blur(12px);
+          -webkit-backdrop-filter: blur(12px);
+          border-color: rgba(255,255,255,0.07) !important;
+        }
+      `}</style>
       <div className="pb-28" style={{ background: getTimeGradient(), minHeight: '100vh' }}>
-        <div className="px-4 pt-4 max-w-lg mx-auto space-y-4">
+        <div className="home-cards px-4 pt-4 max-w-lg mx-auto space-y-4">
 
-          {/* ── Header mascotte ── */}
-          <div className="flex items-end justify-between">
-            <div>
-              <p className="text-xs font-medium mb-0.5" style={{ color: 'var(--text-muted)' }}>
-                {new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })}
-              </p>
-              <h1 className="text-xl font-bold">{greeting}, {firstName} 👋</h1>
-              {expiringCount > 0 && (
-                <button onClick={() => router.push('/fridge')}
-                  className="flex items-center gap-1.5 mt-1.5 text-xs font-medium px-3 py-1 rounded-full"
-                  style={{ backgroundColor: 'rgba(245,158,11,0.12)', color: 'rgb(245,158,11)', border: '1px solid rgba(245,158,11,0.25)' }}>
-                  <AlertTriangle className="w-3 h-3" />
-                  {expiringCount} ingrédient{expiringCount > 1 ? 's' : ''} à utiliser vite !
-                </button>
-              )}
+          {/* ── Header mascotte + chat ── */}
+          <div className="card overflow-hidden" style={{ backgroundColor: 'rgba(10,10,15,0.82)', border: '1px solid rgba(255,255,255,0.07)' }}>
+            {/* Salutation + mascotte */}
+            <div className="flex items-end justify-between px-4 pt-4 pb-2">
+              <div>
+                <p className="text-xs font-medium mb-0.5" style={{ color: 'var(--text-muted)' }}>
+                  {new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })}
+                </p>
+                <h1 className="text-xl font-bold">{greeting}, {firstName} 👋</h1>
+                {expiringCount > 0 && (
+                  <button onClick={() => router.push('/fridge')}
+                    className="flex items-center gap-1.5 mt-1.5 text-xs font-medium px-3 py-1 rounded-full"
+                    style={{ backgroundColor: 'rgba(245,158,11,0.12)', color: 'rgb(245,158,11)', border: '1px solid rgba(245,158,11,0.25)' }}>
+                    <AlertTriangle className="w-3 h-3" />
+                    {expiringCount} ingrédient{expiringCount > 1 ? 's' : ''} à utiliser vite !
+                  </button>
+                )}
+              </div>
+              <Mascot
+                variant={mascotVariant as MascotVariant}
+                message={mascotMessage}
+                size="xl"
+                animate="float"
+              />
             </div>
-            <Mascot
-              variant={mascotVariant as MascotVariant}
-              message={mascotMessage}
-              size="lg"
-              animate="float"
-            />
+            {/* Chat intégré */}
+            <MascotChat allRecipes={allRecipes} embedded />
           </div>
 
           {/* ── Streak banner ── */}
@@ -378,9 +391,6 @@ export default function HomePage() {
               </div>
             )}
           </div>
-
-          {/* ── Assistant mascotte ── */}
-          <MascotChat allRecipes={allRecipes} />
 
         </div>
       </div>
