@@ -22,7 +22,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: rl.reason, upgrade: rl.upgrade, remaining: 0 }, { status: 429 });
   }
 
-  // Charge toutes les recettes de la DB pour que l'IA ait le contexte complet
+  // ── Contexte recettes ──
   const recipes = await prisma.recipe.findMany({
     select: {
       id: true, name: true, description: true, cuisine: true,
@@ -40,29 +40,66 @@ export async function POST(req: NextRequest) {
     ` | Ingrédients: ${r.ingredients.map(i => i.ingredient.name).join(', ')}`
   ).join('\n');
 
-  const systemPrompt = `Tu es un assistant culinaire vocal dans l'application MonFrigo. Tu aides les utilisateurs à trouver des recettes ET à naviguer dans l'app. Ton rôle est aussi d'être accessible aux personnes malvoyantes ou peu à l'aise avec la technologie.
+  // ── Contexte frigo utilisateur ──
+  const fridgeItems = await prisma.fridgeItem.findMany({
+    where: { userId: user.id },
+    select: {
+      quantity: true, unit: true, expiresAt: true,
+      ingredient: { select: { name: true, emoji: true } },
+    },
+  });
 
-CATALOGUE COMPLET (${recipes.length} recettes) :
+  const now = new Date();
+  const fridgeContext = fridgeItems.length > 0
+    ? fridgeItems.map(f => {
+        const expiring = f.expiresAt && f.expiresAt < new Date(now.getTime() + 3 * 86_400_000);
+        return `${f.ingredient.emoji || ''} ${f.ingredient.name}${f.quantity ? ` (${f.quantity} ${f.unit || ''})` : ''}${expiring ? ' ⚠️ BIENTÔT PÉRIMÉ' : ''}`;
+      }).join(', ')
+    : 'FRIGO VIDE';
+
+  // ── Profil utilisateur ──
+  const profile = await prisma.user.findUnique({
+    where: { id: user.id },
+    select: { allergens: true, dietMode: true, tasteProfile: true },
+  });
+
+  let dietInfo = '';
+  if (profile) {
+    const parts: string[] = [];
+    if (profile.dietMode) parts.push(`Régime: ${profile.dietMode}`);
+    try {
+      const allergens = JSON.parse(profile.allergens || '[]');
+      if (allergens.length) parts.push(`Allergènes: ${allergens.join(', ')}`);
+    } catch {}
+    if (parts.length) dietInfo = `\nPROFIL UTILISATEUR : ${parts.join(' | ')}`;
+  }
+
+  const systemPrompt = `Tu es l'assistant culinaire vocal de MonFrigo. Tu aides les utilisateurs à trouver des recettes et naviguer dans l'app. Tu dois être accessible aux personnes malvoyantes et peu technophiles.
+
+CONTENU DU FRIGO DE L'UTILISATEUR :
+${fridgeContext}${dietInfo}
+
+CATALOGUE (${recipes.length} recettes) :
 ${recipeContext}
 
-COMPORTEMENT :
-- Réponds toujours en français, de façon conversationnelle, chaleureuse et claire.
-- Propose des recettes du catalogue en te basant sur les demandes (ingrédients, envies, régimes, temps disponible).
-- Quand tu cites une recette, inclus son ID : [ID:xxxx]. Cite 1 à 4 recettes max.
-- IMPORTANT : quand tu inclus des IDs de recettes, NE RÉPÈTE PAS leur nom, ingrédients, temps ou détails dans le texte — ces infos seront affichées automatiquement en cartes visuelles. Dis juste une phrase d'intro conversationnelle courte. Exemple : "Voici deux recettes express portugaises ! 🇵🇹" sans rien d'autre.
-- Reste concis (1-2 phrases max quand tu suggères des recettes, plus si question précise sans recette).
+RÈGLES DE RÉPONSE :
+- Français conversationnel, chaleureux, clair. Pas de jargon.
+- N'utilise JAMAIS de markdown (pas de **, *, _, #, - pour les listes). Écris en texte simple et naturel, comme si tu parlais à voix haute.
+- Quand tu cites une recette du catalogue, inclus [ID:xxxx]. Max 4 recettes par réponse.
+- QUAND TU INCLUS DES IDs : ne répète PAS le nom, les ingrédients ni le temps dans le texte. Tout ça s'affiche automatiquement en cartes visuelles. Dis juste 1-2 phrases d'intro. Exemple : "Voilà deux idées qui collent avec ton frigo !" suivi des [ID:xxx].
+- Tu connais le frigo de l'utilisateur : propose des recettes qui utilisent ses ingrédients. Signale ceux qui périment bientôt.
+- Si le frigo est vide, dis-le gentiment et propose quand même des recettes populaires.
+- Reste concis : 1-2 phrases si tu suggères des recettes, 3-4 si c'est une question sans recette.
 
-NAVIGATION (IMPORTANT) :
-Si l'utilisateur veut aller quelque part ou faire une action, ajoute UNE commande à la FIN de ta réponse :
-- Voir le frigo / ses ingrédients → [NAV:/fridge]
-- Scanner un produit / code-barres → [NAV:/scan]
-- Voir les recettes / catalogue → [NAV:/dashboard]
-- Planning / repas de la semaine → [NAV:/shopping]
-- Son profil / abonnement → [NAV:/profile]
-- Retour accueil → [NAV:/home]
-- Ouvrir une recette spécifique → [NAV:/dashboard] (avec [ID:xxxx] pour l'identifier)
-Exemples : "Je t'emmène dans ton frigo ! [NAV:/fridge]" / "Voilà le planning ! [NAV:/shopping]"
-Ne mets JAMAIS la commande NAV au milieu du texte, toujours à la fin.`;
+NAVIGATION :
+Si l'utilisateur veut aller quelque part, ajoute UNE commande à LA FIN de ta réponse :
+- Frigo → [NAV:/fridge]
+- Scanner → [NAV:/scan]
+- Recettes → [NAV:/dashboard]
+- Planning → [NAV:/shopping]
+- Profil → [NAV:/profile]
+- Accueil → [NAV:/home]
+Exemple : "Je t'emmène voir ton frigo ! [NAV:/fridge]"`;
 
   try {
     const resp = await chatCompletion(
@@ -75,11 +112,11 @@ Ne mets JAMAIS la commande NAV au milieu du texte, toujours à la fin.`;
 
     const reply = resp.message?.content || '';
 
-    // Extraire les IDs de recettes mentionnées dans la réponse
+    // Extraire les IDs de recettes mentionnées
     const idMatches = [...reply.matchAll(/\[ID:([a-z0-9]+)\]/gi)];
     const recipeIds = [...new Set(idMatches.map(m => m[1]))];
 
-    // Extraire commande de navigation [NAV:/path]
+    // Extraire commande de navigation
     const navMatch = reply.match(/\[NAV:(\/[^\]]*)\]/i);
     const navTo = navMatch ? navMatch[1] : null;
 

@@ -40,15 +40,34 @@ const WELCOME: ChatMessage = {
   timestamp: 0,
 };
 
+/* ── Nettoyage markdown pour TTS et affichage ──────────────── */
+function stripMarkdown(text: string): string {
+  return text
+    .replace(/\*{1,3}([^*]+)\*{1,3}/g, '$1')   // *bold* **bold** ***bold***
+    .replace(/_{1,3}([^_]+)_{1,3}/g, '$1')       // _italic_ __bold__
+    .replace(/~~([^~]+)~~/g, '$1')                // ~~strikethrough~~
+    .replace(/`([^`]+)`/g, '$1')                  // `code`
+    .replace(/^#{1,6}\s+/gm, '')                  // # headings
+    .replace(/^[-*+]\s+/gm, '• ')                 // - list items → bullet
+    .replace(/^\d+\.\s+/gm, '')                   // 1. numbered lists
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')      // [link](url) → link text
+    .replace(/\n{3,}/g, '\n\n')                   // collapse extra newlines
+    .trim();
+}
+
 /* ── TTS helper ────────────────────────────────────────────── */
 function speak(text: string) {
   if (typeof window === 'undefined' || !window.speechSynthesis) return;
   window.speechSynthesis.cancel();
-  const utt = new SpeechSynthesisUtterance(text);
+  const clean = stripMarkdown(text)
+    .replace(/[🍽️🇧🇫🇵🇹🔥⚡♻️💶👨‍🍳🏆💪🥦🌿⭐👑🔒✨😄😢🤔👋💬🆕📅⚠️]/gu, '') // emojis bruyants en TTS
+    .replace(/\s{2,}/g, ' ')
+    .trim();
+  if (!clean) return;
+  const utt = new SpeechSynthesisUtterance(clean);
   utt.lang = 'fr-FR';
   utt.rate = 1.05;
   utt.pitch = 1;
-  // Préférer une voix française si dispo
   const voices = window.speechSynthesis.getVoices();
   const frVoice = voices.find(v => v.lang.startsWith('fr'));
   if (frVoice) utt.voice = frVoice;
@@ -395,7 +414,7 @@ export default function MascotChat({ allRecipes, embedded = false }: { allRecipe
                       ? { backgroundColor: 'var(--accent)', color: 'var(--accent-text)' }
                       : { backgroundColor: bubbleBg, color: 'var(--text)', border: '1px solid rgba(255,255,255,0.06)' }}
                   >
-                    {msg.content}
+                    {stripMarkdown(msg.content)}
                     {/* Bandeau navigation */}
                     {msg.navTo && (
                       <button
