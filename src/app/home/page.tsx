@@ -250,14 +250,14 @@ export default function HomePage() {
             <MascotChat allRecipes={allRecipes} embedded />
           </div>
 
-          {/* ── Streak banner ── */}
+          {/* ── Succès banner ── */}
           {streak > 0 && (
             <div className="flex items-center gap-3 px-4 py-3 rounded-2xl"
               style={{ background: 'linear-gradient(135deg, rgba(251,146,60,0.15), rgba(234,179,8,0.1))', border: '1px solid rgba(251,146,60,0.2)' }}>
               <span className="text-2xl">🔥</span>
               <div>
-                <p className="text-sm font-bold">{streak} jour{streak > 1 ? 's' : ''} de streak !</p>
-                <p className="text-[11px]" style={{ color: 'var(--text-muted)' }}>Continue comme ça pour débloquer des badges</p>
+                <p className="text-sm font-bold">{streak} jour{streak > 1 ? 's' : ''} de succès !</p>
+                <p className="text-[11px]" style={{ color: 'var(--text-muted)' }}>Continue pour débloquer des récompenses</p>
               </div>
             </div>
           )}
@@ -333,14 +333,8 @@ export default function HomePage() {
 
           {/* ── Accès rapides ── */}
           <div className="card px-4 py-4">
-            <div className="flex items-center justify-between mb-3">
+            <div className="mb-3">
               <h2 className="text-sm font-bold">Accès rapides</h2>
-              {recent.length > 0 && (
-                <span className="text-[10px] px-2 py-0.5 rounded-full"
-                  style={{ backgroundColor: 'var(--bg-inset)', color: 'var(--text-muted)' }}>
-                  ⚡ {recent.length} récent{recent.length > 1 ? 's' : ''}
-                </span>
-              )}
             </div>
             <div className="grid grid-cols-3 gap-2.5">
               {shortcuts.map((page, idx) => {
@@ -396,13 +390,30 @@ export default function HomePage() {
           )}
 
           {/* ── Streak & badges ── */}
+          {/* ── Succès & Badges ── */}
           <div className="card px-4 py-4">
             <div className="flex items-center justify-between mb-3">
-              <h2 className="text-sm font-bold">Badges & Streak</h2>
-              <div className="flex items-center gap-1.5 px-3 py-1 rounded-full"
-                style={{ backgroundColor: 'rgba(251,146,60,0.1)', border: '1px solid rgba(251,146,60,0.2)' }}>
-                <span className="text-sm">🔥</span>
-                <span className="text-xs font-bold text-orange-400">{streak}j</span>
+              <h2 className="text-sm font-bold flex items-center gap-1.5">
+                <Trophy className="w-4 h-4 text-amber-400" /> Succès & Badges
+              </h2>
+              {streak > 0 && (
+                <div className="flex items-center gap-1.5 px-3 py-1 rounded-full"
+                  style={{ background: 'linear-gradient(135deg, rgba(251,146,60,0.15), rgba(234,179,8,0.1))', border: '1px solid rgba(251,146,60,0.2)' }}>
+                  <span className="text-sm">🔥</span>
+                  <span className="text-xs font-bold text-orange-400">{streak}j</span>
+                </div>
+              )}
+            </div>
+
+            {/* Progress bar succès */}
+            <div className="mb-3 px-1">
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-[10px]" style={{ color: 'var(--text-muted)' }}>Progression</span>
+                <span className="text-[10px] font-bold" style={{ color: 'var(--accent)' }}>{badges.length} badge{badges.length > 1 ? 's' : ''} débloqué{badges.length > 1 ? 's' : ''}</span>
+              </div>
+              <div className="h-1.5 rounded-full overflow-hidden" style={{ backgroundColor: 'rgba(255,255,255,0.06)' }}>
+                <div className="h-full rounded-full transition-all duration-500"
+                  style={{ width: `${Math.min(100, (badges.length / 6) * 100)}%`, background: 'linear-gradient(90deg, var(--accent), #f59e0b)' }} />
               </div>
             </div>
 
@@ -424,7 +435,7 @@ export default function HomePage() {
               <div className="flex items-center gap-3 py-2">
                 <Mascot variant="wink" size="sm" animate="none" />
                 <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-                  Planifie tes repas cette semaine pour débloquer tes premiers badges !
+                  Planifie tes repas cette semaine pour débloquer tes premiers succès !
                 </p>
               </div>
             )}

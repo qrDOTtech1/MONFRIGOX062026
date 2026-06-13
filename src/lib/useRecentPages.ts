@@ -31,7 +31,7 @@ export const DEFAULT_SHORTCUTS: PageDef[] = [
 ];
 
 const STORAGE_KEY = 'mf_recent_pages';
-const MAX_RECENT = 3;
+const MAX_RECENT = 9;
 
 function readRecent(): PageDef[] {
   try {
@@ -64,10 +64,10 @@ export function useRecentPages() {
     return () => window.removeEventListener('mf_recent_update', refresh);
   }, [refresh]);
 
-  // Merge: recent first, then defaults to fill up to 6
+  // Merge: recent first, then defaults to fill up to 9
   const merged: PageDef[] = [...recent];
   for (const def of DEFAULT_SHORTCUTS) {
-    if (merged.length >= 6) break;
+    if (merged.length >= 9) break;
     if (!merged.find(p => p.href === def.href)) merged.push(def);
   }
 

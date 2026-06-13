@@ -561,7 +561,7 @@ export default function MascotChat({ allRecipes, embedded = false }: { allRecipe
 
         {/* Zone messages */}
         <div role="log" aria-label="Conversation avec l'assistant" aria-live="polite"
-          className="h-48 overflow-y-auto px-3 py-2 space-y-3">
+          className="h-72 overflow-y-auto px-3 py-2 space-y-3">
           {messages.map((msg, i) => {
             const allAvailable = [...allRecipes, ...dynamicRecipes];
             const cards = (msg.recipeIds ?? []).map(id => allAvailable.find(r => r.id === id)).filter(Boolean) as RecipeMini[];

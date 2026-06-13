@@ -6,7 +6,9 @@ export async function POST(req: NextRequest) {
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: 'Non autorisé' }, { status: 401 });
 
-  const { action, recipeId, date, mealType, ingredientName, quantity, unit } = await req.json();
+  const body = await req.json();
+  const action = body.action || body.type;
+  const { recipeId, date, mealType, ingredientName, quantity, unit } = body;
 
   if (action === 'PLAN') {
     if (!recipeId || !date || !mealType)
