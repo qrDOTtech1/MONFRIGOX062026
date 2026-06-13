@@ -56,11 +56,11 @@ function speak(text: string) {
 }
 
 /* ── Mini-card recette ─────────────────────────────────────── */
-function RecipeCard({ recipe, onNavigate }: { recipe: RecipeMini; onNavigate: () => void }) {
+function RecipeCard({ recipe, onNavigate }: { recipe: RecipeMini; onNavigate: (id: string) => void }) {
   const emoji = recipe.ingredients?.[0]?.ingredient?.emoji || '🍽️';
   return (
     <button
-      onClick={onNavigate}
+      onClick={() => onNavigate(recipe.id)}
       aria-label={`Voir la recette ${recipe.name}, ${recipe.prepTime} minutes${recipe.calories ? `, ${recipe.calories} calories` : ''}`}
       className="shrink-0 flex flex-col rounded-2xl overflow-hidden transition-all active:scale-95 hover:opacity-90 text-left focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
       style={{ width: '118px', backgroundColor: 'rgba(6,6,10,0.92)', border: '1px solid rgba(255,255,255,0.10)' }}
@@ -415,7 +415,7 @@ export default function MascotChat({ allRecipes, embedded = false }: { allRecipe
                     role="list" aria-label={`${cards.length} recette${cards.length > 1 ? 's' : ''} suggérée${cards.length > 1 ? 's' : ''}`}>
                     {cards.map(recipe => (
                       <div key={recipe.id} role="listitem">
-                        <RecipeCard recipe={recipe} onNavigate={() => router.push('/dashboard')} />
+                        <RecipeCard recipe={recipe} onNavigate={(id) => router.push(`/recipes/${id}`)} />
                       </div>
                     ))}
                   </div>
