@@ -140,75 +140,91 @@ async function drawTicketVisual(
     ctx.drawImage(qrCanvas, qrX, qrY, qrSize, qrSize);
   } catch {}
 
-  // ── Right: Black bar header avec MonFrigo.app blanc ──
-  const headerH = 70;
+  // ── Top: Black bar full width avec MonFrigo.app + mascot ──
+  const headerH = 65;
   ctx.fillStyle = black;
-  ctx.fillRect(contentX - 5, 0, W - contentX + 5, headerH);
+  ctx.fillRect(0, 0, W, headerH);
 
-  // Mascot en haut à droite (petit, noir sur blanc)
-  const mascotSize = 45;
+  // Mascot
+  const mascotSize = 50;
   try {
     const mascotImg = await loadImage('/mascot-happy.png');
-    ctx.drawImage(mascotImg, W - mascotSize - 8, 8, mascotSize, mascotSize);
+    ctx.drawImage(mascotImg, W - mascotSize - 8, 7, mascotSize, mascotSize);
   } catch {}
 
-  // MonFrigo.app - ÉNORME NOIR sur la barre noire
+  // MonFrigo.app - ÉNORME
   ctx.textAlign = 'left';
   ctx.fillStyle = white;
-  ctx.font = `900 36px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif`;
-  ctx.fillText('MonFrigo.app', contentX + 8, 48);
+  ctx.font = `900 40px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif`;
+  ctx.fillText('MonFrigo.app', 18, 50);
 
-  // ── Contenu noir sur blanc en dessous ──
-  let ry = headerH + 8;
+  // ── Contenu denso : GRATUIT À VIE + features remplissant tout ──
+  let ry = headerH + 10;
 
-  // Gratuit à vie - GROS
+  // Gratuit à vie - TRÈS GROS avec emphase
   ctx.textAlign = 'left';
   ctx.fillStyle = black;
-  ctx.font = `900 20px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif`;
-  ctx.fillText('GRATUIT À VIE', contentX, ry + 20);
-  ry += 28;
+  ctx.font = `900 24px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif`;
+  ctx.fillText('GRATUIT À VIE', 18, ry + 24);
+  ry += 32;
 
-  // Features en 2 colonnes compact
-  const features = ['📷 Frigo', '🍳 Recettes', '📅 Planning', '🛒 Courses', '♻️ Anti-gaspi', '✓ Badges'];
-  const col1X = contentX;
-  const col2X = contentX + contentW / 2 - 10;
+  // Features - 2 colonnes GROS, remplissant l'espace
+  const features = ['📷 Frigo illimité', '🍳 Toutes recettes', '📅 Planning complet', '🛒 Listes de courses', '♻️ Anti-gaspillage', '✓ Badges & succès'];
+  const col1X = 18;
+  const col2X = (W / 2) + 5;
+  const colW = (W / 2) - 25;
 
   ctx.fillStyle = black;
-  ctx.font = `600 13px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif`;
+  ctx.font = `700 17px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif`;
   for (let i = 0; i < features.length; i++) {
     const isCol2 = i % 2 === 1;
     const fx = isCol2 ? col2X : col1X;
-    const fy = ry + (Math.floor(i / 2) * 19);
+    const fy = ry + (Math.floor(i / 2) * 28);
     ctx.fillText(features[i], fx, fy);
   }
-  ry += 58;
+  ry += 88;
 
-  // Code promo - si renseigné, EN GROS sur barre noire
+  // Separator line noir fin
+  ctx.strokeStyle = black;
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(15, ry);
+  ctx.lineTo(W - 15, ry);
+  ctx.stroke();
+  ry += 10;
+
+  // Code promo - si renseigné, GROS sur fond blanc
   if (promoCode) {
     ctx.fillStyle = black;
-    ctx.fillRect(contentX - 5, ry, W - contentX + 5, 35);
+    ctx.textAlign = 'center';
+    ctx.font = `600 13px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif`;
+    ctx.fillText('CODE PROMO EXCLUSIF', W / 2, ry + 14);
+    ry += 22;
 
-    ctx.fillStyle = white;
-    ctx.textAlign = 'left';
-    ctx.font = `700 12px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif`;
-    ctx.fillText('CODE PROMO :', contentX + 8, ry + 15);
-
-    ctx.font = `900 24px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif`;
-    ctx.fillText(promoCode.toUpperCase(), contentX + 8, ry + 33);
+    ctx.font = `900 32px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif`;
+    ctx.fillText(promoCode.toUpperCase(), W / 2, ry + 32);
     ry += 40;
+  } else {
+    // Pas de promo = plus de space pour les features
+    ctx.textAlign = 'center';
+    ctx.fillStyle = black;
+    ctx.font = `600 14px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif`;
+    ctx.fillText('Aucune limite · Sans compte', W / 2, ry + 14);
+    ry += 20;
   }
 
-  // Bottom: SCANNE + URL sur barre noire
+  // Bottom: Black bar full width avec CTA
+  const footerH = 38;
   ctx.fillStyle = black;
-  ctx.fillRect(contentX - 5, H - 32, W - contentX + 5, 32);
+  ctx.fillRect(0, H - footerH, W, footerH);
 
   ctx.fillStyle = white;
-  ctx.textAlign = 'left';
-  ctx.font = `900 14px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif`;
-  ctx.fillText('SCANNE →', contentX + 8, H - 18);
+  ctx.textAlign = 'center';
+  ctx.font = `900 16px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif`;
+  ctx.fillText('SCANNE POUR TÉLÉCHARGER', W / 2, H - 18);
 
-  ctx.font = `bold 11px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif`;
-  ctx.fillText('monfrigo.app', contentX + 8, H - 5);
+  ctx.font = `bold 12px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif`;
+  ctx.fillText('monfrigo.app', W / 2, H - 4);
 
   // Border épais noir
   ctx.strokeStyle = black;
