@@ -2,6 +2,20 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth';
 
+const RECIPE_SELECT = {
+  id: true,
+  name: true,
+  prepTime: true,
+  imageUrl: true,
+  cuisine: true,
+  calories: true,
+  protein: true,
+  servings: true,
+  ingredients: {
+    include: { ingredient: { select: { emoji: true, name: true } } },
+  },
+};
+
 // GET /api/meal-plan?start=2026-06-09&end=2026-06-15
 export async function GET(req: NextRequest) {
   const user = await getCurrentUser();
@@ -20,20 +34,7 @@ export async function GET(req: NextRequest) {
         lte: new Date(end + 'T23:59:59.999Z'),
       },
     },
-    include: {
-      recipe: {
-        select: {
-          id: true,
-          name: true,
-          prepTime: true,
-          imageUrl: true,
-          cuisine: true,
-          ingredients: {
-            include: { ingredient: { select: { emoji: true } } },
-          },
-        },
-      },
-    },
+    include: { recipe: { select: RECIPE_SELECT } },
     orderBy: [{ date: 'asc' }, { mealType: 'asc' }],
   });
 
@@ -55,14 +56,7 @@ export async function POST(req: NextRequest) {
     where: { userId_date_mealType: { userId: user.id, date: dateObj, mealType } },
     create: { userId: user.id, recipeId, date: dateObj, mealType },
     update: { recipeId },
-    include: {
-      recipe: {
-        select: {
-          id: true, name: true, prepTime: true, imageUrl: true,
-          ingredients: { include: { ingredient: { select: { emoji: true } } } },
-        },
-      },
-    },
+    include: { recipe: { select: RECIPE_SELECT } },
   });
 
   return NextResponse.json(plan);

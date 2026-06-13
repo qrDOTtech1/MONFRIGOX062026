@@ -91,9 +91,12 @@ export default function ShoppingPage() {
 
   // Planning UI
   const [selectedDay, setSelectedDay] = useState<string>(() => dateKey(new Date()));
+  const [expandedDays, setExpandedDays] = useState<Set<string>>(() => new Set([dateKey(new Date())]));
   const [copyingWeek, setCopyingWeek] = useState(false);
   const [copyResult, setCopyResult] = useState<string|null>(null);
   const dayScrollRef = useRef<HTMLDivElement>(null);
+  // Meal detail modal
+  const [viewingPlan, setViewingPlan] = useState<MealPlanEntry|null>(null);
 
   // Shopping list
   const [shopData, setShopData] = useState<ShoppingData|null>(null);
@@ -354,66 +357,39 @@ export default function ShoppingPage() {
       {/* ════════ PLANNING TAB ════════ */}
       {tab === 'plan' && (
         <>
-          {/* Week navigation */}
-          <div className="flex items-center justify-between mb-3">
-            <button onClick={() => { setWeekOffset(o => o - 1); }}
-              className="w-9 h-9 rounded-full flex items-center justify-center transition-colors hover:bg-[var(--bg-inset)]">
-              <ChevronLeft className="w-4 h-4" style={{ color: 'var(--text-muted)' }} />
+          {/* ── Week navigation ── */}
+          <div className="flex items-center gap-2 mb-3">
+            <button onClick={() => setWeekOffset(o => o - 1)}
+              className="flex items-center gap-1 px-3 py-2 rounded-xl text-sm font-medium transition-all active:scale-95"
+              style={{ backgroundColor: 'var(--bg-inset)', border: '1px solid var(--border)', color: 'var(--text-secondary)' }}>
+              <ChevronLeft className="w-4 h-4" /> Préc.
             </button>
-            <div className="text-center flex-1 px-2">
-              <p className="text-sm font-semibold">{weekLabel}</p>
-              <p className="text-[10px] mt-0.5" style={{ color: weekOffset === 0 ? 'rgb(16,185,129)' : 'var(--text-muted)' }}>
-                {weekOffset === 0 ? 'Semaine actuelle' : weekOffset < 0 ? `Il y a ${Math.abs(weekOffset)} sem.` : `Dans ${weekOffset} sem.`}
+            <div className="flex-1 text-center">
+              <p className="text-xs font-semibold">{weekLabel}</p>
+              <p className="text-[10px]" style={{ color: weekOffset === 0 ? 'rgb(16,185,129)' : 'var(--text-muted)' }}>
+                {weekOffset === 0 ? '● Semaine actuelle' : weekOffset < 0 ? `${Math.abs(weekOffset)} sem. passée${Math.abs(weekOffset) > 1 ? 's' : ''}` : `Dans ${weekOffset} sem.`}
               </p>
             </div>
-            <button onClick={() => { setWeekOffset(o => o + 1); }}
-              className="w-9 h-9 rounded-full flex items-center justify-center transition-colors hover:bg-[var(--bg-inset)]">
-              <ChevronRight className="w-4 h-4" style={{ color: 'var(--text-muted)' }} />
+            <button onClick={() => setWeekOffset(o => o + 1)}
+              className="flex items-center gap-1 px-3 py-2 rounded-xl text-sm font-medium transition-all active:scale-95"
+              style={{ backgroundColor: 'var(--bg-inset)', border: '1px solid var(--border)', color: 'var(--text-secondary)' }}>
+              Suiv. <ChevronRight className="w-4 h-4" />
             </button>
           </div>
 
-          {/* Day selector chips */}
-          <div ref={dayScrollRef} className="flex gap-1.5 overflow-x-auto pb-1 mb-3 hide-scrollbar">
-            {weekDays.map(day => {
-              const dKey = dateKey(day);
-              const today = isToday(day);
-              const selected = selectedDay === dKey;
-              const dayPlans = plans.filter(p => dateKey(new Date(p.date)) === dKey);
-              return (
-                <button key={dKey} onClick={() => setSelectedDay(dKey)}
-                  className="flex flex-col items-center shrink-0 w-[42px] py-2 rounded-xl transition-all"
-                  style={selected
-                    ? { backgroundColor: 'var(--accent)', color: 'var(--accent-text)' }
-                    : today
-                      ? { backgroundColor: 'rgba(16,185,129,0.1)', border: '1.5px solid rgb(16,185,129)', color: 'rgb(16,185,129)' }
-                      : { backgroundColor: 'var(--bg-inset)', color: 'var(--text-muted)' }}>
-                  <span className="text-[9px] font-medium uppercase">{DAYS_FR[day.getDay()]}</span>
-                  <span className="text-base font-bold leading-none mt-0.5">{day.getDate()}</span>
-                  {/* Dots for meals planned */}
-                  <div className="flex gap-0.5 mt-1 h-1.5">
-                    {MEALS.map(m => {
-                      const hasPlan = dayPlans.some(p => p.mealType === m.type);
-                      return <div key={m.type} className="w-1 h-1 rounded-full" style={{ backgroundColor: hasPlan ? (selected ? 'rgba(255,255,255,0.8)' : 'rgb(16,185,129)') : 'transparent' }} />;
-                    })}
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-
-          {/* Actions rapides */}
-          <div className="flex gap-2 mb-3">
+          {/* ── Quick actions ── */}
+          <div className="flex gap-2 mb-4">
             <button onClick={autoGeneratePlan} disabled={autoPlanning}
               className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-medium transition-all"
               style={{ backgroundColor: 'rgba(168,85,247,0.08)', color: '#a855f7', border: '1px solid rgba(168,85,247,0.2)' }}>
               {autoPlanning ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
-              {autoPlanning ? 'IA en cours…' : 'Auto VIP'}
+              {autoPlanning ? 'IA…' : 'Auto VIP'}
             </button>
             <button onClick={copyWeekToNext} disabled={copyingWeek || !plans.length}
               className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-medium transition-all disabled:opacity-40"
               style={{ backgroundColor: 'var(--bg-inset)', border: '1px solid var(--border)', color: 'var(--text-secondary)' }}>
               {copyingWeek ? <Loader2 className="w-3 h-3 animate-spin" /> : <Copy className="w-3 h-3" />}
-              Copier → S+1
+              Copier S+1
             </button>
             {plannedCount > 0 && (
               <button onClick={() => setTab('courses')}
@@ -425,212 +401,294 @@ export default function ShoppingPage() {
           </div>
 
           {(autoPlanError || copyResult) && (
-            <p className="text-[11px] text-center mb-2" style={{ color: copyResult?.startsWith('✅') ? 'rgb(16,185,129)' : '#ef4444' }}>
+            <p className="text-[11px] text-center mb-3" style={{ color: copyResult?.startsWith('✅') ? 'rgb(16,185,129)' : '#ef4444' }}>
               {autoPlanError || copyResult}
             </p>
           )}
 
-          {/* Selected day detail */}
+          {/* ── All 7 days ── */}
           {loading ? (
             <div className="space-y-2">
-              {[1,2,3].map(i => <div key={i} className="h-16 rounded-xl animate-pulse" style={{ backgroundColor: 'var(--bg-inset)' }} />)}
+              {[1,2,3,4].map(i => <div key={i} className="h-14 rounded-xl animate-pulse" style={{ backgroundColor: 'var(--bg-inset)' }} />)}
             </div>
-          ) : (() => {
-            const day = weekDays.find(d => dateKey(d) === selectedDay) || weekDays[0];
-            const dKey = dateKey(day);
-            const today = isToday(day);
-            const past = isPast(day) && !today;
-            const nutrition = getDayNutrition(dKey);
-
-            return (
-              <div className="card overflow-hidden"
-                style={today ? { borderColor: 'var(--accent)', borderWidth: 1.5 } : undefined}>
-
-                {/* Day header with nutrition */}
-                <div className="px-4 pt-3.5 pb-2.5"
-                  style={{ borderBottom: '1px solid var(--border-subtle)', backgroundColor: today ? 'var(--bg-inset)' : undefined }}>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <div className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold shrink-0"
-                        style={today
-                          ? { backgroundColor: 'var(--accent)', color: 'var(--accent-text)' }
-                          : { backgroundColor: 'var(--bg-inset)', color: 'var(--text)' }}>
-                        {day.getDate()}
-                      </div>
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm font-semibold">{DAYS_FR[day.getDay()]}</span>
-                          <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
-                            {day.getDate()} {MONTHS_FR[day.getMonth()]}
-                          </span>
-                          {today && <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-500">Aujourd'hui</span>}
-                          {past && <span className="text-[9px] px-2 py-0.5 rounded-full" style={{ backgroundColor: 'var(--bg-inset)', color: 'var(--text-muted)' }}>Passé</span>}
-                        </div>
-                      </div>
-                    </div>
-                    {/* Prev/Next day */}
-                    <div className="flex gap-1">
-                      <button onClick={() => {
-                        const idx = weekDays.findIndex(d => dateKey(d) === selectedDay);
-                        if (idx > 0) setSelectedDay(dateKey(weekDays[idx - 1]));
-                        else { setWeekOffset(o => o - 1); setSelectedDay(dateKey(new Date(new Date(weekDays[0]).setDate(weekDays[0].getDate() - 1)))); }
-                      }} className="w-6 h-6 rounded-md flex items-center justify-center hover:bg-[var(--bg-inset)]">
-                        <ChevronLeft className="w-3.5 h-3.5" style={{ color: 'var(--text-muted)' }} />
-                      </button>
-                      <button onClick={() => {
-                        const idx = weekDays.findIndex(d => dateKey(d) === selectedDay);
-                        if (idx < 6) setSelectedDay(dateKey(weekDays[idx + 1]));
-                        else { setWeekOffset(o => o + 1); setSelectedDay(dateKey(new Date(new Date(weekDays[6]).setDate(weekDays[6].getDate() + 1)))); }
-                      }} className="w-6 h-6 rounded-md flex items-center justify-center hover:bg-[var(--bg-inset)]">
-                        <ChevronRight className="w-3.5 h-3.5" style={{ color: 'var(--text-muted)' }} />
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Daily nutrition summary */}
-                  {nutrition.count > 0 && (
-                    <div className="flex items-center gap-3 mt-2">
-                      {nutrition.kcal > 0 && (
-                        <div className="flex items-center gap-1">
-                          <Flame className="w-3 h-3 text-orange-400" />
-                          <span className="text-[11px] font-medium">{nutrition.kcal} kcal</span>
-                        </div>
-                      )}
-                      {nutrition.protein > 0 && (
-                        <div className="flex items-center gap-1">
-                          <Beef className="w-3 h-3 text-indigo-400" />
-                          <span className="text-[11px] font-medium">{Math.round(nutrition.protein)} g prot.</span>
-                        </div>
-                      )}
-                      <span className="text-[10px] ml-auto" style={{ color: 'var(--text-muted)' }}>{nutrition.count} repas</span>
-                    </div>
-                  )}
-                </div>
-
-                {/* Meal slots */}
-                <div className="divide-y" style={{ borderColor: 'var(--border-subtle)' }}>
-                  {MEALS.map(meal => {
-                    const plan = getPlan(dKey, meal.type);
-                    const slotKey = `${dKey}-${meal.type}`;
-                    const saving = savingSlot === slotKey;
-
-                    return (
-                      <div key={meal.type} className="flex items-center gap-3 px-4 py-3 min-h-[60px]">
-                        <div className="flex flex-col items-center w-10 shrink-0">
-                          <span className="text-lg leading-none">{meal.emoji}</span>
-                          <span className="text-[9px] mt-0.5 font-medium" style={{ color: 'var(--text-muted)' }}>{meal.label}</span>
-                        </div>
-
-                        {saving ? (
-                          <div className="flex-1 flex items-center gap-1.5">
-                            <Loader2 className="w-3.5 h-3.5 animate-spin" style={{ color: 'var(--text-muted)' }} />
-                            <span className="text-xs" style={{ color: 'var(--text-muted)' }}>Enregistrement…</span>
-                          </div>
-                        ) : plan ? (
-                          <div className="flex-1 flex items-center gap-2.5 min-w-0">
-                            {/* Recipe card */}
-                            <div className="flex items-center gap-2.5 flex-1 min-w-0 rounded-xl px-3 py-2"
-                              style={{ backgroundColor: 'var(--bg-inset)' }}>
-                              {plan.recipe.imageUrl ? (
-                                <img src={plan.recipe.imageUrl} alt="" className="w-9 h-9 rounded-lg object-cover shrink-0" />
-                              ) : (
-                                <div className="w-9 h-9 rounded-lg flex items-center justify-center text-lg shrink-0"
-                                  style={{ backgroundColor: 'var(--bg-raised)' }}>
-                                  {plan.recipe.ingredients[0]?.ingredient?.emoji || '🍽️'}
-                                </div>
-                              )}
-                              <div className="flex-1 min-w-0">
-                                <p className="text-xs font-medium truncate">{plan.recipe.name}</p>
-                                <div className="flex items-center gap-2 mt-0.5">
-                                  <span className="flex items-center gap-0.5 text-[10px]" style={{ color: 'var(--text-muted)' }}>
-                                    <Clock className="w-2.5 h-2.5" /> {plan.recipe.prepTime}min
-                                  </span>
-                                  {plan.recipe.calories && (
-                                    <span className="flex items-center gap-0.5 text-[10px]" style={{ color: 'var(--text-muted)' }}>
-                                      <Flame className="w-2.5 h-2.5" /> {plan.recipe.calories} kcal
-                                    </span>
-                                  )}
-                                </div>
-                              </div>
-                            </div>
-                            <button onClick={() => removeSlot(plan.id)}
-                              className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 transition-colors hover:bg-red-500/10">
-                              <X className="w-3.5 h-3.5 text-red-400" />
-                            </button>
-                          </div>
-                        ) : (
-                          <button
-                            onClick={() => {
-                              setPickerDate(dKey);
-                              setPickerMeal(meal.type);
-                              setPickerSearch('');
-                              setPickerFilter('all');
-                              setPickerOpen(true);
-                            }}
-                            className="flex-1 flex items-center justify-center gap-2 rounded-xl py-3 transition-all group"
-                            style={{ border: '1.5px dashed var(--border)', color: 'var(--text-muted)' }}
-                          >
-                            <Plus className="w-4 h-4 group-hover:text-[var(--accent)] transition-colors" />
-                            <span className="text-xs group-hover:text-[var(--accent)] transition-colors">
-                              Ajouter une recette
-                            </span>
-                          </button>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            );
-          })()}
-
-          {/* Week overview mini (other days) */}
-          {!loading && (
-            <div className="mt-4 space-y-1 pb-6">
-              <p className="text-[10px] font-semibold uppercase tracking-wide mb-2" style={{ color: 'var(--text-muted)' }}>
-                Aperçu de la semaine
-              </p>
-              {weekDays.filter(d => dateKey(d) !== selectedDay).map(day => {
+          ) : (
+            <div className="space-y-2 pb-6">
+              {weekDays.map(day => {
                 const dKey = dateKey(day);
+                const today = isToday(day);
+                const past = isPast(day) && !today;
+                const expanded = expandedDays.has(dKey);
                 const dayPlans = plans.filter(p => dateKey(new Date(p.date)) === dKey);
                 const nutrition = getDayNutrition(dKey);
+                const filledCount = dayPlans.length;
+
                 return (
-                  <button key={dKey} onClick={() => setSelectedDay(dKey)}
-                    className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-left transition-colors hover:bg-[var(--bg-inset)]"
-                    style={{ border: '1px solid var(--border-subtle)' }}>
-                    <div className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 text-xs font-bold"
-                      style={isToday(day)
-                        ? { backgroundColor: 'var(--accent)', color: 'var(--accent-text)' }
-                        : { backgroundColor: 'var(--bg-inset)', color: 'var(--text-muted)' }}>
-                      {day.getDate()}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-xs font-medium">{DAYS_FR[day.getDay()]} {day.getDate()} {MONTHS_FR[day.getMonth()]}</p>
-                      {dayPlans.length > 0 ? (
-                        <p className="text-[10px] truncate mt-0.5" style={{ color: 'var(--text-muted)' }}>
-                          {dayPlans.map(p => p.recipe.name).join(' · ')}
-                        </p>
-                      ) : (
-                        <p className="text-[10px] mt-0.5" style={{ color: 'var(--text-muted)' }}>Aucun repas planifié</p>
-                      )}
-                    </div>
-                    {nutrition.kcal > 0 && (
-                      <span className="text-[10px] font-medium shrink-0" style={{ color: 'var(--text-muted)' }}>
-                        {nutrition.kcal} kcal
-                      </span>
+                  <div key={dKey} className="rounded-2xl overflow-hidden transition-all"
+                    style={{
+                      border: today ? '2px solid var(--accent)' : '1px solid var(--border-subtle)',
+                      backgroundColor: 'var(--bg-card)',
+                    }}>
+
+                    {/* ── Day header (always visible, click to expand) ── */}
+                    <button
+                      className="w-full flex items-center gap-3 px-4 py-3 text-left"
+                      style={{ backgroundColor: today ? 'rgba(var(--accent-rgb,16,185,129),0.06)' : undefined }}
+                      onClick={() => setExpandedDays(prev => {
+                        const next = new Set(prev);
+                        if (next.has(dKey)) next.delete(dKey); else next.add(dKey);
+                        return next;
+                      })}
+                    >
+                      {/* Day circle */}
+                      <div className="w-10 h-10 rounded-full flex flex-col items-center justify-center shrink-0 text-center"
+                        style={today
+                          ? { backgroundColor: 'var(--accent)', color: 'var(--accent-text)' }
+                          : past
+                            ? { backgroundColor: 'var(--bg-inset)', color: 'var(--text-muted)' }
+                            : { backgroundColor: 'var(--bg-inset)', color: 'var(--text)' }}>
+                        <span className="text-[9px] font-semibold leading-none uppercase">{DAYS_FR[day.getDay()]}</span>
+                        <span className="text-sm font-bold leading-none">{day.getDate()}</span>
+                      </div>
+
+                      {/* Day info */}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-semibold">
+                            {DAYS_FR[day.getDay()]} {day.getDate()} {MONTHS_FR[day.getMonth()]}
+                          </span>
+                          {today && <span className="text-[9px] font-bold px-2 py-0.5 rounded-full" style={{ backgroundColor: 'rgba(16,185,129,0.12)', color: 'rgb(16,185,129)' }}>Aujourd'hui</span>}
+                        </div>
+                        {/* Summary when collapsed */}
+                        {!expanded && (
+                          <div className="flex items-center gap-2 mt-0.5">
+                            {filledCount > 0 ? (
+                              <>
+                                <p className="text-[10px] truncate" style={{ color: 'var(--text-muted)', maxWidth: '160px' }}>
+                                  {dayPlans.map(p => p.recipe.name).join(' · ')}
+                                </p>
+                                {nutrition.kcal > 0 && (
+                                  <span className="text-[10px] shrink-0 flex items-center gap-0.5" style={{ color: 'var(--text-muted)' }}>
+                                    <Flame className="w-2.5 h-2.5 text-orange-400" />{nutrition.kcal}
+                                  </span>
+                                )}
+                              </>
+                            ) : (
+                              <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>Aucun repas</p>
+                            )}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Meal dots + chevron */}
+                      <div className="flex items-center gap-2 shrink-0">
+                        <div className="flex flex-col gap-0.5">
+                          {MEALS.map(m => (
+                            <div key={m.type} className="w-1.5 h-1.5 rounded-full transition-colors"
+                              style={{ backgroundColor: dayPlans.some(p => p.mealType === m.type) ? 'rgb(16,185,129)' : 'var(--border)' }} />
+                          ))}
+                        </div>
+                        <ChevronDown className="w-4 h-4 transition-transform"
+                          style={{ color: 'var(--text-muted)', transform: expanded ? 'rotate(180deg)' : 'rotate(0deg)' }} />
+                      </div>
+                    </button>
+
+                    {/* ── Expanded: meal slots ── */}
+                    {expanded && (
+                      <>
+                        <div className="divide-y" style={{ borderColor: 'var(--border-subtle)', borderTop: '1px solid var(--border-subtle)' }}>
+                          {MEALS.map(meal => {
+                            const plan = getPlan(dKey, meal.type);
+                            const slotKey = `${dKey}-${meal.type}`;
+                            const saving = savingSlot === slotKey;
+
+                            return (
+                              <div key={meal.type} className="flex items-center gap-3 px-4 py-3">
+                                {/* Meal label */}
+                                <div className="flex flex-col items-center w-10 shrink-0">
+                                  <span className="text-base leading-none">{meal.emoji}</span>
+                                  <span className="text-[9px] mt-0.5 font-medium" style={{ color: 'var(--text-muted)' }}>{meal.label}</span>
+                                </div>
+
+                                {saving ? (
+                                  <div className="flex-1 flex items-center gap-2 rounded-xl px-3 py-2.5" style={{ backgroundColor: 'var(--bg-inset)' }}>
+                                    <Loader2 className="w-3.5 h-3.5 animate-spin" style={{ color: 'var(--text-muted)' }} />
+                                    <span className="text-xs" style={{ color: 'var(--text-muted)' }}>Enregistrement…</span>
+                                  </div>
+                                ) : plan ? (
+                                  /* ── Filled slot: tap to view/change ── */
+                                  <button
+                                    className="flex-1 flex items-center gap-2.5 rounded-xl px-3 py-2 text-left transition-all active:scale-[0.98]"
+                                    style={{ backgroundColor: 'var(--bg-inset)', border: '1px solid var(--border-subtle)' }}
+                                    onClick={() => setViewingPlan(plan)}
+                                  >
+                                    {plan.recipe.imageUrl ? (
+                                      <img src={plan.recipe.imageUrl} alt="" className="w-10 h-10 rounded-lg object-cover shrink-0" />
+                                    ) : (
+                                      <div className="w-10 h-10 rounded-lg flex items-center justify-center text-lg shrink-0"
+                                        style={{ backgroundColor: 'var(--bg-raised)' }}>
+                                        {plan.recipe.ingredients[0]?.ingredient?.emoji || '🍽️'}
+                                      </div>
+                                    )}
+                                    <div className="flex-1 min-w-0">
+                                      <p className="text-xs font-semibold truncate">{plan.recipe.name}</p>
+                                      <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                                        <span className="flex items-center gap-0.5 text-[10px]" style={{ color: 'var(--text-muted)' }}>
+                                          <Clock className="w-2.5 h-2.5" /> {plan.recipe.prepTime}min
+                                        </span>
+                                        {plan.recipe.calories && (
+                                          <span className="flex items-center gap-0.5 text-[10px] font-medium text-orange-400">
+                                            <Flame className="w-2.5 h-2.5" /> {plan.recipe.calories} kcal
+                                          </span>
+                                        )}
+                                        {plan.recipe.protein && (
+                                          <span className="flex items-center gap-0.5 text-[10px] font-medium" style={{ color: '#818cf8' }}>
+                                            <Beef className="w-2.5 h-2.5" /> {Math.round(plan.recipe.protein)}g
+                                          </span>
+                                        )}
+                                      </div>
+                                    </div>
+                                    <ChevronRight className="w-3.5 h-3.5 shrink-0" style={{ color: 'var(--text-muted)' }} />
+                                  </button>
+                                ) : (
+                                  /* ── Empty slot ── */
+                                  <button
+                                    onClick={() => { setPickerDate(dKey); setPickerMeal(meal.type); setPickerSearch(''); setPickerFilter('all'); setPickerOpen(true); }}
+                                    className="flex-1 flex items-center justify-center gap-2 rounded-xl py-3 transition-all group"
+                                    style={{ border: '1.5px dashed var(--border)', color: 'var(--text-muted)' }}>
+                                    <Plus className="w-3.5 h-3.5 group-hover:text-[var(--accent)] transition-colors" />
+                                    <span className="text-xs group-hover:text-[var(--accent)] transition-colors">Ajouter</span>
+                                  </button>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+
+                        {/* ── Day nutrition footer ── */}
+                        {nutrition.count > 0 && (
+                          <div className="flex items-center gap-3 px-4 py-2.5"
+                            style={{ borderTop: '1px solid var(--border-subtle)', backgroundColor: 'var(--bg-inset)' }}>
+                            <span className="text-[10px] font-semibold uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>Total</span>
+                            {nutrition.kcal > 0 && (
+                              <span className="flex items-center gap-1 text-[11px] font-semibold text-orange-400">
+                                <Flame className="w-3 h-3" /> {nutrition.kcal} kcal
+                              </span>
+                            )}
+                            {nutrition.protein > 0 && (
+                              <span className="flex items-center gap-1 text-[11px] font-semibold" style={{ color: '#818cf8' }}>
+                                <Beef className="w-3 h-3" /> {Math.round(nutrition.protein)} g prot.
+                              </span>
+                            )}
+                            <span className="ml-auto text-[10px]" style={{ color: 'var(--text-muted)' }}>{nutrition.count}/3 repas</span>
+                          </div>
+                        )}
+                      </>
                     )}
-                    <div className="flex gap-0.5 shrink-0">
-                      {MEALS.map(m => (
-                        <div key={m.type} className="w-1.5 h-1.5 rounded-full"
-                          style={{ backgroundColor: dayPlans.some(p => p.mealType === m.type) ? 'rgb(16,185,129)' : 'var(--border)' }} />
-                      ))}
-                    </div>
-                  </button>
+                  </div>
                 );
               })}
             </div>
           )}
         </>
+      )}
+
+      {/* ════════ MEAL DETAIL / CHANGE MODAL ════════ */}
+      {viewingPlan && (
+        <div className="fixed inset-0 z-50">
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setViewingPlan(null)} />
+          <div className="absolute bottom-0 left-0 right-0 rounded-t-2xl flex flex-col slide-up"
+            style={{ backgroundColor: 'var(--bg-card)', maxHeight: '80vh' }}>
+            <div className="flex justify-center pt-3 pb-1">
+              <div className="w-9 h-1 rounded-full" style={{ backgroundColor: 'var(--border)' }} />
+            </div>
+
+            {/* Recipe image */}
+            {viewingPlan.recipe.imageUrl && (
+              <div className="mx-4 mt-2 rounded-2xl overflow-hidden h-40">
+                <img src={viewingPlan.recipe.imageUrl} alt="" className="w-full h-full object-cover" />
+              </div>
+            )}
+
+            <div className="px-4 pt-3 pb-2">
+              {/* Meal badge */}
+              <div className="flex items-center gap-2 mb-2">
+                <span className="text-base">{MEALS.find(m => m.type === viewingPlan.mealType)?.emoji}</span>
+                <span className="text-xs font-medium px-2 py-0.5 rounded-full"
+                  style={{ backgroundColor: 'var(--bg-inset)', color: 'var(--text-muted)' }}>
+                  {MEALS.find(m => m.type === viewingPlan.mealType)?.label} · {
+                    (() => { const d = new Date(viewingPlan.date + 'T12:00:00'); return `${DAYS_FR[d.getDay()]} ${d.getDate()} ${MONTHS_FR[d.getMonth()]}`; })()
+                  }
+                </span>
+              </div>
+
+              <h3 className="text-lg font-bold mb-1">{viewingPlan.recipe.name}</h3>
+
+              {/* Macros row */}
+              <div className="flex gap-3 mb-3 flex-wrap">
+                <span className="flex items-center gap-1 text-sm">
+                  <Clock className="w-3.5 h-3.5" style={{ color: 'var(--text-muted)' }} />
+                  <span className="font-medium">{viewingPlan.recipe.prepTime}min</span>
+                </span>
+                {viewingPlan.recipe.calories && (
+                  <span className="flex items-center gap-1 text-sm font-semibold text-orange-400">
+                    <Flame className="w-3.5 h-3.5" /> {viewingPlan.recipe.calories} kcal
+                  </span>
+                )}
+                {viewingPlan.recipe.protein && (
+                  <span className="flex items-center gap-1 text-sm font-semibold" style={{ color: '#818cf8' }}>
+                    <Beef className="w-3.5 h-3.5" /> {Math.round(viewingPlan.recipe.protein)} g prot.
+                  </span>
+                )}
+                {viewingPlan.recipe.servings && (
+                  <span className="flex items-center gap-1 text-sm" style={{ color: 'var(--text-muted)' }}>
+                    <ChefHat className="w-3.5 h-3.5" /> {viewingPlan.recipe.servings} pers.
+                  </span>
+                )}
+              </div>
+
+              {/* Ingredients */}
+              {viewingPlan.recipe.ingredients.length > 0 && (
+                <div className="flex flex-wrap gap-1.5 mb-4">
+                  {viewingPlan.recipe.ingredients.slice(0, 8).map((ing, i) => (
+                    <span key={i} className="text-xs px-2 py-1 rounded-full"
+                      style={{ backgroundColor: 'var(--bg-inset)', color: 'var(--text-secondary)' }}>
+                      {ing.ingredient.emoji} {ing.ingredient.name}
+                    </span>
+                  ))}
+                  {viewingPlan.recipe.ingredients.length > 8 && (
+                    <span className="text-xs px-2 py-1 rounded-full" style={{ backgroundColor: 'var(--bg-inset)', color: 'var(--text-muted)' }}>
+                      +{viewingPlan.recipe.ingredients.length - 8}
+                    </span>
+                  )}
+                </div>
+              )}
+
+              {/* Actions */}
+              <div className="flex gap-2 pb-2">
+                <button
+                  onClick={() => {
+                    const dKey = dateKey(new Date(viewingPlan.date + 'T12:00:00'));
+                    setPickerDate(dKey);
+                    setPickerMeal(viewingPlan.mealType);
+                    setPickerSearch('');
+                    setPickerFilter('all');
+                    setViewingPlan(null);
+                    setPickerOpen(true);
+                  }}
+                  className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-semibold transition-all active:scale-[0.98]"
+                  style={{ backgroundColor: 'var(--accent)', color: 'var(--accent-text)' }}>
+                  <ChefHat className="w-4 h-4" /> Changer la recette
+                </button>
+                <button
+                  onClick={() => { removeSlot(viewingPlan.id); setViewingPlan(null); }}
+                  className="flex items-center justify-center gap-1.5 px-4 py-3 rounded-xl text-sm font-medium transition-all active:scale-[0.98]"
+                  style={{ backgroundColor: 'rgba(239,68,68,0.1)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.2)' }}>
+                  <X className="w-4 h-4" /> Retirer
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* ════════ COURSES TAB ════════ */}
