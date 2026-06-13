@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Mascot, { MascotVariant } from './Mascot';
-import { Send, Mic, MicOff, Trash2, Clock, Flame, Volume2, VolumeX, ChevronLeft, ChevronRight, Timer, X, Play, Pause, Check, Plus } from 'lucide-react';
+import { Send, Mic, MicOff, Trash2, Clock, Flame, Volume2, VolumeX, ChevronLeft, ChevronRight, Timer, X, Play, Pause, Check, Plus, Crown } from 'lucide-react';
 
 interface ChatMessage {
   role: 'user' | 'assistant';
@@ -299,6 +299,8 @@ export default function MascotChat({ allRecipes, embedded = false }: { allRecipe
   const [pendingNav, setPendingNav] = useState<string | null>(null);
   const [cooking, setCooking] = useState<CookingState | null>(null);
   const [dynamicRecipes, setDynamicRecipes] = useState<RecipeMini[]>([]);
+  const [coachMode, setCoachMode] = useState(false);
+  const [isVip, setIsVip] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const recognitionRef = useRef<any>(null);
@@ -384,7 +386,7 @@ export default function MascotChat({ allRecipes, embedded = false }: { allRecipe
       const res = await fetch('/api/ai/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messages: history.map(m => ({ role: m.role, content: m.content })) }),
+        body: JSON.stringify({ messages: history.map(m => ({ role: m.role, content: m.content })), coachMode }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Erreur');
@@ -393,6 +395,7 @@ export default function MascotChat({ allRecipes, embedded = false }: { allRecipe
       const navTo: string | null = data.navTo ?? null;
       const actions: ChatAction[] = data.actions ?? [];
       const createdRecipes: string[] = data.createdRecipes ?? [];
+      if (data.isVip !== undefined) setIsVip(data.isVip);
 
       // Fetch newly created recipe details for cards
       if (createdRecipes.length > 0) {
@@ -449,7 +452,7 @@ export default function MascotChat({ allRecipes, embedded = false }: { allRecipe
     } finally {
       setLoading(false);
     }
-  }, [input, loading, messages, ttsEnabled]);
+  }, [input, loading, messages, ttsEnabled, coachMode]);
 
   sendRef.current = send;
 
@@ -525,6 +528,18 @@ export default function MascotChat({ allRecipes, embedded = false }: { allRecipe
               </p>
             </div>
             <div className="flex items-center gap-1">
+              {isVip && (
+                <button onClick={() => setCoachMode(v => !v)}
+                  aria-label={coachMode ? 'Désactiver le mode coach' : 'Activer le mode coach'}
+                  className="flex items-center gap-0.5 px-2 py-1 rounded-lg text-[10px] font-bold transition-all"
+                  style={{
+                    backgroundColor: coachMode ? 'rgba(234,179,8,0.2)' : 'transparent',
+                    color: coachMode ? '#eab308' : 'var(--text-muted)',
+                    border: coachMode ? '1px solid rgba(234,179,8,0.3)' : '1px solid transparent',
+                  }}>
+                  <Crown className="w-3 h-3" /> Coach
+                </button>
+              )}
               <button onClick={() => setTtsEnabled(v => !v)}
                 aria-label={ttsEnabled ? 'Désactiver la voix' : 'Activer la voix'}
                 className="p-1.5 rounded-lg hover:opacity-70 transition-opacity"
@@ -542,9 +557,21 @@ export default function MascotChat({ allRecipes, embedded = false }: { allRecipe
         {embedded && (
           <div className="flex items-center justify-between px-4 py-2" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
             <p className="text-[10px]" style={{ color: 'var(--text-muted)' }} aria-live="polite">
-              {loading ? '🤔 Réfléchit…' : '💬 Assistant culinaire'}
+              {loading ? '🤔 Réfléchit…' : coachMode ? '🏋️ Mode Coach' : '💬 Assistant culinaire'}
             </p>
             <div className="flex items-center gap-1">
+              {isVip && (
+                <button onClick={() => setCoachMode(v => !v)}
+                  aria-label={coachMode ? 'Désactiver le mode coach' : 'Activer le mode coach'}
+                  className="flex items-center gap-0.5 px-1.5 py-0.5 rounded-lg text-[9px] font-bold transition-all"
+                  style={{
+                    backgroundColor: coachMode ? 'rgba(234,179,8,0.2)' : 'transparent',
+                    color: coachMode ? '#eab308' : 'var(--text-muted)',
+                    border: coachMode ? '1px solid rgba(234,179,8,0.3)' : '1px solid transparent',
+                  }}>
+                  <Crown className="w-2.5 h-2.5" /> Coach
+                </button>
+              )}
               <button onClick={() => setTtsEnabled(v => !v)}
                 aria-label={ttsEnabled ? 'Désactiver la voix' : 'Activer la voix'}
                 className="p-1 rounded-lg hover:opacity-70"

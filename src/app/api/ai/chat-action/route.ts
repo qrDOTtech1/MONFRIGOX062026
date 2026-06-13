@@ -44,6 +44,21 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: true, message: `${ingredientName} ajouté au frigo` });
   }
 
+  if (action === 'REMOVE_PLAN') {
+    if (!date || !mealType)
+      return NextResponse.json({ error: 'date et mealType requis' }, { status: 400 });
+
+    const dateObj = new Date(date + 'T00:00:00.000Z');
+    try {
+      await prisma.mealPlan.delete({
+        where: { userId_date_mealType: { userId: user.id, date: dateObj, mealType } },
+      });
+      return NextResponse.json({ ok: true, message: `Repas ${mealType} du ${date} retiré du planning` });
+    } catch {
+      return NextResponse.json({ ok: true, message: `Pas de repas trouvé pour ce créneau` });
+    }
+  }
+
   if (action === 'SHOP') {
     if (!ingredientName)
       return NextResponse.json({ error: 'ingredientName requis' }, { status: 400 });
