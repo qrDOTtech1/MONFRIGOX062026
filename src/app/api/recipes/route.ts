@@ -150,6 +150,7 @@ export async function GET(req: NextRequest) {
       prepTime: r.prepTime,
       cuisine: r.cuisine,
       imageUrl: r.imageUrl || '',
+      calories: r.calories ?? null,
       matchPercent,
       matchCount: `${available}/${total} ingrédients`,
       isFavorite: r.favorites.length > 0,

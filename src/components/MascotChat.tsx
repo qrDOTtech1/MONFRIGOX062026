@@ -1,22 +1,25 @@
 'use client';
 
 import { useState, useRef, useEffect, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import Mascot, { MascotVariant } from './Mascot';
-import { Send, Mic, MicOff, Trash2 } from 'lucide-react';
+import { Send, Mic, MicOff, Trash2, Clock, Flame, ChevronRight } from 'lucide-react';
 
 interface ChatMessage {
   role: 'user' | 'assistant';
   content: string;
   timestamp: number;
+  recipeIds?: string[];
 }
 
-interface RecipeMini {
+export interface RecipeMini {
   id: string;
   name: string;
   difficulty: string;
   prepTime: number;
   cuisine: string;
   imageUrl: string;
+  calories?: number | null;
   ingredients?: Array<{ ingredient: { emoji: string } }>;
 }
 
@@ -32,10 +35,63 @@ const SUGGESTIONS = [
 
 const WELCOME: ChatMessage = {
   role: 'assistant',
-  content: 'Salut ! 👋 Je suis ton assistant culinaire. Pose-moi n\'importe quelle question sur les recettes, ton frigo ou la nutrition !',
+  content: 'Salut ! 👋 Pose-moi n\'importe quelle question sur les recettes, ton frigo ou la nutrition !',
   timestamp: 0,
 };
 
+/* ── Mini-card recette ─────────────────────────────────────── */
+function RecipeCard({ recipe }: { recipe: RecipeMini }) {
+  const router = useRouter();
+  const emoji = recipe.ingredients?.[0]?.ingredient?.emoji || '🍽️';
+
+  return (
+    <button
+      onClick={() => router.push(`/dashboard`)}
+      className="shrink-0 flex flex-col rounded-2xl overflow-hidden transition-all active:scale-95 hover:opacity-90 text-left"
+      style={{
+        width: '120px',
+        backgroundColor: 'rgba(6,6,10,0.92)',
+        border: '1px solid rgba(255,255,255,0.10)',
+      }}
+    >
+      {/* Image ou emoji */}
+      <div className="w-full h-20 flex items-center justify-center relative overflow-hidden"
+        style={{ backgroundColor: 'rgba(255,255,255,0.04)' }}>
+        {recipe.imageUrl ? (
+          <img src={recipe.imageUrl} alt={recipe.name}
+            className="w-full h-full object-cover"
+            onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+        ) : (
+          <span className="text-3xl">{emoji}</span>
+        )}
+        {/* Badge cuisine */}
+        <span className="absolute bottom-1 right-1 text-[9px] px-1.5 py-0.5 rounded-full font-medium"
+          style={{ backgroundColor: 'rgba(0,0,0,0.65)', color: 'rgba(255,255,255,0.7)' }}>
+          {recipe.cuisine}
+        </span>
+      </div>
+
+      {/* Infos */}
+      <div className="p-2 flex-1 flex flex-col gap-1">
+        <p className="text-[11px] font-semibold leading-tight line-clamp-2" style={{ color: 'var(--text)' }}>
+          {recipe.name}
+        </p>
+        <div className="flex items-center gap-2 mt-auto">
+          <span className="flex items-center gap-0.5 text-[10px]" style={{ color: 'var(--text-muted)' }}>
+            <Clock className="w-2.5 h-2.5" />{recipe.prepTime}m
+          </span>
+          {recipe.calories && (
+            <span className="flex items-center gap-0.5 text-[10px] text-orange-400">
+              <Flame className="w-2.5 h-2.5" />{recipe.calories}
+            </span>
+          )}
+        </div>
+      </div>
+    </button>
+  );
+}
+
+/* ── Composant principal ───────────────────────────────────── */
 export default function MascotChat({ allRecipes, embedded = false }: { allRecipes: RecipeMini[]; embedded?: boolean }) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
@@ -100,8 +156,9 @@ export default function MascotChat({ allRecipes, embedded = false }: { allRecipe
         role: 'assistant',
         content: data.reply ?? 'Désolé, je n\'ai pas pu répondre.',
         timestamp: Date.now(),
+        recipeIds: data.recipeIds ?? [],
       }]);
-      setMascotState('excited');
+      setMascotState(data.recipeIds?.length ? 'chef' : 'excited');
       setTimeout(() => setMascotState('wink'), 3000);
     } catch (err) {
       setMessages(prev => [...prev, {
@@ -151,13 +208,13 @@ export default function MascotChat({ allRecipes, embedded = false }: { allRecipe
 
   const showSuggestions = messages.length <= 1 && !loading;
 
-  const bubbleBg   = 'rgba(8,8,12,0.88)';      // bulle assistant
-  const inputBg    = 'rgba(8,8,12,0.82)';      // champ de saisie
-  const suggBg     = 'rgba(18,18,26,0.85)';    // chips suggestions
+  const bubbleBg  = 'rgba(8,8,12,0.88)';
+  const inputBg   = 'rgba(8,8,12,0.82)';
+  const suggBg    = 'rgba(18,18,26,0.85)';
 
   return (
     <div className={embedded ? '' : 'card overflow-hidden'}>
-      {/* Header — masqué en mode embedded (la card parente fait déjà l'encadrement) */}
+      {/* Header standalone */}
       {!embedded && (
         <div className="flex items-center gap-3 px-4 pt-3 pb-2.5"
           style={{ borderBottom: '1px solid var(--border-subtle)' }}>
@@ -165,45 +222,67 @@ export default function MascotChat({ allRecipes, embedded = false }: { allRecipe
           <div className="flex-1 min-w-0">
             <h2 className="text-sm font-bold leading-tight">Assistant culinaire</h2>
             <p className="text-[10px] leading-tight" style={{ color: 'var(--text-muted)' }}>
-              {loading ? '🤔 En train de réfléchir…' : `${allRecipes.length} recettes disponibles`}
+              {loading ? '🤔 Réfléchit…' : `${allRecipes.length} recettes dispo`}
             </p>
           </div>
-          <button onClick={clearHistory} className="p-1.5 rounded-lg transition-colors hover:opacity-70"
+          <button onClick={clearHistory} className="p-1.5 rounded-lg hover:opacity-70"
             style={{ color: 'var(--text-muted)' }} title="Effacer l'historique">
             <Trash2 className="w-3.5 h-3.5" />
           </button>
         </div>
       )}
 
-      {/* Séparateur + statut quand embedded */}
+      {/* Séparateur embedded */}
       {embedded && (
         <div className="flex items-center justify-between px-4 py-2"
           style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
           <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>
-            {loading ? '🤔 En train de réfléchir…' : '💬 Assistant culinaire'}
+            {loading ? '🤔 Réfléchit…' : '💬 Assistant culinaire'}
           </p>
           <button onClick={clearHistory} className="p-1 rounded-lg hover:opacity-70"
-            style={{ color: 'var(--text-muted)' }} title="Effacer l'historique">
+            style={{ color: 'var(--text-muted)' }}>
             <Trash2 className="w-3 h-3" />
           </button>
         </div>
       )}
 
       {/* Messages */}
-      <div className="h-48 overflow-y-auto px-3 py-2 space-y-2">
-        {messages.map((msg, i) => (
-          <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-            <div
-              className={`max-w-[85%] px-3 py-2 text-xs leading-relaxed ${msg.role === 'user' ? 'rounded-2xl rounded-tr-sm' : 'rounded-2xl rounded-tl-sm'}`}
-              style={msg.role === 'user'
-                ? { backgroundColor: 'var(--accent)', color: 'var(--accent-text)' }
-                : { backgroundColor: bubbleBg, color: 'var(--text)', border: '1px solid rgba(255,255,255,0.06)' }}
-            >
-              {msg.content}
-            </div>
-          </div>
-        ))}
+      <div className="h-48 overflow-y-auto px-3 py-2 space-y-3" style={{ scrollBehavior: 'smooth' }}>
+        {messages.map((msg, i) => {
+          const cards = (msg.recipeIds ?? [])
+            .map(id => allRecipes.find(r => r.id === id))
+            .filter(Boolean) as RecipeMini[];
 
+          return (
+            <div key={i} className="space-y-1.5">
+              {/* Bulle texte */}
+              <div className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                <div
+                  className={`max-w-[85%] px-3 py-2 text-xs leading-relaxed ${
+                    msg.role === 'user' ? 'rounded-2xl rounded-tr-sm' : 'rounded-2xl rounded-tl-sm'
+                  }`}
+                  style={msg.role === 'user'
+                    ? { backgroundColor: 'var(--accent)', color: 'var(--accent-text)' }
+                    : { backgroundColor: bubbleBg, color: 'var(--text)', border: '1px solid rgba(255,255,255,0.06)' }}
+                >
+                  {msg.content}
+                </div>
+              </div>
+
+              {/* Cards recettes */}
+              {cards.length > 0 && (
+                <div className="flex gap-2.5 overflow-x-auto pb-1 pl-0.5"
+                  style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+                  {cards.map(recipe => (
+                    <RecipeCard key={recipe.id} recipe={recipe} />
+                  ))}
+                </div>
+              )}
+            </div>
+          );
+        })}
+
+        {/* Typing indicator */}
         {loading && (
           <div className="flex justify-start">
             <div className="px-3 py-2.5 rounded-2xl rounded-tl-sm"
@@ -225,7 +304,7 @@ export default function MascotChat({ allRecipes, embedded = false }: { allRecipe
         <div className="px-3 pb-2 flex flex-wrap gap-1.5">
           {SUGGESTIONS.map(s => (
             <button key={s} onClick={() => send(s)}
-              className="text-[10px] px-2.5 py-1 rounded-full transition-colors active:scale-95"
+              className="text-[10px] px-2.5 py-1 rounded-full transition-all active:scale-95"
               style={{ backgroundColor: suggBg, border: '1px solid rgba(255,255,255,0.08)', color: 'var(--text-secondary)' }}>
               {s}
             </button>
@@ -233,7 +312,7 @@ export default function MascotChat({ allRecipes, embedded = false }: { allRecipe
         </div>
       )}
 
-      {/* Input row */}
+      {/* Input */}
       <div className="flex items-center gap-2 px-3 pb-3 pt-1">
         {hasSpeech && (
           <button onClick={toggleVoice}
@@ -250,7 +329,7 @@ export default function MascotChat({ allRecipes, embedded = false }: { allRecipe
           ref={inputRef}
           value={input}
           onChange={e => setInput(e.target.value)}
-          onKeyDown={e => e.key === 'Enter' && send()}
+          onKeyDown={e => e.key === 'Enter' && !e.shiftKey && send()}
           placeholder="Demande-moi quelque chose…"
           className="flex-1 text-xs px-3 py-2 rounded-xl outline-none"
           style={{
