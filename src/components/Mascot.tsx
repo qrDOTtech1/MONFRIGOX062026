@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 
-export type MascotVariant = 'wink' | 'happy' | 'excited' | 'worried' | 'sad' | 'sleep';
+export type MascotVariant = 'wink' | 'happy' | 'excited' | 'worried' | 'sad' | 'sleep' | 'thinking' | 'love' | 'budget' | 'trophy' | 'chef';
 export type MascotSize = 'sm' | 'md' | 'lg' | 'xl';
 
 interface MascotProps {
@@ -14,12 +14,17 @@ interface MascotProps {
 }
 
 const VARIANT_SRC: Record<MascotVariant, string> = {
-  wink:    '/mascot-wink.png',
-  happy:   '/mascot-happy.png',
-  excited: '/mascot-excited.png',
-  worried: '/mascot-worried.png',
-  sad:     '/mascot-sad.png',
-  sleep:   '/mascot-sleep.png',
+  wink:     '/mascot-wink.png',
+  happy:    '/mascot-happy.png',
+  excited:  '/mascot-excited.png',
+  worried:  '/mascot-worried.png',
+  sad:      '/mascot-sad.png',
+  sleep:    '/mascot-sleep.png',
+  thinking: '/mascot-thinking.png',
+  love:     '/mascot-love.png',
+  budget:   '/mascot-budget.png',
+  trophy:   '/mascot-trophy.png',
+  chef:     '/mascot-chef.png',
 };
 
 const SIZE_PX: Record<MascotSize, number> = {
