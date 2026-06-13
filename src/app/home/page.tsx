@@ -105,6 +105,63 @@ function getTimeGradient() {
   return 'linear-gradient(160deg, rgba(30,27,75,0.15) 0%, rgba(88,28,135,0.08) 50%, transparent 100%)';
 }
 
+const STAT_PERIODS = [
+  { key: 'day', label: 'Jour' },
+  { key: 'week', label: 'Semaine' },
+  { key: 'month', label: 'Mois' },
+  { key: 'year', label: 'Année' },
+] as const;
+
+function StatsRadarSection({ radarScores: defaultScores }: { radarScores: Record<string, number> }) {
+  const [period, setPeriod] = useState<string>('week');
+  const [scores, setScores] = useState(defaultScores);
+  const [loadingPeriod, setLoadingPeriod] = useState(false);
+
+  useEffect(() => {
+    if (period === 'week') { setScores(defaultScores); return; }
+    setLoadingPeriod(true);
+    fetch(`/api/dashboard/stats?period=${period}`)
+      .then(r => r.ok ? r.json() : null)
+      .then(data => { if (data?.radarScores) setScores(data.radarScores); })
+      .catch(() => {})
+      .finally(() => setLoadingPeriod(false));
+  }, [period, defaultScores]);
+
+  return (
+    <div className="card px-4 py-4">
+      <div className="flex items-center justify-between mb-3">
+        <h2 className="text-sm font-bold flex items-center gap-1.5">
+          <BarChart2 className="w-4 h-4" style={{ color: 'var(--accent)' }} /> Mes stats
+        </h2>
+        <div className="flex rounded-xl overflow-hidden" style={{ border: '1px solid rgba(255,255,255,0.1)' }}>
+          {STAT_PERIODS.map(p => (
+            <button key={p.key} onClick={() => setPeriod(p.key)}
+              className="text-[9px] px-2.5 py-1 font-medium transition-all"
+              style={{
+                backgroundColor: period === p.key ? 'var(--accent)' : 'transparent',
+                color: period === p.key ? 'var(--accent-text)' : 'var(--text-muted)',
+              }}>
+              {p.label}
+            </button>
+          ))}
+        </div>
+      </div>
+      <div style={{ opacity: loadingPeriod ? 0.5 : 1, transition: 'opacity 0.2s' }}>
+        <OctagonRadar scores={scores} />
+        <div className="grid grid-cols-4 gap-1.5 mt-3">
+          {RADAR_AXES.map(axis => (
+            <div key={axis.key} className="flex flex-col items-center gap-0.5">
+              <span className="text-base leading-none">{axis.icon}</span>
+              <span className="text-[8px] text-center leading-tight" style={{ color: 'var(--text-muted)' }}>{axis.label}</span>
+              <span className="text-[9px] font-bold" style={{ color: 'var(--accent)' }}>{scores[axis.key] || 0}/10</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /* ═══════════════════════════════════════════════════════ */
 export default function HomePage() {
   const router = useRouter();
@@ -251,27 +308,8 @@ export default function HomePage() {
             </div>
           </div>
 
-          {/* ── Octogone ── */}
-          <div className="card px-4 py-4">
-            <div className="flex items-center justify-between mb-3">
-              <h2 className="text-sm font-bold">Mon octogone</h2>
-              <span className="text-[10px] px-2.5 py-1 rounded-full font-medium"
-                style={{ backgroundColor: 'var(--bg-inset)', color: 'var(--text-muted)' }}>
-                Semaine en cours
-              </span>
-            </div>
-            <OctagonRadar scores={radarScores} />
-            {/* Légende */}
-            <div className="grid grid-cols-4 gap-1.5 mt-3">
-              {RADAR_AXES.map(axis => (
-                <div key={axis.key} className="flex flex-col items-center gap-0.5">
-                  <span className="text-base leading-none">{axis.icon}</span>
-                  <span className="text-[8px] text-center leading-tight" style={{ color: 'var(--text-muted)' }}>{axis.label}</span>
-                  <span className="text-[9px] font-bold" style={{ color: 'var(--accent)' }}>{radarScores[axis.key] || 0}/10</span>
-                </div>
-              ))}
-            </div>
-          </div>
+          {/* ── Mes stats ── */}
+          <StatsRadarSection radarScores={radarScores} />
 
           {/* ── Stats 4 tuiles ── */}
           <div className="grid grid-cols-2 gap-2.5">

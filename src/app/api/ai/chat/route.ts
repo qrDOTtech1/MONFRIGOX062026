@@ -99,7 +99,30 @@ Si l'utilisateur veut aller quelque part, ajoute UNE commande à LA FIN de ta r�
 - Planning → [NAV:/shopping]
 - Profil → [NAV:/profile]
 - Accueil → [NAV:/home]
-Exemple : "Je t'emmène voir ton frigo ! [NAV:/fridge]"`;
+Exemple : "Je t'emmène voir ton frigo ! [NAV:/fridge]"
+
+ACTIONS DIRECTES :
+Tu peux effectuer des actions pour l'utilisateur. Ajoute la commande à la fin de ta réponse :
+- Ajouter au planning : [ACTION:PLAN recipeId YYYY-MM-DD MEALTYPE] (MEALTYPE = BREAKFAST, LUNCH, DINNER ou SNACK)
+- Ajouter au frigo : [ACTION:FRIDGE nomIngredient]
+- Ajouter à la liste de courses : [ACTION:SHOP nomIngredient]
+- Lancer le mode cuisine : [ACTION:COOK recipeId]
+Exemples :
+- "C'est noté, j'ajoute les oeufs à ton frigo ! [ACTION:FRIDGE oeufs]"
+- "Je l'ajoute pour mardi soir ! [ACTION:PLAN abc123 2026-06-16 DINNER]"
+- "On lance la recette ! [ACTION:COOK abc123]"
+Tu peux combiner plusieurs actions : [ACTION:FRIDGE tomates] [ACTION:FRIDGE oignons]
+Pour le planning, déduis la date et le repas du contexte (si "ce soir" → date du jour + DINNER, "demain midi" → date+1 + LUNCH).
+La date d'aujourd'hui est : ${new Date().toISOString().split('T')[0]}
+
+CRÉATION DE RECETTES PERSONNALISÉES :
+IMPORTANT : Quand l'utilisateur accepte une recette que tu as proposée (ex: "go", "ok", "fais-le", "je veux celle-là") ou quand tu inventes/adaptes une recette qui N'EXISTE PAS dans le catalogue, tu DOIS la créer avec cette commande :
+[RECIPE:nom_recette|cuisine|difficulté|temps_minutes|portions|instructions complètes étape par étape|ingredient1:quantité:unité,ingredient2:quantité:unité,...]
+Exemples :
+- [RECIPE:Riz au bœuf épicé tchinné|Burkinabè|FACILE|35|4|Fais revenir l'oignon et l'ail dans l'huile d'olive. Ajoute le bœuf haché et fais dorer 5 min. Mélange la sauce tomate, le curry et le paprika. Laisse mijoter 15 min. Cuis le riz à part. Sers le bœuf sur le riz.|bœuf haché:400:g,riz:300:g,oignon:1:unité,ail:3:gousse,sauce tomate:200:ml,curry:1:cs,paprika:1:cc,huile d'olive:2:cs]
+Après la commande, dis simplement "Je viens de créer la recette, la voici !" sans détailler les ingrédients ni les étapes (tout s'affiche dans la carte).
+Difficultés possibles : FACILE, MOYEN, DIFFICILE.
+Ne crée PAS de recette si elle existe déjà dans le catalogue (utilise [ID:xxx] à la place).`;
 
   try {
     const resp = await chatCompletion(
@@ -120,13 +143,78 @@ Exemple : "Je t'emmène voir ton frigo ! [NAV:/fridge]"`;
     const navMatch = reply.match(/\[NAV:(\/[^\]]*)\]/i);
     const navTo = navMatch ? navMatch[1] : null;
 
+    // Extraire les actions
+    const actionMatches = [...reply.matchAll(/\[ACTION:(PLAN|FRIDGE|SHOP|COOK)\s+([^\]]+)\]/gi)];
+    const actions = actionMatches.map(m => {
+      const type = m[1].toUpperCase();
+      const args = m[2].trim();
+      if (type === 'PLAN') {
+        const parts = args.split(/\s+/);
+        return { type, recipeId: parts[0], date: parts[1], mealType: parts[2] };
+      }
+      if (type === 'COOK') return { type, recipeId: args };
+      return { type, ingredientName: args };
+    });
+
+    // Extraire et créer les recettes personnalisées
+    const recipeTagMatches = [...reply.matchAll(/\[RECIPE:([^\]]+)\]/gi)];
+    const createdRecipeIds: string[] = [];
+    for (const rm of recipeTagMatches) {
+      try {
+        const parts = rm[1].split('|');
+        if (parts.length < 7) continue;
+        const [rName, rCuisine, rDiff, rTime, rServings, rInstructions, rIngs] = parts;
+        const validDiff = ['FACILE', 'MOYEN', 'DIFFICILE'].includes(rDiff) ? rDiff : 'FACILE';
+
+        const newRecipe = await prisma.recipe.create({
+          data: {
+            name: rName.trim(),
+            description: `Recette créée par l'assistant IA à partir de ton frigo`,
+            instructions: rInstructions.trim(),
+            cuisine: rCuisine.trim() || 'Maison',
+            difficulty: validDiff as any,
+            prepTime: parseInt(rTime) || 30,
+            servings: parseInt(rServings) || 4,
+            authorId: user.id,
+            isPublic: true,
+          },
+        });
+
+        const ingParts = rIngs.split(',').map(s => s.trim()).filter(Boolean);
+        for (const ip of ingParts) {
+          const [ingName, ingQty, ingUnit] = ip.split(':').map(s => s.trim());
+          if (!ingName) continue;
+          let ingredient = await prisma.ingredient.findFirst({
+            where: { name: { equals: ingName, mode: 'insensitive' } },
+          });
+          if (!ingredient) {
+            ingredient = await prisma.ingredient.create({
+              data: { name: ingName, category: 'IA', emoji: '🍳' },
+            });
+          }
+          const qty = parseFloat((ingQty || '1').replace(',', '.')) || 1;
+          await prisma.recipeIngredient.create({
+            data: { recipeId: newRecipe.id, ingredientId: ingredient.id, quantity: qty, unit: ingUnit || 'unité' },
+          }).catch(() => {});
+        }
+
+        createdRecipeIds.push(newRecipe.id);
+      } catch (e) {
+        console.error('Failed to create recipe from chat:', e);
+      }
+    }
+
+    const allRecipeIds = [...recipeIds, ...createdRecipeIds];
+
     // Nettoyer la réponse (retirer les balises internes)
     const cleanReply = reply
       .replace(/\s*\[ID:[a-z0-9]+\]/gi, '')
       .replace(/\s*\[NAV:\/[^\]]*\]/gi, '')
+      .replace(/\s*\[ACTION:[^\]]*\]/gi, '')
+      .replace(/\s*\[RECIPE:[^\]]*\]/gi, '')
       .trim();
 
-    return NextResponse.json({ reply: cleanReply, recipeIds, navTo });
+    return NextResponse.json({ reply: cleanReply, recipeIds: allRecipeIds, navTo, actions, createdRecipes: createdRecipeIds });
   } catch (err) {
     console.error('Chat error:', err);
     return NextResponse.json({ error: 'Erreur IA — vérifie la configuration Ollama' }, { status: 500 });
