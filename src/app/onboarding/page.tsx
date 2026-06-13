@@ -84,7 +84,22 @@ const MEAL_TYPES = [
   { key: 'SNACK',     label: 'Snacks',         emoji: '🍎' },
 ];
 
-const TOTAL_STEPS = 9;
+const EQUIPMENT = [
+  { key: 'four', label: 'Four',                emoji: '🔥' },
+  { key: 'micro-ondes', label: 'Micro-ondes',  emoji: '📡' },
+  { key: 'air-fryer', label: 'Air fryer',      emoji: '🌪️' },
+  { key: 'mixeur', label: 'Mixeur/Blender',    emoji: '🌀' },
+  { key: 'robot', label: 'Robot de cuisine',   emoji: '🤖' },
+  { key: 'friteuse', label: 'Friteuse',        emoji: '🍟' },
+  { key: 'plancha', label: 'Plancha/Grill',    emoji: '🔖' },
+  { key: 'multicuiseur', label: 'Multicuiseur', emoji: '🍲' },
+  { key: 'rice-cooker', label: 'Rice-cooker',  emoji: '🍚' },
+  { key: 'BBQ', label: 'BBQ/Barbecue',         emoji: '🍖' },
+  { key: 'vapeur', label: 'Autocuiseur/Vapeur', emoji: '💨' },
+  { key: 'four-pizza', label: 'Four à pizza',  emoji: '🍕' },
+];
+
+const TOTAL_STEPS = 10;
 
 function StepDots({ current }: { current: number }) {
   return (
@@ -113,6 +128,7 @@ export default function OnboardingPage() {
   const [cuisines,   setCuisines]   = useState<string[]>([]);
   const [servings,   setServings]   = useState(2);
   const [mealTypes,  setMealTypes]  = useState<string[]>(['LUNCH', 'DINNER']);
+  const [equipment,  setEquipment]  = useState<string[]>([]);
   const [saving,     setSaving]     = useState(false);
 
   function toggleArr<T extends string>(arr: T[], val: T, setArr: (a: T[]) => void) {
@@ -128,6 +144,7 @@ export default function OnboardingPage() {
         dietMode,
         allergens: JSON.stringify(allergens),
         defaultServings: servings,
+        equipment: JSON.stringify(equipment),
         tasteProfile: JSON.stringify({ flavors, cuisines, skillLevel, timePref, goals, mealTypes }),
         onboardingDone: true,
       }),
@@ -449,6 +466,31 @@ export default function OnboardingPage() {
 
         {step === 9 && (
           <>
+            <h2 className="text-2xl font-bold mb-1">Tes équipements ?</h2>
+            <p className="text-sm mb-6" style={{ color: 'var(--text-muted)' }}>Coche ce que tu as (optionnel, pour mieux recommander)</p>
+            <div className="grid grid-cols-2 gap-2">
+              {EQUIPMENT.map(e => {
+                const on = equipment.includes(e.key);
+                return (
+                  <button key={e.key} onClick={() => toggleArr(equipment, e.key, setEquipment)}
+                    className="flex items-center gap-3 px-4 py-3.5 rounded-2xl text-left transition-all active:scale-[0.97]"
+                    style={{
+                      backgroundColor: on ? 'var(--accent)' : 'var(--bg-raised)',
+                      color: on ? 'var(--accent-text)' : 'var(--text)',
+                      border: `1.5px solid ${on ? 'var(--accent)' : 'var(--border)'}`,
+                    }}>
+                    <span className="text-lg">{e.emoji}</span>
+                    <span className="text-sm font-medium">{e.label}</span>
+                    {on && <Check className="w-4 h-4 ml-auto shrink-0" />}
+                  </button>
+                );
+              })}
+            </div>
+          </>
+        )}
+
+        {step === 10 && (
+          <>
             <h2 className="text-2xl font-bold mb-1">Ton profil culinaire 🎯</h2>
             <p className="text-sm mb-5" style={{ color: 'var(--text-muted)' }}>Vérifie tes préférences avant de sauvegarder</p>
             <div className="space-y-2 mb-8">
@@ -461,6 +503,7 @@ export default function OnboardingPage() {
                 { emoji: '👅', label: 'Saveurs',    value: flavors.length > 0 ? flavors.map(k => FLAVORS.find(f => f.key === k)?.label).join(', ') : 'Non renseigné' },
                 { emoji: '🌍', label: 'Cuisines',   value: cuisines.length > 0 ? cuisines.slice(0, 3).join(', ') + (cuisines.length > 3 ? ` +${cuisines.length - 3}` : '') : 'Non renseigné' },
                 { emoji: '👥', label: 'Portions',   value: `${servings} personne${servings > 1 ? 's' : ''}` },
+                { emoji: '🔥', label: 'Équipements', value: equipment.length > 0 ? equipment.map(k => EQUIPMENT.find(e => e.key === k)?.label).join(', ') : 'Aucun' },
               ].map(row => (
                 <div key={row.label} className="flex items-start gap-3 p-3 rounded-xl"
                   style={{ backgroundColor: 'var(--bg-raised)', border: '1px solid var(--border)' }}>
@@ -483,7 +526,7 @@ export default function OnboardingPage() {
             Retour
           </button>
         )}
-        {step < 9 ? (
+        {step < 10 ? (
           <button onClick={next} className="flex-1 flex items-center justify-center gap-2 py-3.5 rounded-2xl text-sm font-semibold transition-all active:scale-[0.97]"
             style={{ backgroundColor: 'var(--accent)', color: 'var(--accent-text)' }}>
             Suivant <ChevronRight className="w-4 h-4" />

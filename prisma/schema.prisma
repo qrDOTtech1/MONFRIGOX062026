@@ -41,6 +41,7 @@ model User {
   defaultServings Int       @default(4)
   // Goûts & onboarding
   tasteProfile     String    @default("")
+  equipment        String    @default("")  // JSON array: ["four","micro-ondes","air-fryer",...]
   onboardingDone   Boolean   @default(false)
   // Abonnement & facturation
   plan             String    @default("FREE")   // FREE | PREMIUM | VIP

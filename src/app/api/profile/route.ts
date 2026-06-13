@@ -4,7 +4,7 @@ import { getCurrentUser } from '@/lib/auth';
 
 const SELECT = {
   allergens: true, dietMode: true, kidMode: true, kidAgeMonths: true,
-  defaultServings: true, tasteProfile: true, onboardingDone: true,
+  defaultServings: true, tasteProfile: true, equipment: true, onboardingDone: true,
   notifyExpiry: true, notifyMeals: true,
 };
 
@@ -35,6 +35,7 @@ export async function PUT(req: NextRequest) {
         kidAgeMonths:   body.kidAgeMonths   ?? undefined,
         defaultServings:body.defaultServings?? undefined,
         tasteProfile:   body.tasteProfile   ?? undefined,
+        equipment:      body.equipment      ?? undefined,
         onboardingDone: body.onboardingDone ?? undefined,
         notifyExpiry:   body.notifyExpiry   ?? undefined,
         notifyMeals:    body.notifyMeals    ?? undefined,
