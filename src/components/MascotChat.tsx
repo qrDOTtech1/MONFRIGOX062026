@@ -174,11 +174,38 @@ function ListeningOverlay({ transcript, onStop }: { transcript: string; onStop: 
 }
 
 /* ── Mode cuisine plein écran ── */
+const ENCOURAGEMENTS = [
+  '🌟 Tu t\'en sors bien !',
+  '👨‍🍳 Parfait ! Comme un pro !',
+  '🔥 C\'est beau ce que tu fais !',
+  '💪 Continues comme ça !',
+  '✨ Magnifique !',
+  '🎯 Tu maîtrises !',
+  '🚀 C\'est l\'élan !',
+  '😋 Ça va être délicieux !',
+  '⚡ Vitesse et précision !',
+  '🎉 Vous êtes formidable !',
+];
+
+const COOKING_TIPS = [
+  'Goûte pendant que tu cuisines !',
+  'Bien lire l\'étape avant de commencer',
+  'Prépare tes ingrédients (mise en place)',
+  'Ne stresse pas avec le timing !',
+  'Les parfums c\'est important !',
+  'Amusez vous en cuisinant !',
+  'Bon ventilation pour les odeurs',
+  'Nettoyez au fur et à mesure !',
+];
+
 function CookingMode({ cooking, onClose, ttsEnabled }: { cooking: CookingState; onClose: () => void; ttsEnabled: boolean }) {
   const [step, setStep] = useState(cooking.currentStep);
   const [timer, setTimer] = useState(0);
   const [timerActive, setTimerActive] = useState(false);
+  const [encouragement, setEncouragement] = useState('');
   const timerRef = useRef<ReturnType<typeof setInterval>>(null);
+
+  const mascotVariant = step === 0 ? 'excited' : (step === cooking.steps.length - 1 ? 'love' : 'chef') as MascotVariant;
 
   useEffect(() => {
     if (ttsEnabled && cooking.steps[step]) {
@@ -187,12 +214,19 @@ function CookingMode({ cooking, onClose, ttsEnabled }: { cooking: CookingState; 
   }, [step, ttsEnabled, cooking.steps]);
 
   useEffect(() => {
+    // Encouragement random quand on change d'étape
+    const enc = ENCOURAGEMENTS[Math.floor(Math.random() * ENCOURAGEMENTS.length)];
+    setEncouragement(enc);
+    if (ttsEnabled) speak(enc);
+  }, [step, ttsEnabled]);
+
+  useEffect(() => {
     if (timerActive && timer > 0) {
       timerRef.current = setInterval(() => {
         setTimer(prev => {
           if (prev <= 1) {
             setTimerActive(false);
-            if (ttsEnabled) speak('Le minuteur est terminé !');
+            if (ttsEnabled) speak('Le minuteur est terminé ! Prêt pour l\'étape suivante ?');
             return 0;
           }
           return prev - 1;
@@ -204,78 +238,96 @@ function CookingMode({ cooking, onClose, ttsEnabled }: { cooking: CookingState; 
 
   const formatTimer = (s: number) => `${Math.floor(s / 60).toString().padStart(2, '0')}:${(s % 60).toString().padStart(2, '0')}`;
   const total = cooking.steps.length;
+  const progress = ((step + 1) / total) * 100;
+  const tip = COOKING_TIPS[step % COOKING_TIPS.length];
 
   return (
-    <div className="fixed inset-0 z-[180] flex flex-col" style={{ backgroundColor: 'rgba(0,0,0,0.95)' }}>
+    <div className="fixed inset-0 z-[180] flex flex-col" style={{ backgroundColor: 'rgba(0,0,0,0.98)' }}>
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 shrink-0" style={{ borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
-        <button onClick={onClose} className="p-2 rounded-xl" style={{ color: 'var(--text-muted)' }}>
+      <div className="flex items-center justify-between px-4 py-4 shrink-0" style={{ borderBottom: '1px solid rgba(255,255,255,0.1)', background: 'linear-gradient(135deg, rgba(34,197,94,0.08), rgba(59,130,246,0.08))' }}>
+        <button onClick={onClose} className="p-2 rounded-xl hover:scale-110 transition-transform" style={{ color: 'var(--text-muted)' }}>
           <X className="w-5 h-5" />
         </button>
         <div className="text-center">
-          <p className="text-xs font-bold" style={{ color: 'var(--text)' }}>{cooking.recipeName}</p>
-          <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>Étape {step + 1}/{total}</p>
+          <p className="text-sm font-bold mb-1" style={{ color: 'var(--accent)' }}>🍳 {cooking.recipeName}</p>
+          <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Étape <span style={{ color: 'var(--accent)' }}>{step + 1}</span> / {total}</p>
         </div>
         <div className="w-9" />
       </div>
 
       {/* Progress bar */}
-      <div className="h-1 w-full" style={{ backgroundColor: 'rgba(255,255,255,0.08)' }}>
-        <div className="h-full transition-all duration-300" style={{ width: `${((step + 1) / total) * 100}%`, backgroundColor: 'var(--accent)' }} />
+      <div className="h-2 w-full" style={{ backgroundColor: 'rgba(255,255,255,0.08)' }}>
+        <div className="h-full transition-all duration-500" style={{ width: `${progress}%`, backgroundColor: 'var(--accent)', boxShadow: '0 0 12px rgba(34,197,94,0.6)' }} />
       </div>
 
-      {/* Content */}
-      <div className="flex-1 flex flex-col items-center justify-center px-6 py-8 gap-6 overflow-y-auto">
-        <Mascot variant="chef" size="lg" animate="float" />
-        <div className="text-center max-w-md">
-          <p className="text-lg font-bold mb-4" style={{ color: 'var(--accent)' }}>Étape {step + 1}</p>
-          <p className="text-base leading-relaxed" style={{ color: 'var(--text)' }}>{cooking.steps[step]}</p>
+      {/* Mascotte grande + Encouragement */}
+      <div className="flex-1 flex flex-col items-center justify-center px-6 py-8 gap-4 overflow-y-auto">
+        <div className="relative">
+          <Mascot variant={mascotVariant} size="xl" animate="float" />
+          {encouragement && (
+            <div className="mt-4 text-center text-2xl font-bold animate-bounce" style={{ color: 'var(--accent)', textShadow: '0 0 20px rgba(34,197,94,0.3)' }}>
+              {encouragement}
+            </div>
+          )}
+        </div>
+
+        {/* Étape texte */}
+        <div className="text-center max-w-2xl">
+          <p className="text-xs font-semibold mb-2 uppercase" style={{ color: 'var(--accent)', letterSpacing: '0.1em' }}>Étape {step + 1}/{total}</p>
+          <p className="text-xl leading-relaxed font-medium mb-4" style={{ color: 'var(--text)' }}>
+            {cooking.steps[step]}
+          </p>
+          <p className="text-sm" style={{ color: 'var(--text-muted)', fontStyle: 'italic' }}>
+            💡 {tip}
+          </p>
         </div>
       </div>
 
-      {/* Timer */}
-      <div className="flex items-center justify-center gap-3 py-3 px-4">
-        <button onClick={() => { setTimer(prev => Math.max(0, prev - 60)); }}
-          className="p-2 rounded-xl" style={{ backgroundColor: 'rgba(255,255,255,0.08)', color: 'var(--text-muted)' }}>
-          <MinusIcon className="w-4 h-4" />
-        </button>
-        <div className="flex items-center gap-2 px-4 py-2 rounded-xl" style={{ backgroundColor: 'rgba(255,255,255,0.06)', minWidth: '140px', justifyContent: 'center' }}>
-          <Timer className="w-4 h-4" style={{ color: timerActive ? 'var(--accent)' : 'var(--text-muted)' }} />
-          <span className="text-lg font-mono font-bold" style={{ color: timer > 0 ? 'var(--accent)' : 'var(--text-muted)' }}>
-            {formatTimer(timer)}
-          </span>
+      {/* Timer + Controls */}
+      <div className="bg-gradient-to-r from-green-900/30 to-blue-900/30 px-4 py-4 shrink-0" style={{ borderTop: '1px solid rgba(255,255,255,0.1)' }}>
+        <div className="flex items-center justify-center gap-2 mb-3">
+          <button onClick={() => { setTimer(prev => Math.max(0, prev - 60)); }}
+            className="p-2.5 rounded-lg hover:scale-110 transition-transform" style={{ backgroundColor: 'rgba(255,255,255,0.06)', color: 'var(--text-muted)' }}>
+            <MinusIcon className="w-5 h-5" />
+          </button>
+          <div className="flex items-center gap-3 px-6 py-3 rounded-2xl" style={{ backgroundColor: 'rgba(34,197,94,0.15)', border: '2px solid var(--accent)' }}>
+            <Timer className="w-5 h-5" style={{ color: timerActive ? 'var(--accent)' : 'var(--text-muted)' }} />
+            <span className="text-3xl font-mono font-bold" style={{ color: timer > 0 ? 'var(--accent)' : 'var(--text-muted)', minWidth: '100px', textAlign: 'center' }}>
+              {formatTimer(timer)}
+            </span>
+          </div>
+          <button onClick={() => { setTimer(prev => prev + 60); }}
+            className="p-2.5 rounded-lg hover:scale-110 transition-transform" style={{ backgroundColor: 'rgba(255,255,255,0.06)', color: 'var(--text-muted)' }}>
+            <Plus className="w-5 h-5" />
+          </button>
+          <button onClick={() => setTimerActive(v => !v)}
+            className="p-3 rounded-xl hover:scale-110 transition-transform" style={{ backgroundColor: timerActive ? 'rgba(239,68,68,0.3)' : 'rgba(34,197,94,0.25)', color: timerActive ? '#ef4444' : 'var(--accent)' }}>
+            {timerActive ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5" />}
+          </button>
         </div>
-        <button onClick={() => { setTimer(prev => prev + 60); }}
-          className="p-2 rounded-xl" style={{ backgroundColor: 'rgba(255,255,255,0.08)', color: 'var(--text-muted)' }}>
-          <Plus className="w-4 h-4" />
-        </button>
-        <button onClick={() => setTimerActive(v => !v)}
-          className="p-2.5 rounded-xl" style={{ backgroundColor: timerActive ? 'rgba(239,68,68,0.2)' : 'rgba(var(--accent-rgb,99,102,241),0.2)', color: timerActive ? '#ef4444' : 'var(--accent)' }}>
-          {timerActive ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
-        </button>
-      </div>
 
-      {/* Navigation */}
-      <div className="flex items-center justify-between px-4 py-4 shrink-0" style={{ borderTop: '1px solid rgba(255,255,255,0.1)' }}>
-        <button onClick={() => { if (step > 0) setStep(step - 1); }} disabled={step === 0}
-          className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-all disabled:opacity-30"
-          style={{ backgroundColor: 'rgba(255,255,255,0.08)', color: 'var(--text)' }}>
-          <ChevronLeft className="w-4 h-4" /> Précédent
-        </button>
+        {/* Navigation */}
+        <div className="flex items-center justify-between gap-2">
+          <button onClick={() => { if (step > 0) setStep(step - 1); }} disabled={step === 0}
+            className="flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-medium transition-all disabled:opacity-20"
+            style={{ backgroundColor: 'rgba(255,255,255,0.08)', color: 'var(--text)' }}>
+            <ChevronLeft className="w-4 h-4" /> Précédent
+          </button>
 
-        {step < total - 1 ? (
-          <button onClick={() => setStep(step + 1)}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold transition-all active:scale-95"
-            style={{ backgroundColor: 'var(--accent)', color: 'var(--accent-text)' }}>
-            Suivant <ChevronRight className="w-4 h-4" />
-          </button>
-        ) : (
-          <button onClick={onClose}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold transition-all active:scale-95"
-            style={{ backgroundColor: '#22c55e', color: 'white' }}>
-            <Check className="w-4 h-4" /> Terminé !
-          </button>
-        )}
+          {step < total - 1 ? (
+            <button onClick={() => setStep(step + 1)}
+              className="flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-bold transition-all active:scale-95 hover:scale-105"
+              style={{ backgroundColor: 'var(--accent)', color: 'var(--accent-text)' }}>
+              Suivant <ChevronRight className="w-4 h-4" />
+            </button>
+          ) : (
+            <button onClick={onClose}
+              className="flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-bold transition-all active:scale-95 hover:scale-105"
+              style={{ backgroundColor: '#22c55e', color: 'white', boxShadow: '0 0 20px rgba(34,197,94,0.4)' }}>
+              <Check className="w-4 h-4" /> Bon appétit ! 🎉
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );
