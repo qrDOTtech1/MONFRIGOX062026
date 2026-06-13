@@ -119,212 +119,235 @@ async function drawEcoVisual(
   canvas.height = H;
 
   const scale = Math.min(W, H) / 1080;
-  const pad = 80 * scale;
-  const black = '#18181b';
-  const gray = '#71717a';
-  const lightGray = '#e4e4e7';
+  const pad = 60 * scale;
+  const black = '#000000';
+  const dark = '#18181b';
+  const gray = '#52525b';
 
   // White background
   ctx.fillStyle = '#ffffff';
   ctx.fillRect(0, 0, W, H);
 
-  let y = pad;
+  // ── TOP: Black banner ──
+  const bannerH = 220 * scale;
+  ctx.fillStyle = black;
+  ctx.fillRect(0, 0, W, bannerH);
 
-  // Mascot + App name
-  const mascotSize = Math.round(80 * scale);
+  // Mascot in banner
+  const mascotSize = Math.round(100 * scale);
   try {
     const mascotImg = await loadImage('/mascot-happy.png');
     const nameText = 'MonFrigo.app';
-    ctx.font = `bold ${68 * scale}px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif`;
+    ctx.font = `bold ${64 * scale}px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif`;
     const nameW = ctx.measureText(nameText).width;
-    const totalW = mascotSize + 16 * scale + nameW;
+    const totalW = mascotSize + 20 * scale + nameW;
     const startX = (W - totalW) / 2;
-    ctx.drawImage(mascotImg, startX, y, mascotSize, mascotSize);
-    ctx.fillStyle = black;
+    ctx.drawImage(mascotImg, startX, (bannerH - mascotSize) / 2, mascotSize, mascotSize);
+    ctx.fillStyle = '#ffffff';
     ctx.textAlign = 'left';
-    ctx.fillText(nameText, startX + mascotSize + 16 * scale, y + 60 * scale);
-    ctx.textAlign = 'center';
+    ctx.fillText(nameText, startX + mascotSize + 20 * scale, bannerH / 2 + 22 * scale);
   } catch {
-    ctx.fillStyle = black;
-    ctx.font = `bold ${68 * scale}px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif`;
+    ctx.fillStyle = '#ffffff';
+    ctx.font = `bold ${72 * scale}px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif`;
     ctx.textAlign = 'center';
-    ctx.fillText('MonFrigo.app', W / 2, y + 68 * scale);
+    ctx.fillText('MonFrigo.app', W / 2, bannerH / 2 + 26 * scale);
   }
-  y += 90 * scale;
-
-  // Tagline
-  ctx.fillStyle = gray;
-  ctx.font = `500 ${32 * scale}px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif`;
-  ctx.fillText(customTagline || BRAND.tagline, W / 2, y + 32 * scale);
-  y += 60 * scale;
-
-  // Thin separator
-  ctx.strokeStyle = lightGray;
-  ctx.lineWidth = 1.5 * scale;
-  ctx.beginPath();
-  ctx.moveTo(W * 0.2, y);
-  ctx.lineTo(W * 0.8, y);
-  ctx.stroke();
-  y += 40 * scale;
-
-  // Description
-  ctx.fillStyle = gray;
-  ctx.font = `400 ${26 * scale}px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif`;
-  const descLines = wrapText(ctx, BRAND.desc, W - pad * 2);
-  for (const line of descLines) {
-    ctx.fillText(line, W / 2, y + 28 * scale);
-    y += 36 * scale;
-  }
-  y += 35 * scale;
-
-  // ── GRATUIT section ──
   ctx.textAlign = 'center';
-  ctx.fillStyle = black;
-  ctx.font = `bold ${28 * scale}px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif`;
-  ctx.fillText('GRATUIT A VIE', W / 2, y + 28 * scale);
-  y += 18 * scale;
+
+  // ── BIG HOOK ──
+  let y = bannerH + 50 * scale;
+
+  ctx.fillStyle = dark;
+  ctx.font = `900 ${58 * scale}px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif`;
+  const hookLines = wrapText(ctx, customTagline || 'Tu sais pas quoi cuisiner ce soir ?', W - pad * 2);
+  for (const line of hookLines) {
+    ctx.fillText(line, W / 2, y + 58 * scale);
+    y += 68 * scale;
+  }
+  y += 10 * scale;
 
   ctx.fillStyle = gray;
-  ctx.font = `400 ${18 * scale}px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif`;
-  ctx.fillText('Sans carte bancaire, sans limite de temps', W / 2, y + 28 * scale);
-  y += 42 * scale;
+  ctx.font = `500 ${30 * scale}px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif`;
+  ctx.fillText('On a la solution. Et c\'est gratuit.', W / 2, y + 30 * scale);
+  y += 65 * scale;
 
-  const freeFeatures = [
-    'Gestion du frigo illimitée',
-    'Planning de repas complet',
-    'Liste de courses partageable',
-    'Mode cuisine pas-à-pas + minuteur',
-    'Alertes péremption & anti-gaspi',
-    'Scan code-barres (20/sem)',
-    'Succès & badges',
+  // ── 3 big selling points ──
+  const points = [
+    { icon: '📷', text: 'Scanne ton frigo' },
+    { icon: '🍳', text: 'Reçois des recettes' },
+    { icon: '📅', text: 'Planifie ta semaine' },
   ];
-  ctx.textAlign = 'left';
-  ctx.font = `400 ${20 * scale}px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif`;
-  for (const feat of freeFeatures) {
-    const featureX = pad + 30 * scale;
-    ctx.fillStyle = black;
-    ctx.fillText('✓', featureX - 22 * scale, y + 22 * scale);
-    ctx.fillText(feat, featureX, y + 22 * scale);
-    y += 34 * scale;
+
+  const pointW = (W - pad * 2 - 30 * scale) / 3;
+  for (let i = 0; i < 3; i++) {
+    const px = pad + i * (pointW + 15 * scale);
+    const centerX = px + pointW / 2;
+
+    ctx.font = `${52 * scale}px -apple-system, sans-serif`;
+    ctx.fillText(points[i].icon, centerX, y + 52 * scale);
+
+    ctx.fillStyle = dark;
+    ctx.font = `bold ${22 * scale}px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif`;
+    ctx.fillText(points[i].text, centerX, y + 90 * scale);
+    ctx.fillStyle = gray;
   }
-  y += 16 * scale;
+  y += 120 * scale;
 
-  // ── Separator ──
-  ctx.strokeStyle = lightGray;
-  ctx.lineWidth = 1 * scale;
-  ctx.beginPath();
-  ctx.moveTo(pad, y);
-  ctx.lineTo(W - pad, y);
+  // Arrow down
+  ctx.fillStyle = dark;
+  ctx.font = `${36 * scale}px -apple-system, sans-serif`;
+  ctx.fillText('▼', W / 2, y + 20 * scale);
+  y += 50 * scale;
+
+  // ── GRATUIT À VIE block ──
+  const freeBlockH = 260 * scale;
+  roundRect(ctx, pad, y, W - pad * 2, freeBlockH, 16 * scale);
+  ctx.strokeStyle = dark;
+  ctx.lineWidth = 3 * scale;
   ctx.stroke();
-  y += 20 * scale;
 
-  // ── Pricing tiers side by side ──
-  ctx.textAlign = 'center';
+  ctx.fillStyle = dark;
+  ctx.font = `900 ${36 * scale}px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif`;
+  ctx.fillText('GRATUIT À VIE', W / 2, y + 46 * scale);
+
   ctx.fillStyle = gray;
   ctx.font = `500 ${20 * scale}px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif`;
-  ctx.fillText('Envie de plus ? Débloquez l\'IA culinaire.', W / 2, y + 22 * scale);
-  y += 40 * scale;
+  ctx.fillText('Sans carte bancaire — pour toujours', W / 2, y + 74 * scale);
 
-  const tierW = (W - pad * 2 - 20 * scale) / 2;
-  const tierH = 200 * scale;
+  const freeFeatures = [
+    '✓  Frigo & courses illimités',
+    '✓  Planning repas complet',
+    '✓  Mode cuisine pas-à-pas',
+    '✓  Alertes péremption',
+    '✓  Anti-gaspi & badges',
+  ];
+  ctx.textAlign = 'left';
+  ctx.fillStyle = dark;
+  ctx.font = `600 ${22 * scale}px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif`;
+  let fY = y + 106 * scale;
+  const col1X = pad + 40 * scale;
+  const col2X = W / 2 + 10 * scale;
+  for (let i = 0; i < freeFeatures.length; i++) {
+    const fx = i < 3 ? col1X : col2X;
+    const fy = i < 3 ? fY + i * 34 * scale : fY + (i - 3) * 34 * scale;
+    ctx.fillText(freeFeatures[i], fx, fy);
+  }
+  ctx.textAlign = 'center';
+
+  y += freeBlockH + 25 * scale;
+
+  // ── Pricing tiers ──
+  ctx.fillStyle = gray;
+  ctx.font = `500 ${22 * scale}px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif`;
+  ctx.fillText('Envie de l\'IA culinaire en plus ?', W / 2, y + 22 * scale);
+  y += 46 * scale;
+
+  const tierW = (W - pad * 2 - 24 * scale) / 2;
+  const tierH = 180 * scale;
   const tierX1 = pad;
-  const tierX2 = pad + tierW + 20 * scale;
+  const tierX2 = pad + tierW + 24 * scale;
 
-  // Premium box
+  // Premium
   roundRect(ctx, tierX1, y, tierW, tierH, 12 * scale);
-  ctx.strokeStyle = '#d4d4d8';
+  ctx.strokeStyle = '#a1a1aa';
   ctx.lineWidth = 1.5 * scale;
   ctx.stroke();
 
-  ctx.fillStyle = black;
-  ctx.font = `bold ${22 * scale}px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif`;
-  ctx.fillText('Premium', tierX1 + tierW / 2, y + 32 * scale);
-  ctx.font = `bold ${28 * scale}px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif`;
-  ctx.fillText('3,99€/mois', tierX1 + tierW / 2, y + 66 * scale);
-
+  ctx.fillStyle = dark;
+  ctx.font = `bold ${24 * scale}px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif`;
+  ctx.fillText('Premium', tierX1 + tierW / 2, y + 34 * scale);
+  ctx.font = `900 ${32 * scale}px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif`;
+  ctx.fillText('3,99€', tierX1 + tierW / 2, y + 72 * scale);
   ctx.fillStyle = gray;
   ctx.font = `400 ${16 * scale}px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif`;
-  const premFeats = ['10 requêtes IA/sem', 'Scan frigo IA', 'Toutes les recettes', 'Création recettes IA'];
-  let pY = y + 90 * scale;
-  for (const f of premFeats) {
-    ctx.fillText(f, tierX1 + tierW / 2, pY);
-    pY += 24 * scale;
-  }
+  ctx.fillText('/mois', tierX1 + tierW / 2, y + 92 * scale);
 
-  // VIP box
+  ctx.font = `500 ${17 * scale}px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif`;
+  const pFeats = ['10 requêtes IA/sem', 'Scan frigo IA', '100% des recettes'];
+  let pFY = y + 118 * scale;
+  for (const f of pFeats) { ctx.fillText(f, tierX1 + tierW / 2, pFY); pFY += 22 * scale; }
+
+  // VIP
   roundRect(ctx, tierX2, y, tierW, tierH, 12 * scale);
-  ctx.strokeStyle = black;
-  ctx.lineWidth = 2.5 * scale;
+  ctx.fillStyle = dark;
+  ctx.fillRect(tierX2 + 1, y + 1, tierW - 2, tierH - 2);
+  roundRect(ctx, tierX2, y, tierW, tierH, 12 * scale);
   ctx.stroke();
 
-  ctx.fillStyle = black;
-  ctx.font = `bold ${22 * scale}px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif`;
-  ctx.fillText('VIP', tierX2 + tierW / 2, y + 32 * scale);
-  ctx.font = `bold ${28 * scale}px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif`;
-  ctx.fillText('6,99€/mois', tierX2 + tierW / 2, y + 66 * scale);
-
-  ctx.fillStyle = gray;
+  ctx.fillStyle = '#ffffff';
+  ctx.font = `bold ${24 * scale}px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif`;
+  ctx.fillText('VIP', tierX2 + tierW / 2, y + 34 * scale);
+  ctx.font = `900 ${32 * scale}px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif`;
+  ctx.fillText('6,99€', tierX2 + tierW / 2, y + 72 * scale);
+  ctx.fillStyle = '#a1a1aa';
   ctx.font = `400 ${16 * scale}px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif`;
-  const vipFeats = ['IA illimitée', 'Coach nutritionnel', 'Suivi & stats', 'Support prioritaire'];
-  let vY = y + 90 * scale;
-  for (const f of vipFeats) {
-    ctx.fillText(f, tierX2 + tierW / 2, vY);
-    vY += 24 * scale;
-  }
+  ctx.fillText('/mois', tierX2 + tierW / 2, y + 92 * scale);
+
+  ctx.fillStyle = '#d4d4d8';
+  ctx.font = `500 ${17 * scale}px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif`;
+  const vFeats = ['IA illimitée', 'Coach nutritionnel', 'Stats & suivi'];
+  let vFY = y + 118 * scale;
+  for (const f of vFeats) { ctx.fillText(f, tierX2 + tierW / 2, vFY); vFY += 22 * scale; }
 
   y += tierH + 25 * scale;
 
-  // Promo code
+  // ── Promo code ──
   if (promoCode) {
-    ctx.textAlign = 'center';
     const codeBlockH = 80 * scale;
-    const codeBlockW = W - pad * 3;
-    const codeX = (W - codeBlockW) / 2;
-
-    roundRect(ctx, codeX, y, codeBlockW, codeBlockH, 10 * scale);
-    ctx.strokeStyle = black;
+    const codeBlockW = W - pad * 2;
+    roundRect(ctx, pad, y, codeBlockW, codeBlockH, 10 * scale);
+    ctx.fillStyle = '#f4f4f5';
+    ctx.fill();
+    ctx.strokeStyle = dark;
     ctx.lineWidth = 2 * scale;
     ctx.stroke();
 
     ctx.fillStyle = gray;
-    ctx.font = `400 ${18 * scale}px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif`;
+    ctx.font = `500 ${18 * scale}px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif`;
     ctx.fillText('Code promo :', W / 2, y + 28 * scale);
 
-    ctx.fillStyle = black;
-    ctx.font = `bold ${34 * scale}px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif`;
+    ctx.fillStyle = dark;
+    ctx.font = `900 ${36 * scale}px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif`;
     ctx.fillText(promoCode.toUpperCase(), W / 2, y + 64 * scale);
 
-    y += codeBlockH + 20 * scale;
+    y += codeBlockH + 15 * scale;
   }
 
-  // QR Code
-  ctx.textAlign = 'center';
-  const qrSize = Math.round(160 * scale);
+  // ── Bottom: QR + URL side by side ──
+  const bottomY = Math.max(y + 5 * scale, H - 220 * scale);
+  const qrSize = Math.round(150 * scale);
   const qrUrl = promoCode ? `${APP_URL}?promo=${promoCode}` : APP_URL;
-  const qrY = Math.min(y + 5 * scale, H - (240 * scale));
 
+  // QR on left
+  const qrX = W / 2 - qrSize - 30 * scale;
   try {
     const qrCanvas = await generateQR(qrUrl, qrSize);
-    const qrX = W / 2 - qrSize / 2;
-    ctx.drawImage(qrCanvas, qrX, qrY, qrSize, qrSize);
-    ctx.fillStyle = black;
-    ctx.font = `bold ${26 * scale}px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif`;
-    ctx.fillText('monfrigo.app', W / 2, qrY + qrSize + 30 * scale);
-  } catch {
-    ctx.fillStyle = black;
-    ctx.font = `bold ${26 * scale}px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif`;
-    ctx.fillText('monfrigo.app', W / 2, y + 40 * scale);
-  }
+    ctx.drawImage(qrCanvas, qrX, bottomY, qrSize, qrSize);
+  } catch {}
 
-  // Bottom
+  // URL + CTA on right
+  const rightX = W / 2 + 20 * scale;
+  ctx.textAlign = 'left';
+  ctx.fillStyle = dark;
+  ctx.font = `900 ${38 * scale}px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif`;
+  ctx.fillText('monfrigo.app', rightX, bottomY + 50 * scale);
+
   ctx.fillStyle = gray;
-  ctx.font = `400 ${15 * scale}px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif`;
-  ctx.fillText('Disponible sur iOS, Android & Web', W / 2, H - pad / 2);
+  ctx.font = `500 ${20 * scale}px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif`;
+  ctx.fillText('Scanne pour', rightX, bottomY + 85 * scale);
+  ctx.fillText('télécharger', rightX, bottomY + 110 * scale);
 
-  // Light border
-  ctx.strokeStyle = lightGray;
-  ctx.lineWidth = 1.5 * scale;
-  roundRect(ctx, 6, 6, W - 12, H - 12, 16 * scale);
+  ctx.textAlign = 'center';
+
+  // Footer
+  ctx.fillStyle = '#a1a1aa';
+  ctx.font = `400 ${14 * scale}px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif`;
+  ctx.fillText('iOS · Android · Web — monfrigo.app', W / 2, H - 20 * scale);
+
+  // Bold border
+  ctx.strokeStyle = dark;
+  ctx.lineWidth = 4 * scale;
+  roundRect(ctx, 4, 4, W - 8, H - 8, 12 * scale);
   ctx.stroke();
 }
 
