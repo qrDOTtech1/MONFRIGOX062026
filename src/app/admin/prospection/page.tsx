@@ -86,6 +86,16 @@ function wrapText(ctx: CanvasRenderingContext2D, text: string, maxWidth: number)
   return lines;
 }
 
+function loadImage(src: string): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => resolve(img);
+    img.onerror = reject;
+    img.src = src;
+  });
+}
+
 async function generateQR(url: string, size: number): Promise<HTMLCanvasElement> {
   const qrCanvas = document.createElement('canvas');
   await QRCode.toCanvas(qrCanvas, url, {
@@ -120,11 +130,26 @@ async function drawEcoVisual(
 
   let y = pad;
 
-  // App name - simple black text
-  ctx.fillStyle = black;
-  ctx.font = `bold ${68 * scale}px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif`;
-  ctx.textAlign = 'center';
-  ctx.fillText(`MonFrigo`, W / 2, y + 68 * scale);
+  // Mascot + App name
+  const mascotSize = Math.round(80 * scale);
+  try {
+    const mascotImg = await loadImage('/mascot-happy.png');
+    const nameText = 'MonFrigo.app';
+    ctx.font = `bold ${68 * scale}px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif`;
+    const nameW = ctx.measureText(nameText).width;
+    const totalW = mascotSize + 16 * scale + nameW;
+    const startX = (W - totalW) / 2;
+    ctx.drawImage(mascotImg, startX, y, mascotSize, mascotSize);
+    ctx.fillStyle = black;
+    ctx.textAlign = 'left';
+    ctx.fillText(nameText, startX + mascotSize + 16 * scale, y + 60 * scale);
+    ctx.textAlign = 'center';
+  } catch {
+    ctx.fillStyle = black;
+    ctx.font = `bold ${68 * scale}px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.fillText('MonFrigo.app', W / 2, y + 68 * scale);
+  }
   y += 90 * scale;
 
   // Tagline
@@ -261,11 +286,26 @@ async function drawVisual(
 
   let y = pad;
 
-  // App name
-  ctx.fillStyle = style.accent;
-  ctx.font = `bold ${72 * scale}px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif`;
-  ctx.textAlign = 'center';
-  ctx.fillText(`🍳 ${BRAND.name}`, W / 2, y + 72 * scale);
+  // Mascot + App name
+  const mascotSize = Math.round(90 * scale);
+  try {
+    const mascotImg = await loadImage('/mascot-happy.png');
+    const nameText = 'MonFrigo.app';
+    ctx.font = `bold ${72 * scale}px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif`;
+    const nameW = ctx.measureText(nameText).width;
+    const totalW = mascotSize + 16 * scale + nameW;
+    const startX = (W - totalW) / 2;
+    ctx.drawImage(mascotImg, startX, y, mascotSize, mascotSize);
+    ctx.fillStyle = style.accent;
+    ctx.textAlign = 'left';
+    ctx.fillText(nameText, startX + mascotSize + 16 * scale, y + 65 * scale);
+    ctx.textAlign = 'center';
+  } catch {
+    ctx.fillStyle = style.accent;
+    ctx.font = `bold ${72 * scale}px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.fillText('MonFrigo.app', W / 2, y + 72 * scale);
+  }
   y += 100 * scale;
 
   // Tagline
