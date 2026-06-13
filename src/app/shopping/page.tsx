@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import AppShell from '@/components/AppShell';
 import InfoBubble from '@/components/InfoBubble';
+import Mascot from '@/components/Mascot';
 import {
   CalendarDays, ShoppingCart, ChevronLeft, ChevronRight, ChevronDown,
   Plus, X, Search, Check, Refrigerator, Share2,
@@ -701,8 +702,8 @@ export default function ShoppingPage() {
             </div>
           ) : !shopData || shopData.totalItems === 0 ? (
             /* Empty state */
-            <div className="text-center py-16">
-              <UtensilsCrossed className="w-12 h-12 mx-auto mb-4" style={{ color: 'var(--text-muted)', opacity: 0.3 }} />
+            <div className="text-center py-10">
+              <Mascot variant="sad" size="lg" animate="float" message="Rien à cuisiner cette semaine 😢" className="mx-auto mb-4" />
               <p className="font-medium text-sm mb-1">Aucun repas planifié</p>
               <p className="text-xs mb-6" style={{ color: 'var(--text-muted)' }}>Ajoute des recettes à ton planning pour générer une liste de courses</p>
               <button onClick={() => setTab('plan')}
