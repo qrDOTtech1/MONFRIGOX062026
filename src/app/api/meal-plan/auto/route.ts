@@ -37,13 +37,16 @@ export async function POST() {
   let taste: Record<string, unknown> = {};
   try { taste = JSON.parse(profile?.tasteProfile || '{}'); } catch {}
 
+  const userMealTypes: string[] = (taste.mealTypes as string[]) || ['BREAKFAST', 'LUNCH', 'DINNER'];
+  const validMealsForUser = ['BREAKFAST', 'SNACK', 'LUNCH', 'DINNER'].filter(m => userMealTypes.includes(m));
+
   const recipeList = recipes.map(r => `${r.id}|${r.name}|${r.calories ?? '?'}kcal|${r.cuisine}|${r.prepTime}min`).join('\n');
 
   const resp = await chatCompletion([
     {
       role: 'system',
       content: `Tu es un diététicien expert. Génère un planning de repas équilibré pour 7 jours (lundi à dimanche).
-Chaque jour a 3 repas : BREAKFAST, LUNCH, DINNER.
+Chaque jour contient UNIQUEMENT ces repas : ${validMealsForUser.join(', ')}.
 
 Règles :
 - Varie les cuisines et types de plats
@@ -53,8 +56,8 @@ Règles :
 - Allergènes exclus : ${profile?.allergens || 'aucun'}
 - Préférences goût : ${JSON.stringify(taste)}
 
-Réponds UNIQUEMENT en JSON : [{"day":0,"meal":"BREAKFAST","recipeId":"cuid"},...] (day 0=lundi, 6=dimanche).
-Utilise UNIQUEMENT les IDs de la liste fournie.`,
+Réponds UNIQUEMENT en JSON : [{"day":0,"meal":"LUNCH","recipeId":"cuid"},...] (day 0=lundi, 6=dimanche).
+Utilise UNIQUEMENT les IDs de la liste fournie et UNIQUEMENT les repas listés ci-dessus.`,
     },
     {
       role: 'user',
@@ -75,7 +78,7 @@ Utilise UNIQUEMENT les IDs de la liste fournie.`,
     nextMonday.setDate(today.getDate() + daysUntilNextMonday);
     nextMonday.setHours(0, 0, 0, 0);
 
-    const validMeals = ['BREAKFAST', 'LUNCH', 'DINNER'];
+    const validMeals = validMealsForUser;
     const recipeIds = new Set(recipes.map(r => r.id));
     const saved = [];
 
@@ -89,8 +92,8 @@ Utilise UNIQUEMENT les IDs de la liste fournie.`,
       const dateStr = date.toISOString().slice(0, 10);
 
       const mp = await prisma.mealPlan.upsert({
-        where: { userId_date_mealType: { userId: user.id, date: new Date(dateStr + 'T00:00:00.000Z'), mealType: entry.meal as 'BREAKFAST' | 'LUNCH' | 'DINNER' } },
-        create: { userId: user.id, recipeId: entry.recipeId, date: new Date(dateStr + 'T00:00:00.000Z'), mealType: entry.meal as 'BREAKFAST' | 'LUNCH' | 'DINNER' },
+        where: { userId_date_mealType: { userId: user.id, date: new Date(dateStr + 'T00:00:00.000Z'), mealType: entry.meal as any } },
+        create: { userId: user.id, recipeId: entry.recipeId, date: new Date(dateStr + 'T00:00:00.000Z'), mealType: entry.meal as any },
         update: { recipeId: entry.recipeId },
       });
       saved.push(mp);

@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import AppShell from '@/components/AppShell';
 import Mascot, { MascotVariant } from '@/components/Mascot';
+import { useMealTypes } from '@/lib/useMealTypes';
 import {
   Flame, Beef, Leaf, Zap, DollarSign, Trophy, BarChart2, Recycle,
   Plus, ChevronRight, ShoppingCart, ScanLine, Refrigerator,
@@ -17,7 +18,7 @@ interface DashData {
   mascotVariant: string;
   mascotMessage: string;
   todayPlans: Array<{
-    id: string; mealType: 'BREAKFAST'|'LUNCH'|'DINNER';
+    id: string; mealType: 'BREAKFAST'|'SNACK'|'LUNCH'|'DINNER';
     recipe: { id: string; name: string; prepTime: number; imageUrl: string; calories?: number|null; protein?: number|null; ingredients: Array<{ ingredient: { emoji: string; name: string } }> };
   }>;
   streak: number;
@@ -28,11 +29,7 @@ interface DashData {
   badges: Array<{ id: string; label: string; desc: string }>;
 }
 
-const MEALS = [
-  { type: 'BREAKFAST' as const, label: 'Matin',    emoji: '🌅' },
-  { type: 'LUNCH'     as const, label: 'Déjeuner', emoji: '☀️' },
-  { type: 'DINNER'    as const, label: 'Dîner',    emoji: '🌙' },
-];
+// MEALS is now dynamic — see useMealTypes() inside the component
 
 const RADAR_AXES = [
   { key: 'calories',    label: 'Calories',    icon: '🔥', color: '#f97316' },
@@ -108,6 +105,7 @@ function getTimeGradient() {
 /* ═══════════════════════════════════════════════════════ */
 export default function HomePage() {
   const router = useRouter();
+  const MEALS = useMealTypes();
   const [data, setData] = useState<DashData | null>(null);
   const [loading, setLoading] = useState(true);
 

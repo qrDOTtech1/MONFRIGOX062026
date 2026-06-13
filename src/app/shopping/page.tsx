@@ -5,6 +5,7 @@ import AppShell from '@/components/AppShell';
 import InfoBubble from '@/components/InfoBubble';
 import Mascot from '@/components/Mascot';
 import { useUserPlan, showPlanBadge } from '@/lib/useUserPlan';
+import { useMealTypes } from '@/lib/useMealTypes';
 import {
   CalendarDays, ShoppingCart, ChevronLeft, ChevronRight, ChevronDown,
   Plus, X, Search, Check, Refrigerator, Share2,
@@ -16,7 +17,7 @@ import {
 interface MealPlanEntry {
   id: string;
   date: string;
-  mealType: 'BREAKFAST' | 'LUNCH' | 'DINNER';
+  mealType: 'BREAKFAST' | 'SNACK' | 'LUNCH' | 'DINNER';
   recipe: {
     id: string; name: string; prepTime: number; imageUrl: string;
     calories?: number | null; protein?: number | null; servings?: number;
@@ -43,11 +44,7 @@ interface ShoppingData {
 }
 
 /* ── Constants ── */
-const MEALS = [
-  { type: 'BREAKFAST' as const, label: 'Matin', emoji: '🌅' },
-  { type: 'LUNCH'    as const, label: 'Déjeuner', emoji: '☀️' },
-  { type: 'DINNER'   as const, label: 'Dîner',    emoji: '🌙' },
-];
+// MEALS is now dynamic — see useMealTypes() hook inside the component
 const DAYS_FR = ['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam'];
 const MONTHS_FR = ['janv.','févr.','mars','avr.','mai','juin','juil.','août','sept.','oct.','nov.','déc.'];
 const CAT_EMOJI: Record<string, string> = {
@@ -78,6 +75,7 @@ function isPast(d: Date) { return d < new Date(new Date().setHours(0,0,0,0)); }
 /* ════════════════════════════════════════════════════════════ */
 export default function ShoppingPage() {
   const { plan: userPlan } = useUserPlan();
+  const MEALS = useMealTypes();
   const [tab, setTab] = useState<'plan'|'courses'>('plan');
   const [weekOffset, setWeekOffset] = useState(0);
   const [plans, setPlans] = useState<MealPlanEntry[]>([]);
@@ -87,7 +85,7 @@ export default function ShoppingPage() {
   // Picker
   const [pickerOpen, setPickerOpen] = useState(false);
   const [pickerDate, setPickerDate] = useState('');
-  const [pickerMeal, setPickerMeal] = useState<'BREAKFAST'|'LUNCH'|'DINNER'>('LUNCH');
+  const [pickerMeal, setPickerMeal] = useState<'BREAKFAST'|'SNACK'|'LUNCH'|'DINNER'>('LUNCH');
   const [pickerSearch, setPickerSearch] = useState('');
   const [pickerFilter, setPickerFilter] = useState<'all'|'fridge'|'quick'|'vege'>('all');
   const [savingSlot, setSavingSlot] = useState<string|null>(null);
