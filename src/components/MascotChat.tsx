@@ -187,16 +187,83 @@ const ENCOURAGEMENTS = [
   '🎉 Vous êtes formidable !',
 ];
 
-const COOKING_TIPS = [
-  'Goûte pendant que tu cuisines !',
-  'Bien lire l\'étape avant de commencer',
-  'Prépare tes ingrédients (mise en place)',
-  'Ne stresse pas avec le timing !',
-  'Les parfums c\'est important !',
-  'Amusez vous en cuisinant !',
-  'Bon ventilation pour les odeurs',
-  'Nettoyez au fur et à mesure !',
-];
+function getStepAdviceAndAnecdote(stepText: string): { advice: string; anecdote: string } {
+  const text = stepText.toLowerCase();
+
+  // Détection par keywords et conseil + anecdote contextuels
+  if (text.includes('découper') || text.includes('couper') || text.includes('émincer')) {
+    return {
+      advice: '🔪 Couteau bien aiguisé = meilleur résultat + plus sûr',
+      anecdote: '💡 Les chefs professionnels affûtent leurs couteaux tous les jours !',
+    };
+  }
+  if (text.includes('chauffer') || text.includes('préchauffer') || text.includes('four')) {
+    return {
+      advice: '🔥 Le préchauffage est CRUCIAL pour une cuisson uniforme',
+      anecdote: '🌡️ Un four à 180°C vraiment chaud = meilleur dorage qu\'à 200°C froid !',
+    };
+  }
+  if (text.includes('mélang') || text.includes('fouett') || text.includes('remue')) {
+    return {
+      advice: '🌀 Mélange lentement pour éviter d\'incorporer trop d\'air',
+      anecdote: '🎂 Trop de mélange = perte de moelleux (sauf pour les oeufs en neige !)',
+    };
+  }
+  if (text.includes('mijot') || text.includes('simmer') || text.includes('cuisson lent')) {
+    return {
+      advice: '⏱️ Feu doux = meilleure fusion des saveurs',
+      anecdote: '😋 Un bon mijoté = le temps est ton meilleur ami culinaire',
+    };
+  }
+  if (text.includes('repos') || text.includes('attendre') || text.includes('laisser')) {
+    return {
+      advice: '⏸️ Ne force pas ! Les bonnes choses prennent du temps',
+      anecdote: '🎭 Patience = la plus grande vertu du cuisinier',
+    };
+  }
+  if (text.includes('sel') || text.includes('assaisonn')) {
+    return {
+      advice: '🧂 Assaisonne progressivement - tu peux toujours ajouter, jamais retirer !',
+      anecdote: '👃 Le sel c\'est le "volume" des saveurs - sans lui, c\'est fade',
+    };
+  }
+  if (text.includes('huile') || text.includes('beurre') || text.includes('matière grasse')) {
+    return {
+      advice: '🫒 Huile/beurre chauds donnent meilleur goût et texture',
+      anecdote: '🍳 La réaction de Maillard crée les vraies saveurs - besoin de chaleur !',
+    };
+  }
+  if (text.includes('verser') || text.includes('ajouter') || text.includes('incorpor')) {
+    return {
+      advice: '💧 Ajoute lentement pour garder la texture homogène',
+      anecdote: '🎨 C\'est comme peindre - chaque coup de pinceau compte !',
+    };
+  }
+  if (text.includes('goût') || text.includes('gout') || text.includes('tast')) {
+    return {
+      advice: '👅 Goûte ! Tes papilles sont ton meilleur guide',
+      anecdote: '🤓 Les chefs goûtent continuellement - c\'est leur contrôle qualité !',
+    };
+  }
+  if (text.includes('dor') || text.includes('couleur') || text.includes('brun')) {
+    return {
+      advice: '🎨 La couleur = indicateur de saveur. Dore bien !',
+      anecdote: '✨ Le dorage = preuve que la réaction de Maillard se fait (délicieux !)',
+    };
+  }
+
+  // Par défaut : conseils génériques par position
+  const defaultAdvices = [
+    { advice: '📖 Lis bien l\'étape avant de commencer', anecdote: '⚡ 2 secondes de lecture = pas de surprise !' },
+    { advice: '🧊 Prépare tes ingrédients près de toi', anecdote: '👨‍🍳 C\'est la "mise en place" des vrais cuisiniers !' },
+    { advice: '⏱️ Gère ton timing - pas de précipitation !', anecdote: '🎯 Les meilleures recettes ne se pressent pas' },
+    { advice: '👃 Les arômes sont en route !', anecdote: '😋 Hummmm... ça sent déjà bon ?' },
+    { advice: '🎂 Presque fait ! Attention à la finition', anecdote: '✨ C\'est la dernière étape qui compte vraiment' },
+    { advice: '🏆 Tu es presque champion !', anecdote: '🎉 Quelques minutes et c\'est fini !' },
+  ];
+
+  return defaultAdvices[Math.floor(Math.random() * defaultAdvices.length)];
+}
 
 function CookingMode({ cooking, onClose, ttsEnabled }: { cooking: CookingState; onClose: () => void; ttsEnabled: boolean }) {
   const [step, setStep] = useState(cooking.currentStep);
@@ -239,7 +306,7 @@ function CookingMode({ cooking, onClose, ttsEnabled }: { cooking: CookingState; 
   const formatTimer = (s: number) => `${Math.floor(s / 60).toString().padStart(2, '0')}:${(s % 60).toString().padStart(2, '0')}`;
   const total = cooking.steps.length;
   const progress = ((step + 1) / total) * 100;
-  const tip = COOKING_TIPS[step % COOKING_TIPS.length];
+  const { advice, anecdote } = getStepAdviceAndAnecdote(cooking.steps[step]);
 
   return (
     <div className="fixed inset-0 z-[180] flex flex-col" style={{ backgroundColor: 'rgba(0,0,0,0.98)' }}>
@@ -272,14 +339,25 @@ function CookingMode({ cooking, onClose, ttsEnabled }: { cooking: CookingState; 
         </div>
 
         {/* Étape texte */}
-        <div className="text-center max-w-2xl">
-          <p className="text-xs font-semibold mb-2 uppercase" style={{ color: 'var(--accent)', letterSpacing: '0.1em' }}>Étape {step + 1}/{total}</p>
-          <p className="text-xl leading-relaxed font-medium mb-4" style={{ color: 'var(--text)' }}>
+        <div className="text-center max-w-2xl space-y-4">
+          <p className="text-xs font-semibold uppercase" style={{ color: 'var(--accent)', letterSpacing: '0.1em' }}>Étape {step + 1}/{total}</p>
+          <p className="text-xl leading-relaxed font-medium" style={{ color: 'var(--text)' }}>
             {cooking.steps[step]}
           </p>
-          <p className="text-sm" style={{ color: 'var(--text-muted)', fontStyle: 'italic' }}>
-            💡 {tip}
-          </p>
+
+          {/* Conseil spécifique à l'étape */}
+          <div className="bg-gradient-to-r from-blue-500/15 to-cyan-500/15 rounded-xl px-4 py-3 border border-cyan-500/30">
+            <p className="text-sm font-semibold" style={{ color: 'var(--accent)' }}>
+              {advice}
+            </p>
+          </div>
+
+          {/* Anecdote culinaire */}
+          <div className="bg-gradient-to-r from-amber-500/15 to-orange-500/15 rounded-xl px-4 py-3 border border-amber-500/30">
+            <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+              {anecdote}
+            </p>
+          </div>
         </div>
       </div>
 
