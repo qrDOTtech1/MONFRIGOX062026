@@ -194,7 +194,7 @@ export async function GET() {
   else if (daysPlanned === 0)   { mascotVariant = 'sad';     mascotMessage = 'Rien de planifié cette semaine…'; }
   else                          { mascotVariant = 'happy';   mascotMessage = `Bonjour ${userRecord?.name?.split(' ')[0] || ''} !`; }
 
-  const greeting = hour < 12 ? 'Bonjour' : hour < 18 ? 'Bon après-midi' : 'Bonsoir';
+  const greeting = (hour >= 22 || hour < 6) ? 'Bonne nuit' : hour < 12 ? 'Bonjour' : hour < 18 ? 'Bon après-midi' : 'Bonsoir';
 
   return NextResponse.json({
     user: { name: userRecord?.name || '', plan: effectivePlan, role: userRecord?.role },

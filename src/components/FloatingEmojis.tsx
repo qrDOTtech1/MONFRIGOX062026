@@ -42,8 +42,6 @@ export default function FloatingEmojis() {
         ))}
         <div style={{
           position: 'absolute', inset: 0,
-          backdropFilter: 'blur(2px)',
-          WebkitBackdropFilter: 'blur(2px)',
           background: 'linear-gradient(to bottom, var(--bg) 0%, transparent 18%, transparent 80%, var(--bg) 100%)',
         }} />
       </div>
