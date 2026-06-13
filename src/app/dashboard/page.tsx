@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import AppShell from '@/components/AppShell';
+import Mascot from '@/components/Mascot';
 import RecipeCard from '@/components/RecipeCard';
 import CommunityFeed from '@/components/CommunityFeed';
 import InfoBubble from '@/components/InfoBubble';
@@ -661,8 +662,10 @@ export default function ExplorerPage() {
 
       {/* Résultats */}
       {filtered.length === 0 ? (
-        <div className="text-center py-16">
-          <ChefHat className="w-10 h-10 mx-auto mb-3" style={{ color: 'var(--text-muted)', opacity: 0.3 }} />
+        <div className="text-center py-8">
+          <div className="flex justify-center mb-2">
+            <Mascot variant="thinking" size="md" animate="float" message="Aucune recette ici… 🤔" />
+          </div>
           <p className="text-sm font-medium mb-1">Aucune recette compatible</p>
           <p className="text-xs mb-4" style={{ color: 'var(--text-muted)' }}>
             {guestFilters > 0 ? 'Aucune recette ne correspond aux contraintes invité.' : 'Essaie un autre terme ou modifie les filtres.'}

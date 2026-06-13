@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import AppShell from '@/components/AppShell';
+import Mascot from '@/components/Mascot';
 import RecipeCard from '@/components/RecipeCard';
 import { Heart } from 'lucide-react';
 
@@ -49,8 +50,10 @@ export default function FavoritesPage() {
       </div>
 
       {recipes.length === 0 ? (
-        <div className="text-center py-16">
-          <Heart className="w-10 h-10 mx-auto mb-3" style={{ color: 'var(--text-muted)', opacity: 0.4 }} />
+        <div className="text-center py-10">
+          <div className="flex justify-center mb-2">
+            <Mascot variant="love" size="md" animate="pulse" message="Pas encore de favoris 💛" />
+          </div>
           <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Aucun favori pour l&apos;instant</p>
           <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>Ajoute des recettes en favoris</p>
         </div>

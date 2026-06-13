@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import AppShell from '@/components/AppShell';
 import Mascot, { MascotVariant } from '@/components/Mascot';
 import { useMealTypes } from '@/lib/useMealTypes';
+import { useRecentPages } from '@/lib/useRecentPages';
 import {
   Flame, Beef, Leaf, Zap, DollarSign, Trophy, BarChart2, Recycle,
   Plus, ChevronRight, ShoppingCart, ScanLine, Refrigerator,
@@ -106,6 +107,7 @@ function getTimeGradient() {
 export default function HomePage() {
   const router = useRouter();
   const MEALS = useMealTypes();
+  const { shortcuts, recent } = useRecentPages();
   const [data, setData] = useState<DashData | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -272,26 +274,40 @@ export default function HomePage() {
 
           {/* ── Accès rapides ── */}
           <div className="card px-4 py-4">
-            <h2 className="text-sm font-bold mb-3">Accès rapides</h2>
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-sm font-bold">Accès rapides</h2>
+              {recent.length > 0 && (
+                <span className="text-[10px] px-2 py-0.5 rounded-full"
+                  style={{ backgroundColor: 'var(--bg-inset)', color: 'var(--text-muted)' }}>
+                  ⚡ {recent.length} récent{recent.length > 1 ? 's' : ''}
+                </span>
+              )}
+            </div>
             <div className="grid grid-cols-3 gap-2.5">
-              {[
-                { icon: Refrigerator, label: 'Vide-Frigo',   color: '#10b981', action: () => router.push('/fridge?mode=vide-frigo') },
-                { icon: ScanLine,     label: 'Scanner',      color: '#06b6d4', action: () => router.push('/scan') },
-                { icon: Plus,         label: 'Ajouter frigo',color: '#a855f7', action: () => router.push('/fridge') },
-                { icon: Sparkles,     label: 'Recettes IA',  color: '#f59e0b', action: () => router.push('/dashboard') },
-                { icon: ShoppingCart, label: 'Courses',      color: '#ef4444', action: () => router.push('/shopping?tab=courses') },
-                { icon: BarChart2,    label: 'Mon impact',   color: '#8b5cf6', action: () => router.push('/profile?tab=impact') },
-              ].map(({ icon: Icon, label, color, action }) => (
-                <button key={label} onClick={action}
-                  className="flex flex-col items-center gap-2 py-3.5 px-2 rounded-2xl transition-all active:scale-95"
-                  style={{ backgroundColor: 'var(--bg-inset)', border: '1px solid var(--border-subtle)' }}>
-                  <div className="w-9 h-9 rounded-xl flex items-center justify-center"
-                    style={{ backgroundColor: `${color}18` }}>
-                    <Icon className="w-4.5 h-4.5" style={{ color, width: 18, height: 18 }} />
-                  </div>
-                  <span className="text-[10px] font-medium text-center leading-tight" style={{ color: 'var(--text-secondary)' }}>{label}</span>
-                </button>
-              ))}
+              {shortcuts.map((page, idx) => {
+                const isRecent = idx < recent.length;
+                return (
+                  <button key={page.href} onClick={() => router.push(page.href)}
+                    className="flex flex-col items-center gap-2 py-3.5 px-2 rounded-2xl transition-all active:scale-95 relative"
+                    style={{
+                      backgroundColor: isRecent ? `${page.color}10` : 'var(--bg-inset)',
+                      border: isRecent ? `1.5px solid ${page.color}30` : '1px solid var(--border-subtle)',
+                    }}>
+                    {isRecent && (
+                      <div className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full"
+                        style={{ backgroundColor: page.color }} />
+                    )}
+                    <div className="w-9 h-9 rounded-xl flex items-center justify-center text-xl"
+                      style={{ backgroundColor: `${page.color}18` }}>
+                      {page.icon}
+                    </div>
+                    <span className="text-[10px] font-medium text-center leading-tight"
+                      style={{ color: isRecent ? page.color : 'var(--text-secondary)' }}>
+                      {page.label}
+                    </span>
+                  </button>
+                );
+              })}
             </div>
           </div>
 

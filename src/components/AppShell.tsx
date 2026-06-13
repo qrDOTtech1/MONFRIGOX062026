@@ -5,6 +5,7 @@ import RecipeChat from './RecipeChat';
 import LogoAnim from './LogoAnim';
 import { useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
+import { trackPageVisit } from '@/lib/useRecentPages';
 
 interface RecipeMini {
   id: string;
@@ -31,6 +32,9 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       .then(setRecipes)
       .catch(() => {});
   }, []);
+
+  // Track page visit for dynamic shortcuts
+  useEffect(() => { trackPageVisit(pathname); }, [pathname]);
 
   // Vérifie si l'onboarding a été fait
   useEffect(() => {

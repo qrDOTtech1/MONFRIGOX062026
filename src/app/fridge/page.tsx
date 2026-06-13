@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import AppShell from '@/components/AppShell';
+import Mascot from '@/components/Mascot';
 import RecipeCard from '@/components/RecipeCard';
 import {
   Refrigerator, Plus, X, AlertTriangle, ChefHat,
@@ -321,8 +322,10 @@ export default function FridgePage() {
       )}
 
       {fridgeItems.length === 0 ? (
-        <div className="text-center py-16">
-          <Refrigerator className="w-12 h-12 mx-auto mb-3" style={{ color: 'var(--text-muted)', opacity: 0.3 }} />
+        <div className="text-center py-10">
+          <div className="flex justify-center mb-2">
+            <Mascot variant="sad" size="lg" animate="float" message="Mon frigo est vide 😢" />
+          </div>
           <p className="text-sm font-medium mb-1">Frigo vide</p>
           <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Ajoute des ingrédients pour voir les recettes adaptées</p>
         </div>
