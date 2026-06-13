@@ -40,20 +40,28 @@ export async function POST(req: NextRequest) {
     ` | Ingrédients: ${r.ingredients.map(i => i.ingredient.name).join(', ')}`
   ).join('\n');
 
-  const systemPrompt = `Tu es un assistant culinaire dans l'application MonFrigo. Tu aides les utilisateurs à trouver des recettes PARMI CELLES DISPONIBLES dans la base de données ci-dessous. Tu ne crées PAS de nouvelles recettes.
+  const systemPrompt = `Tu es un assistant culinaire vocal dans l'application MonFrigo. Tu aides les utilisateurs à trouver des recettes ET à naviguer dans l'app. Ton rôle est aussi d'être accessible aux personnes malvoyantes ou peu à l'aise avec la technologie.
 
 CATALOGUE COMPLET (${recipes.length} recettes) :
 ${recipeContext}
 
 COMPORTEMENT :
-- Réponds toujours en français, de façon conversationnelle et chaleureuse.
-- Propose des recettes du catalogue en te basant sur les demandes de l'utilisateur (ingrédients, envies, régimes, temps disponible, etc.).
-- Si l'utilisateur demande une substitution ("je peux remplacer X par Y ?"), donne ton avis et propose des recettes adaptées.
-- Si l'utilisateur affine ("et si j'ajoute de l'ail ?", "plutôt sans gluten"), tiens compte de tout le fil de conversation.
-- Quand tu cites une recette, inclus son ID entre crochets exactement comme ça : [ID:xxxx]
-- Cite 1 à 4 recettes max par réponse, les plus pertinentes.
-- Si aucune recette ne correspond vraiment, dis-le honnêtement et propose ce qui s'en approche le plus.
-- Reste concis (3-6 phrases max) sauf si l'utilisateur pose une question précise sur une recette.`;
+- Réponds toujours en français, de façon conversationnelle, chaleureuse et claire.
+- Propose des recettes du catalogue en te basant sur les demandes (ingrédients, envies, régimes, temps disponible).
+- Quand tu cites une recette, inclus son ID : [ID:xxxx]. Cite 1 à 4 recettes max.
+- Reste concis (2-4 phrases) sauf question précise sur une recette.
+
+NAVIGATION (IMPORTANT) :
+Si l'utilisateur veut aller quelque part ou faire une action, ajoute UNE commande à la FIN de ta réponse :
+- Voir le frigo / ses ingrédients → [NAV:/fridge]
+- Scanner un produit / code-barres → [NAV:/scan]
+- Voir les recettes / catalogue → [NAV:/dashboard]
+- Planning / repas de la semaine → [NAV:/shopping]
+- Son profil / abonnement → [NAV:/profile]
+- Retour accueil → [NAV:/home]
+- Ouvrir une recette spécifique → [NAV:/dashboard] (avec [ID:xxxx] pour l'identifier)
+Exemples : "Je t'emmène dans ton frigo ! [NAV:/fridge]" / "Voilà le planning ! [NAV:/shopping]"
+Ne mets JAMAIS la commande NAV au milieu du texte, toujours à la fin.`;
 
   try {
     const resp = await chatCompletion(
@@ -70,10 +78,17 @@ COMPORTEMENT :
     const idMatches = [...reply.matchAll(/\[ID:([a-z0-9]+)\]/gi)];
     const recipeIds = [...new Set(idMatches.map(m => m[1]))];
 
-    // Nettoyer la réponse (retirer les [ID:xxx] du texte visible)
-    const cleanReply = reply.replace(/\s*\[ID:[a-z0-9]+\]/gi, '');
+    // Extraire commande de navigation [NAV:/path]
+    const navMatch = reply.match(/\[NAV:(\/[^\]]*)\]/i);
+    const navTo = navMatch ? navMatch[1] : null;
 
-    return NextResponse.json({ reply: cleanReply, recipeIds });
+    // Nettoyer la réponse (retirer les balises internes)
+    const cleanReply = reply
+      .replace(/\s*\[ID:[a-z0-9]+\]/gi, '')
+      .replace(/\s*\[NAV:\/[^\]]*\]/gi, '')
+      .trim();
+
+    return NextResponse.json({ reply: cleanReply, recipeIds, navTo });
   } catch (err) {
     console.error('Chat error:', err);
     return NextResponse.json({ error: 'Erreur IA — vérifie la configuration Ollama' }, { status: 500 });
