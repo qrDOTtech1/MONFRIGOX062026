@@ -120,9 +120,11 @@ async function drawTicketVisual(
   canvas.height = H;
 
   const black = '#000000';
-  const dark = '#18181b';
   const white = '#ffffff';
-  const accent = '#22c55e';
+
+  // Fond blanc partout
+  ctx.fillStyle = white;
+  ctx.fillRect(0, 0, W, H);
 
   // ── Layout: QR MASSIF gauche, contenu droit ──
   const qrSize = 240;
@@ -131,89 +133,90 @@ async function drawTicketVisual(
   const contentX = qrX + qrSize + 20;
   const contentW = W - contentX - 15;
 
-  // Left: QR énorme + white background
-  ctx.fillStyle = white;
-  ctx.fillRect(0, 0, qrX + qrSize + 10, H);
-
+  // QR énorme
   const qrUrl = promoCode ? `${APP_URL}?promo=${promoCode}` : APP_URL;
   try {
     const qrCanvas = await generateQR(qrUrl, qrSize);
     ctx.drawImage(qrCanvas, qrX, qrY, qrSize, qrSize);
   } catch {}
 
-  // Right side: Dark background rempli d'info
-  ctx.fillStyle = dark;
-  ctx.fillRect(qrX + qrSize + 10, 0, W - (qrX + qrSize + 10), H);
+  // ── Right: Black bar header avec MonFrigo.app blanc ──
+  const headerH = 70;
+  ctx.fillStyle = black;
+  ctx.fillRect(contentX - 5, 0, W - contentX + 5, headerH);
 
-  // Small mascot top-right
-  const mascotSize = 55;
+  // Mascot en haut à droite (petit, noir sur blanc)
+  const mascotSize = 45;
   try {
     const mascotImg = await loadImage('/mascot-happy.png');
-    ctx.drawImage(mascotImg, W - mascotSize - 10, 5, mascotSize, mascotSize);
+    ctx.drawImage(mascotImg, W - mascotSize - 8, 8, mascotSize, mascotSize);
   } catch {}
 
-  let ry = 12;
-  const lineH = 24;
-
-  // MonFrigo.app - ÉNORME
+  // MonFrigo.app - ÉNORME NOIR sur la barre noire
   ctx.textAlign = 'left';
-  ctx.fillStyle = accent;
-  ctx.font = `900 32px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif`;
-  ctx.fillText('MonFrigo', contentX, ry + 32);
-  ry += 36;
   ctx.fillStyle = white;
-  ctx.font = `900 24px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif`;
-  ctx.fillText('.app', contentX, ry + 24);
-  ry += 32;
+  ctx.font = `900 36px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif`;
+  ctx.fillText('MonFrigo.app', contentX + 8, 48);
 
-  // Gratuit à vie
-  ctx.fillStyle = accent;
-  ctx.font = `700 16px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif`;
-  ctx.fillText('GRATUIT À VIE', contentX, ry + 16);
-  ry += 22;
+  // ── Contenu noir sur blanc en dessous ──
+  let ry = headerH + 8;
+
+  // Gratuit à vie - GROS
+  ctx.textAlign = 'left';
+  ctx.fillStyle = black;
+  ctx.font = `900 20px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif`;
+  ctx.fillText('GRATUIT À VIE', contentX, ry + 20);
+  ry += 28;
 
   // Features en 2 colonnes compact
   const features = ['📷 Frigo', '🍳 Recettes', '📅 Planning', '🛒 Courses', '♻️ Anti-gaspi', '✓ Badges'];
   const col1X = contentX;
-  const col2X = contentX + contentW / 2;
+  const col2X = contentX + contentW / 2 - 10;
 
-  ctx.fillStyle = white;
-  ctx.font = `500 12px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif`;
+  ctx.fillStyle = black;
+  ctx.font = `600 13px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif`;
   for (let i = 0; i < features.length; i++) {
     const isCol2 = i % 2 === 1;
     const fx = isCol2 ? col2X : col1X;
-    const fy = ry + (Math.floor(i / 2) * 18);
+    const fy = ry + (Math.floor(i / 2) * 19);
     ctx.fillText(features[i], fx, fy);
   }
-  ry += 55;
+  ry += 58;
 
-  // Code promo - si renseigné, gros
+  // Code promo - si renseigné, EN GROS sur barre noire
   if (promoCode) {
-    ctx.fillStyle = accent;
-    ctx.font = `900 18px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif`;
-    ctx.fillText('CODE:', contentX, ry + 18);
-    ry += 22;
+    ctx.fillStyle = black;
+    ctx.fillRect(contentX - 5, ry, W - contentX + 5, 35);
+
     ctx.fillStyle = white;
-    ctx.font = `900 20px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif`;
-    ctx.fillText(promoCode.toUpperCase(), contentX, ry + 20);
-    ry += 26;
+    ctx.textAlign = 'left';
+    ctx.font = `700 12px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif`;
+    ctx.fillText('CODE PROMO :', contentX + 8, ry + 15);
+
+    ctx.font = `900 24px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif`;
+    ctx.fillText(promoCode.toUpperCase(), contentX + 8, ry + 33);
+    ry += 40;
   }
 
-  // Bottom: URL + scan call-to-action
-  ctx.fillStyle = accent;
-  ctx.font = `600 11px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif`;
-  ctx.fillText('↓ SCANNE ↓', contentX, H - 10);
-  ctx.fillStyle = white;
-  ctx.font = `bold 10px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif`;
-  ctx.fillText('monfrigo.app', contentX, H - 2);
+  // Bottom: SCANNE + URL sur barre noire
+  ctx.fillStyle = black;
+  ctx.fillRect(contentX - 5, H - 32, W - contentX + 5, 32);
 
-  // Border épais
+  ctx.fillStyle = white;
+  ctx.textAlign = 'left';
+  ctx.font = `900 14px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif`;
+  ctx.fillText('SCANNE →', contentX + 8, H - 18);
+
+  ctx.font = `bold 11px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif`;
+  ctx.fillText('monfrigo.app', contentX + 8, H - 5);
+
+  // Border épais noir
   ctx.strokeStyle = black;
   ctx.lineWidth = 3;
   ctx.strokeRect(2, 2, W - 4, H - 4);
 
-  // Vertical separator ligne
-  ctx.strokeStyle = white;
+  // Vertical separator ligne noire
+  ctx.strokeStyle = black;
   ctx.lineWidth = 1.5;
   ctx.beginPath();
   ctx.moveTo(qrX + qrSize + 10, 0);
