@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useRef } from 'react';
-import { ScanLine, ChefHat, ShoppingCart, Leaf, Barcode, Sparkles, Check, Brain, X, Calendar } from 'lucide-react';
+import { ScanLine, ChefHat, ShoppingCart, Leaf, Barcode, Sparkles, Check, Brain, X, Calendar, MessageSquare, Trophy, Share2, UtensilsCrossed, Volume2, Timer } from 'lucide-react';
 import LogoAnim from '@/components/LogoAnim';
 import FloatingEmojis from '@/components/FloatingEmojis';
 
@@ -51,12 +51,16 @@ function useFadeIn() {
 
 /* ── Data ────────────────────────────────────────────────────────────── */
 const features = [
-  { icon: ScanLine,   title: 'Scan IA du frigo',       desc: 'Une photo, et l\'IA identifie chaque aliment. Instantanément. Sans fautes.' },
-  { icon: Barcode,    title: 'Code-barres EAN',         desc: 'N\'importe quel produit emballé, scanné en un instant. Données nutritionnelles incluses.' },
-  { icon: ChefHat,    title: 'Recettes personnalisées', desc: 'Régime, allergènes, portions, cuisines du monde — chaque recette est faite pour toi.' },
-  { icon: Brain,      title: 'IA culinaire intégrée',   desc: 'Pose n\'importe quelle question. Elle connaît chaque recette, chaque substitution possible.' },
-  { icon: Calendar,   title: 'Planning de repas',       desc: 'Planifie ta semaine en quelques tapotements. Liste de courses générée automatiquement.' },
-  { icon: Leaf,       title: 'Zéro gaspillage',         desc: 'Alertes péremption, suggestions anti-gaspi. Ce qui allait à la poubelle finit dans l\'assiette.' },
+  { icon: ScanLine,          title: 'Scan IA du frigo',       desc: 'Une photo, et l\'IA identifie chaque aliment. Instantanément. Sans fautes.' },
+  { icon: Barcode,           title: 'Code-barres EAN',         desc: 'N\'importe quel produit emballé, scanné en un instant. Données nutritionnelles incluses.' },
+  { icon: ChefHat,           title: 'Recettes personnalisées', desc: 'Régime, allergènes, portions, cuisines du monde — chaque recette est faite pour toi.' },
+  { icon: MessageSquare,     title: 'Assistant culinaire IA',  desc: 'Discute avec ton assistant : il connaît ton frigo, ton planning, et crée des recettes sur mesure.' },
+  { icon: Calendar,          title: 'Planning de repas',       desc: 'Planifie ta semaine en quelques tapotements. Ajoute ou retire des repas depuis le chat.' },
+  { icon: UtensilsCrossed,   title: 'Mode cuisine pas-à-pas', desc: 'Suis chaque étape à voix haute avec minuteur intégré. Les mains libres, la tête tranquille.' },
+  { icon: ShoppingCart,      title: 'Liste de courses',        desc: 'Générée depuis tes recettes ou ajoutée par l\'IA. Partageable en un lien.' },
+  { icon: Leaf,              title: 'Zéro gaspillage',         desc: 'Alertes péremption, bilan anti-gaspi mensuel, recettes vide-frigo. Rien ne se perd.' },
+  { icon: Trophy,            title: 'Succès & gamification',   desc: 'Débloque des badges, suis ta progression, grimpe dans les classements de la communauté.' },
+  { icon: Volume2,           title: 'Commande vocale',         desc: 'Parle à ton assistant, écoute les recettes. Idéal les mains dans la farine.' },
 ];
 
 type PlanDef = {
@@ -70,34 +74,61 @@ type PlanDef = {
 
 const plans: PlanDef[] = [
   {
-    name: 'Gratuit', price: '0€', period: 'pour toujours',
-    desc: 'Pour découvrir sans risque.',
+    name: 'Gratuit', price: '0€', period: 'à vie',
+    desc: 'Tout ce qu\'il faut pour cuisiner malin, sans payer.',
     color: 'transparent', border: 'var(--border)',
     cta: 'Commencer gratuitement', href: '/register',
-    features: ['3 requêtes IA à vie (essai)', '20 scans code-barres EAN / semaine', 'Accès à 50% des recettes'],
-    excluded: ['Scan frigo IA', 'Planning de repas', 'Liste de courses', 'Notes communautaires', 'Historique de cuisine'],
+    features: [
+      'Gestion du frigo illimitée',
+      '20 scans code-barres EAN / semaine',
+      'Accès à 50% des recettes',
+      'Planning de repas complet',
+      'Liste de courses partageable',
+      'Mode cuisine pas-à-pas avec minuteur',
+      'Alertes péremption & anti-gaspi',
+      'Succès & badges',
+      '3 requêtes IA (essai)',
+    ],
+    excluded: ['Scan frigo IA', 'Assistant IA illimité', 'Coach nutritionnel'],
   },
   {
     name: 'Premium', price: '3,99€', priceAnnual: '34,99€',
     period: '/ mois', periodAnnual: '/ an  −27%',
-    desc: 'Pour ceux qui cuisinent vraiment.',
+    desc: 'L\'IA en plus, pour ceux qui cuisinent vraiment.',
     color: 'rgba(245,158,11,0.04)', border: 'rgba(245,158,11,0.35)',
     badge: 'Le plus populaire', badgeColor: 'text-amber-600 dark:text-amber-400', badgeBg: 'rgba(245,158,11,0.12)',
     cta: 'Essayer Premium', href: '/register',
-    features: ['10 requêtes IA / semaine', '5 scans frigo IA / semaine', '100 scans code-barres / semaine',
-      'Toutes les recettes', 'Planning de repas', 'Liste de courses', 'Notes communautaires', 'Historique de cuisine'],
+    features: [
+      'Tout le plan Gratuit inclus',
+      '10 requêtes IA / semaine',
+      '5 scans frigo IA / semaine',
+      '100 scans code-barres / semaine',
+      'Toutes les recettes (100%)',
+      'Création de recettes par l\'IA',
+      'Commande vocale du chat',
+      'Notes communautaires',
+      'Historique de cuisine',
+    ],
     excluded: [],
   },
   {
     name: 'VIP', price: '6,99€', priceAnnual: '59,99€',
     period: '/ mois', periodAnnual: '/ an  −28%',
-    desc: 'Pour les perfectionnistes.',
+    desc: 'Zéro limite. Le chef, c\'est toi.',
     color: 'rgba(168,85,247,0.04)', border: 'rgba(168,85,247,0.35)',
     badge: 'Illimité', badgeColor: 'text-purple-600 dark:text-purple-400', badgeBg: 'rgba(168,85,247,0.12)',
     cta: 'Passer VIP', href: '/register',
-    features: ['Requêtes IA illimitées', '14 scans frigo / semaine', 'Scans EAN illimités',
-      'Tout Premium inclus', 'Planning automatique intelligent', 'Suivi nutritionnel complet',
-      'Support prioritaire', 'Accès aux nouveautés en avant-première'],
+    features: [
+      'Tout le plan Premium inclus',
+      'Requêtes IA illimitées',
+      '14 scans frigo IA / semaine',
+      'Scans EAN illimités',
+      'Coach nutritionnel IA intégré',
+      'Suivi nutritionnel & radar stats',
+      'Bilan anti-gaspi mensuel détaillé',
+      'Support prioritaire',
+      'Accès aux nouveautés en avant-première',
+    ],
     excluded: [],
   },
 ];
@@ -114,13 +145,13 @@ const jsonLdApp = JSON.stringify({
     { '@type': 'Offer', price: '6.99', priceCurrency: 'EUR', name: 'VIP', billingIncrement: 'P1M' },
   ],
   aggregateRating: { '@type': 'AggregateRating', ratingValue: '4.8', ratingCount: '1250', bestRating: '5' },
-  featureList: ['Scan IA du frigo', 'Scan code-barres EAN', 'Recettes personnalisées', 'Planning repas automatique', 'Liste de courses intelligente', 'Anti-gaspillage alimentaire', 'NutriScore par recette'],
+  featureList: ['Scan IA du frigo', 'Scan code-barres EAN', 'Recettes personnalisées', 'Assistant culinaire IA', 'Planning repas', 'Mode cuisine pas-à-pas', 'Liste de courses intelligente', 'Anti-gaspillage alimentaire', 'Coach nutritionnel', 'Commande vocale'],
 });
 const jsonLdFaq = JSON.stringify({
   '@context': 'https://schema.org', '@type': 'FAQPage',
   mainEntity: [
     { '@type': 'Question', name: "Comment trouver une recette avec ce que j'ai dans le frigo ?", acceptedAnswer: { '@type': 'Answer', text: "Ouvrez Mon Frigo, prenez une photo de votre frigo ou ajoutez vos ingrédients. L'app montre instantanément toutes les recettes faisables, triées par correspondance." } },
-    { '@type': 'Question', name: "Mon Frigo est-il gratuit ?", acceptedAnswer: { '@type': 'Answer', text: "Oui ! Le plan gratuit donne accès à 50% des recettes, 20 scans EAN/semaine et 3 requêtes IA. Premium dès 3,99€/mois." } },
+    { '@type': 'Question', name: "Mon Frigo est-il gratuit ?", acceptedAnswer: { '@type': 'Answer', text: "Oui ! Le plan gratuit est utilisable à vie sans carte bancaire : frigo, planning, liste de courses, mode cuisine, alertes péremption. L'IA est en essai (3 requêtes). Premium dès 3,99€/mois pour débloquer l'IA." } },
     { '@type': 'Question', name: "Comment faire des courses moins chères ?", acceptedAnswer: { '@type': 'Answer', text: "Mon Frigo estime le coût de chaque recette, propose des alternatives économiques, et génère des listes de courses optimisées. Économisez 25 à 40% sur votre budget." } },
     { '@type': 'Question', name: "Comment réduire le gaspillage alimentaire ?", acceptedAnswer: { '@type': 'Answer', text: "L'app suit les dates de péremption, prévient quand un aliment va expirer, et propose des recettes qui l'utilisent en priorité." } },
     { '@type': 'Question', name: "Quels régimes alimentaires sont supportés ?", acceptedAnswer: { '@type': 'Answer', text: "Végétarien, vegan, halal, casher, sans gluten, keto, sans sucre — tous configurables dans le profil avec filtrage automatique." } },
@@ -182,11 +213,11 @@ export default function LandingPage() {
           </h1>
 
           <p className="text-base leading-relaxed mb-2 max-w-md mx-auto" style={{ color: 'var(--text-secondary)' }}>
-            Mon Frigo scanne ton frigo, génère des recettes personnalisées
-            et planifie ta semaine — sans effort, sans gaspillage.
+            Gère ton frigo, planifie tes repas, cuisine pas-à-pas
+            et réduis le gaspillage — gratuitement, pour toujours.
           </p>
           <p className="text-sm mb-10 max-w-sm mx-auto" style={{ color: 'var(--text-muted)' }}>
-            L&apos;IA culinaire qui mérite une place permanente sur ton téléphone.
+            L&apos;assistant culinaire IA qui mérite une place permanente sur ton téléphone.
           </p>
 
           <Link href="/register"
