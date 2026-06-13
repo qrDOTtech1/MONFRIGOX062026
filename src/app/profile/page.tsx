@@ -6,7 +6,7 @@ import AppShell from '@/components/AppShell';
 import NotificationsToggle from '@/components/NotificationsToggle';
 import { useTheme } from '@/components/ThemeProvider';
 import InfoBubble from '@/components/InfoBubble';
-import { UserCircle, LogOut, Shield, Heart, ShoppingCart, Refrigerator, Sun, Moon, Save, Check, AlertTriangle, Baby, Users, History, Sparkles, ChefHat, Zap, Crown, Star, Plus, Loader2, CalendarDays, ChevronRight, PiggyBank, Leaf, Flame, Receipt } from 'lucide-react';
+import { UserCircle, LogOut, Shield, Heart, ShoppingCart, Refrigerator, Sun, Moon, Save, Check, AlertTriangle, Baby, Users, History, Sparkles, ChefHat, Zap, Crown, Star, Plus, Loader2, CalendarDays, ChevronRight, PiggyBank, Leaf, Flame, Receipt, Tag } from 'lucide-react';
 
 // Bouton qui crée une Checkout Session Stripe et redirige
 function CheckoutButton({ priceId, label, sub, color, Icon, compact = false }:
@@ -130,6 +130,35 @@ export default function ProfilePage() {
     prices: Record<string, string>;
   }
   const [billing, setBilling] = useState<BillingStatus | null>(null);
+
+  // Code promo
+  const [promoCode, setPromoCode] = useState('');
+  const [promoState, setPromoState] = useState<'idle'|'validating'|'valid'|'applying'|'done'|'error'>('idle');
+  const [promoMsg, setPromoMsg] = useState('');
+  const [promoPreview, setPromoPreview] = useState<{ planGranted: string; durationMonths: number } | null>(null);
+
+  async function validatePromo() {
+    if (!promoCode.trim()) return;
+    setPromoState('validating');
+    setPromoMsg('');
+    const res = await fetch('/api/promo/validate', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ code: promoCode }) });
+    const data = await res.json();
+    if (!res.ok) { setPromoState('error'); setPromoMsg(data.error || 'Code invalide'); return; }
+    setPromoState('valid');
+    setPromoMsg(data.message);
+    setPromoPreview({ planGranted: data.planGranted, durationMonths: data.durationMonths });
+  }
+
+  async function applyPromo() {
+    setPromoState('applying');
+    const res = await fetch('/api/promo/apply', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ code: promoCode }) });
+    const data = await res.json();
+    if (!res.ok) { setPromoState('error'); setPromoMsg(data.error || 'Erreur'); return; }
+    setPromoState('done');
+    setPromoMsg(data.message);
+    // Rafraîchir billing
+    fetch('/api/billing/status').then(r => r.ok ? r.json() : null).then(d => d && setBilling(d));
+  }
 
   // Préférences
   const [allergens, setAllergens] = useState<string[]>([]);
@@ -495,6 +524,71 @@ export default function ProfilePage() {
               </div>
             </div>
           )}
+
+          {/* ── Code promo ── */}
+          <div className="card p-4 mb-5">
+            <div className="flex items-center gap-2 mb-3">
+              <Tag className="w-4 h-4" style={{ color: 'var(--text-secondary)' }} />
+              <h2 className="text-sm font-semibold">Code promo</h2>
+            </div>
+
+            {promoState === 'done' ? (
+              <div className="flex items-start gap-2.5 px-3 py-3 rounded-xl"
+                style={{ backgroundColor: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.2)' }}>
+                <Check className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
+                <p className="text-xs leading-relaxed" style={{ color: 'rgb(16,185,129)' }}>{promoMsg}</p>
+              </div>
+            ) : (
+              <>
+                <div className="flex gap-2 mb-2">
+                  <input
+                    value={promoCode}
+                    onChange={e => { setPromoCode(e.target.value.toUpperCase()); setPromoState('idle'); setPromoMsg(''); setPromoPreview(null); }}
+                    onKeyDown={e => e.key === 'Enter' && promoState === 'idle' && validatePromo()}
+                    placeholder="Ex: SUMMER25 ou ABCD-EFGH"
+                    className="flex-1 text-sm px-3 py-2 rounded-xl outline-none font-mono"
+                    style={{ backgroundColor: 'var(--bg-inset)', border: `1px solid ${promoState === 'error' ? 'rgba(239,68,68,0.5)' : promoState === 'valid' ? 'rgba(16,185,129,0.5)' : 'var(--border)'}`, color: 'var(--text)' }}
+                    disabled={promoState === 'validating' || promoState === 'applying'}
+                  />
+                  {(promoState === 'valid' || promoState === 'applying') ? (
+                    <button onClick={applyPromo} disabled={promoState === 'applying'}
+                      className="px-3 py-2 rounded-xl text-sm font-semibold disabled:opacity-50 transition-all active:scale-95"
+                      style={{ backgroundColor: 'rgb(16,185,129)', color: '#fff' }}>
+                      {promoState === 'applying' ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Activer'}
+                    </button>
+                  ) : (
+                    <button onClick={validatePromo} disabled={!promoCode.trim() || promoState === 'validating'}
+                      className="px-3 py-2 rounded-xl text-sm font-medium disabled:opacity-40 transition-all active:scale-95"
+                      style={{ backgroundColor: 'var(--accent)', color: 'var(--accent-text)' }}>
+                      {promoState === 'validating' ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Vérifier'}
+                    </button>
+                  )}
+                </div>
+
+                {promoMsg && (
+                  <div className="flex items-start gap-2 px-3 py-2 rounded-lg"
+                    style={{
+                      backgroundColor: promoState === 'valid' ? 'rgba(16,185,129,0.08)' : 'rgba(239,68,68,0.08)',
+                      border: `1px solid ${promoState === 'valid' ? 'rgba(16,185,129,0.2)' : 'rgba(239,68,68,0.2)'}`,
+                    }}>
+                    {promoState === 'valid'
+                      ? <Check className="w-3.5 h-3.5 text-emerald-500 shrink-0 mt-0.5" />
+                      : <AlertTriangle className="w-3.5 h-3.5 text-red-500 shrink-0 mt-0.5" />}
+                    <p className="text-xs leading-relaxed"
+                      style={{ color: promoState === 'valid' ? 'rgb(16,185,129)' : 'rgb(239,68,68)' }}>
+                      {promoMsg}
+                    </p>
+                  </div>
+                )}
+
+                {promoState === 'valid' && promoPreview && (
+                  <p className="text-[10px] mt-1.5 px-1" style={{ color: 'var(--text-muted)' }}>
+                    Clique sur "Activer" pour appliquer {promoPreview.durationMonths} mois {promoPreview.planGranted} à ton compte.
+                  </p>
+                )}
+              </>
+            )}
+          </div>
 
           {/* Tab switcher */}
           <div className="flex rounded-xl p-0.5 mb-5" style={{ backgroundColor: 'var(--bg-inset)' }}>

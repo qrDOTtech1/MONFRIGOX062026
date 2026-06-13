@@ -70,6 +70,7 @@ model User {
   supplements     Supplement[]
   collections     Collection[]
   pushSubs        PushSubscription[]
+  promoUses       PromoUse[]
 }
 
 model Ingredient {
@@ -342,5 +343,35 @@ model Supplement {
   createdAt DateTime @default(now())
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  @@index([userId])
+}
+
+model PromoCode {
+  id                String    @id @default(cuid())
+  code              String    @unique
+  description       String    @default("")
+  planGranted       String    // PREMIUM | VIP
+  durationMonths    Int       @default(1)
+  maxUses           Int?      // null = illimité
+  usedCount         Int       @default(0)
+  expiresAt         DateTime?
+  isActive          Boolean   @default(true)
+  // Conditions d'utilisation
+  firstSignupOnly   Boolean   @default(false)  // jamais eu de plan payant
+  minAccountAgeDays Int?      // compte doit avoir au moins X jours
+  maxAccountAgeDays Int?      // compte doit avoir au plus X jours (nouveau compte)
+  createdAt         DateTime  @default(now())
+  uses              PromoUse[]
+}
+
+model PromoUse {
+  id        String    @id @default(cuid())
+  promoId   String
+  userId    String
+  usedAt    DateTime  @default(now())
+  promo     PromoCode @relation(fields: [promoId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([promoId, userId])
   @@index([userId])
 }

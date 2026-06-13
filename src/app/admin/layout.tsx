@@ -2,12 +2,13 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { Shield, Users, Settings, BarChart3, ChefHat, ArrowLeft, Database, CreditCard } from 'lucide-react';
+import { Shield, Users, Settings, BarChart3, ChefHat, ArrowLeft, Database, CreditCard, Tag } from 'lucide-react';
 
 const navItems = [
   { href: '/admin',          icon: BarChart3,   label: 'Dashboard' },
   { href: '/admin/users',    icon: Users,       label: 'Utilisateurs' },
   { href: '/admin/recipes',  icon: ChefHat,     label: 'Recettes' },
+  { href: '/admin/promo',    icon: Tag,         label: 'Promos' },
   { href: '/admin/billing',  icon: CreditCard,  label: 'Billing' },
   { href: '/admin/database', icon: Database,    label: 'DB & Import' },
   { href: '/admin/config',   icon: Settings,    label: 'Config' },
