@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import AppShell from '@/components/AppShell';
 import InfoBubble from '@/components/InfoBubble';
 import Mascot from '@/components/Mascot';
+import { useUserPlan, showPlanBadge } from '@/lib/useUserPlan';
 import {
   CalendarDays, ShoppingCart, ChevronLeft, ChevronRight, ChevronDown,
   Plus, X, Search, Check, Refrigerator, Share2,
@@ -76,6 +77,7 @@ function isPast(d: Date) { return d < new Date(new Date().setHours(0,0,0,0)); }
 
 /* ════════════════════════════════════════════════════════════ */
 export default function ShoppingPage() {
+  const { plan: userPlan } = useUserPlan();
   const [tab, setTab] = useState<'plan'|'courses'>('plan');
   const [weekOffset, setWeekOffset] = useState(0);
   const [plans, setPlans] = useState<MealPlanEntry[]>([]);
@@ -384,7 +386,7 @@ export default function ShoppingPage() {
               className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-medium transition-all"
               style={{ backgroundColor: 'rgba(168,85,247,0.08)', color: '#a855f7', border: '1px solid rgba(168,85,247,0.2)' }}>
               {autoPlanning ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
-              {autoPlanning ? 'IA…' : 'Auto VIP'}
+              {autoPlanning ? 'IA…' : showPlanBadge(userPlan, 'VIP') ? 'Auto 🔒 VIP' : 'Auto IA'}
             </button>
             <button onClick={copyWeekToNext} disabled={copyingWeek || !plans.length}
               className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-medium transition-all disabled:opacity-40"

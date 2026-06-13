@@ -2,13 +2,14 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { ScanLine, Refrigerator, LayoutGrid, UserCircle } from 'lucide-react';
+import { Home, ScanLine, Refrigerator, LayoutGrid, UserCircle } from 'lucide-react';
 
 const items = [
-  { href: '/scan',       icon: ScanLine,     label: 'Scan'     },
-  { href: '/fridge',     icon: Refrigerator, label: 'Frigo'    },
-  { href: '/dashboard',  icon: LayoutGrid,   label: 'Explorer' },
-  { href: '/profile',    icon: UserCircle,   label: 'Profil'   },
+  { href: '/home',      icon: Home,        label: 'Accueil'  },
+  { href: '/scan',      icon: ScanLine,    label: 'Scan'     },
+  { href: '/fridge',    icon: Refrigerator,label: 'Frigo'    },
+  { href: '/dashboard', icon: LayoutGrid,  label: 'Recettes' },
+  { href: '/profile',   icon: UserCircle,  label: 'Profil'   },
 ];
 
 export default function BottomNav() {
@@ -21,13 +22,10 @@ export default function BottomNav() {
         {items.map(({ href, icon: Icon, label }) => {
           const active = pathname === href || pathname.startsWith(href + '/');
           return (
-            <Link
-              key={href}
-              href={href}
-              className={`nav-item py-1.5 px-2 ${active ? 'nav-item-active' : ''}`}
-            >
-              <Icon className="w-[1.15rem] h-[1.15rem]" strokeWidth={active ? 2.5 : 1.5} />
-              <span className={`text-[9px] leading-tight ${active ? 'font-semibold' : ''}`}>{label}</span>
+            <Link key={href} href={href}
+              className={`nav-item py-1.5 px-2 ${active ? 'nav-item-active' : ''}`}>
+              <Icon className="w-[1.1rem] h-[1.1rem]" strokeWidth={active ? 2.5 : 1.5} />
+              <span className={`text-[8px] leading-tight ${active ? 'font-semibold' : ''}`}>{label}</span>
             </Link>
           );
         })}
