@@ -7,6 +7,7 @@ import {
   CalendarDays, ShoppingCart, ChevronLeft, ChevronRight, ChevronDown,
   Plus, X, Search, Check, Refrigerator, Share2,
   Loader2, UtensilsCrossed, Sparkles, TrendingUp, AlertCircle,
+  Copy, Flame, Beef, Clock, ChefHat,
 } from 'lucide-react';
 
 /* ── Types ── */
@@ -16,13 +17,16 @@ interface MealPlanEntry {
   mealType: 'BREAKFAST' | 'LUNCH' | 'DINNER';
   recipe: {
     id: string; name: string; prepTime: number; imageUrl: string;
-    ingredients: Array<{ ingredient: { emoji: string } }>;
+    calories?: number | null; protein?: number | null; servings?: number;
+    ingredients: Array<{ ingredient: { emoji: string; name: string } }>;
   };
 }
 interface Recipe {
   id: string; name: string; prepTime: number; cuisine: string;
   imageUrl: string; difficulty: string;
-  ingredients: Array<{ ingredient: { emoji: string } }>;
+  calories?: number | null; protein?: number | null;
+  matchPercent?: number;
+  ingredients: Array<{ ingredient: { emoji: string; name: string } }>;
 }
 interface ShoppingEntry {
   ingredientId: string; name: string; emoji: string;
@@ -82,7 +86,14 @@ export default function ShoppingPage() {
   const [pickerDate, setPickerDate] = useState('');
   const [pickerMeal, setPickerMeal] = useState<'BREAKFAST'|'LUNCH'|'DINNER'>('LUNCH');
   const [pickerSearch, setPickerSearch] = useState('');
+  const [pickerFilter, setPickerFilter] = useState<'all'|'fridge'|'quick'|'vege'>('all');
   const [savingSlot, setSavingSlot] = useState<string|null>(null);
+
+  // Planning UI
+  const [selectedDay, setSelectedDay] = useState<string>(() => dateKey(new Date()));
+  const [copyingWeek, setCopyingWeek] = useState(false);
+  const [copyResult, setCopyResult] = useState<string|null>(null);
+  const dayScrollRef = useRef<HTMLDivElement>(null);
 
   // Shopping list
   const [shopData, setShopData] = useState<ShoppingData|null>(null);
@@ -225,6 +236,33 @@ export default function ShoppingPage() {
     } finally { setAutoPlanning(false); }
   }
 
+  /* Copy current week plans to next week */
+  async function copyWeekToNext() {
+    if (!plans.length) return;
+    setCopyingWeek(true); setCopyResult(null);
+    try {
+      let copied = 0;
+      for (const plan of plans) {
+        const d = new Date(plan.date);
+        d.setDate(d.getDate() + 7);
+        const nextDate = dateKey(d);
+        // Skip if slot already filled
+        const existing = plans.find(p => dateKey(new Date(p.date)) === nextDate && p.mealType === plan.mealType);
+        if (!existing) {
+          await fetch('/api/meal-plan', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ recipeId: plan.recipe.id, date: nextDate, mealType: plan.mealType }),
+          });
+          copied++;
+        }
+      }
+      setCopyResult(`✅ ${copied} repas copiés vers S+1`);
+      setTimeout(() => setCopyResult(null), 4000);
+    } catch { setCopyResult('❌ Erreur'); }
+    finally { setCopyingWeek(false); }
+  }
+
   /* Share shopping list as text */
   function shareList() {
     if (!shopData) return;
@@ -248,6 +286,33 @@ export default function ShoppingPage() {
 
   /* Count planned meals this week */
   const plannedCount = plans.length;
+
+  /* Daily nutrition totals */
+  function getDayNutrition(dKey: string) {
+    const dayPlans = plans.filter(p => dateKey(new Date(p.date)) === dKey);
+    return dayPlans.reduce((acc, p) => ({
+      kcal: acc.kcal + (p.recipe.calories || 0),
+      protein: acc.protein + (p.recipe.protein || 0),
+      count: acc.count + 1,
+    }), { kcal: 0, protein: 0, count: 0 });
+  }
+
+  /* Filtered + sorted recipes for picker */
+  const filteredPickerRecipes = allRecipes
+    .filter(r => {
+      const matchSearch = !pickerSearch ||
+        r.name.toLowerCase().includes(pickerSearch.toLowerCase()) ||
+        r.cuisine.toLowerCase().includes(pickerSearch.toLowerCase());
+      if (!matchSearch) return false;
+      if (pickerFilter === 'fridge') return (r.matchPercent ?? 0) >= 50;
+      if (pickerFilter === 'quick') return r.prepTime <= 20;
+      if (pickerFilter === 'vege') {
+        const names = r.ingredients.map(i => i.ingredient.name.toLowerCase());
+        return !names.some(n => ['bœuf','poulet','porc','agneau','saumon','thon','viande','steak'].some(m => n.includes(m)));
+      }
+      return true;
+    })
+    .sort((a, b) => (b.matchPercent ?? 0) - (a.matchPercent ?? 0));
   const allEntries = shopData ? Object.values(shopData.categories).flat() : [];
   const boughtCount = allEntries.filter(e => checked.has(e.ingredientId)).length;
   const totalShop = allEntries.length;
@@ -290,156 +355,279 @@ export default function ShoppingPage() {
       {tab === 'plan' && (
         <>
           {/* Week navigation */}
-          <div className="flex items-center justify-between mb-5">
-            <button onClick={() => setWeekOffset(o => o - 1)}
-              className="w-8 h-8 rounded-full flex items-center justify-center transition-colors hover:bg-[var(--bg-inset)]">
+          <div className="flex items-center justify-between mb-3">
+            <button onClick={() => { setWeekOffset(o => o - 1); }}
+              className="w-9 h-9 rounded-full flex items-center justify-center transition-colors hover:bg-[var(--bg-inset)]">
               <ChevronLeft className="w-4 h-4" style={{ color: 'var(--text-muted)' }} />
             </button>
-            <div className="text-center">
+            <div className="text-center flex-1 px-2">
               <p className="text-sm font-semibold">{weekLabel}</p>
-              {weekOffset === 0 && (
-                <p className="text-[10px] mt-0.5 text-emerald-500">Semaine actuelle</p>
-              )}
+              <p className="text-[10px] mt-0.5" style={{ color: weekOffset === 0 ? 'rgb(16,185,129)' : 'var(--text-muted)' }}>
+                {weekOffset === 0 ? 'Semaine actuelle' : weekOffset < 0 ? `Il y a ${Math.abs(weekOffset)} sem.` : `Dans ${weekOffset} sem.`}
+              </p>
             </div>
-            <button onClick={() => setWeekOffset(o => o + 1)}
-              className="w-8 h-8 rounded-full flex items-center justify-center transition-colors hover:bg-[var(--bg-inset)]">
+            <button onClick={() => { setWeekOffset(o => o + 1); }}
+              className="w-9 h-9 rounded-full flex items-center justify-center transition-colors hover:bg-[var(--bg-inset)]">
               <ChevronRight className="w-4 h-4" style={{ color: 'var(--text-muted)' }} />
             </button>
           </div>
 
-          {/* Auto-plan button (VIP) */}
-          <button
-            onClick={autoGeneratePlan}
-            disabled={autoPlanning}
-            className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl mb-3 text-xs font-medium transition-all"
-            style={{ backgroundColor: 'rgba(168,85,247,0.08)', color: '#a855f7', border: '1px solid rgba(168,85,247,0.2)' }}
-          >
-            {autoPlanning
-              ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Génération IA en cours…</>
-              : <><Sparkles className="w-3.5 h-3.5" /> Planning auto (VIP) — remplir la semaine prochaine</>}
-          </button>
-          {autoPlanError && (
-            <p className="text-[11px] text-center mb-3" style={{ color: '#ef4444' }}>{autoPlanError}</p>
+          {/* Day selector chips */}
+          <div ref={dayScrollRef} className="flex gap-1.5 overflow-x-auto pb-1 mb-3 hide-scrollbar">
+            {weekDays.map(day => {
+              const dKey = dateKey(day);
+              const today = isToday(day);
+              const selected = selectedDay === dKey;
+              const dayPlans = plans.filter(p => dateKey(new Date(p.date)) === dKey);
+              return (
+                <button key={dKey} onClick={() => setSelectedDay(dKey)}
+                  className="flex flex-col items-center shrink-0 w-[42px] py-2 rounded-xl transition-all"
+                  style={selected
+                    ? { backgroundColor: 'var(--accent)', color: 'var(--accent-text)' }
+                    : today
+                      ? { backgroundColor: 'rgba(16,185,129,0.1)', border: '1.5px solid rgb(16,185,129)', color: 'rgb(16,185,129)' }
+                      : { backgroundColor: 'var(--bg-inset)', color: 'var(--text-muted)' }}>
+                  <span className="text-[9px] font-medium uppercase">{DAYS_FR[day.getDay()]}</span>
+                  <span className="text-base font-bold leading-none mt-0.5">{day.getDate()}</span>
+                  {/* Dots for meals planned */}
+                  <div className="flex gap-0.5 mt-1 h-1.5">
+                    {MEALS.map(m => {
+                      const hasPlan = dayPlans.some(p => p.mealType === m.type);
+                      return <div key={m.type} className="w-1 h-1 rounded-full" style={{ backgroundColor: hasPlan ? (selected ? 'rgba(255,255,255,0.8)' : 'rgb(16,185,129)') : 'transparent' }} />;
+                    })}
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Actions rapides */}
+          <div className="flex gap-2 mb-3">
+            <button onClick={autoGeneratePlan} disabled={autoPlanning}
+              className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-medium transition-all"
+              style={{ backgroundColor: 'rgba(168,85,247,0.08)', color: '#a855f7', border: '1px solid rgba(168,85,247,0.2)' }}>
+              {autoPlanning ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
+              {autoPlanning ? 'IA en cours…' : 'Auto VIP'}
+            </button>
+            <button onClick={copyWeekToNext} disabled={copyingWeek || !plans.length}
+              className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-medium transition-all disabled:opacity-40"
+              style={{ backgroundColor: 'var(--bg-inset)', border: '1px solid var(--border)', color: 'var(--text-secondary)' }}>
+              {copyingWeek ? <Loader2 className="w-3 h-3 animate-spin" /> : <Copy className="w-3 h-3" />}
+              Copier → S+1
+            </button>
+            {plannedCount > 0 && (
+              <button onClick={() => setTab('courses')}
+                className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-medium transition-all"
+                style={{ backgroundColor: 'var(--accent)', color: 'var(--accent-text)' }}>
+                <ShoppingCart className="w-3 h-3" /> Courses
+              </button>
+            )}
+          </div>
+
+          {(autoPlanError || copyResult) && (
+            <p className="text-[11px] text-center mb-2" style={{ color: copyResult?.startsWith('✅') ? 'rgb(16,185,129)' : '#ef4444' }}>
+              {autoPlanError || copyResult}
+            </p>
           )}
 
-          {/* Stats bar */}
-          {plannedCount > 0 && (
-            <div className="flex items-center gap-2 px-3 py-2 rounded-lg mb-4 fade-in"
-              style={{ backgroundColor: 'var(--bg-inset)', border: '1px solid var(--border)' }}>
-              <Sparkles className="w-3.5 h-3.5" style={{ color: 'var(--text-secondary)' }} />
-              <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>
-                <span className="font-semibold">{plannedCount} repas</span> planifiés · génère ta liste dans &quot;Courses&quot;
-              </p>
-            </div>
-          )}
-
-          {/* Days */}
+          {/* Selected day detail */}
           {loading ? (
-            <div className="space-y-3">
-              {[1,2,3].map(i => <div key={i} className="h-28 rounded-xl animate-pulse" style={{ backgroundColor: 'var(--bg-inset)' }} />)}
+            <div className="space-y-2">
+              {[1,2,3].map(i => <div key={i} className="h-16 rounded-xl animate-pulse" style={{ backgroundColor: 'var(--bg-inset)' }} />)}
             </div>
-          ) : (
-            <div className="space-y-2 pb-4">
-              {weekDays.map(day => {
-                const dKey = dateKey(day);
-                const today = isToday(day);
-                const past = isPast(day) && !today;
-                return (
-                  <div key={dKey} className="card overflow-hidden"
-                    style={today ? { borderColor: 'var(--accent)', borderWidth: 1.5 } : undefined}>
+          ) : (() => {
+            const day = weekDays.find(d => dateKey(d) === selectedDay) || weekDays[0];
+            const dKey = dateKey(day);
+            const today = isToday(day);
+            const past = isPast(day) && !today;
+            const nutrition = getDayNutrition(dKey);
 
-                    {/* Day header */}
-                    <div className="flex items-center gap-2 px-3.5 py-2.5"
-                      style={{ borderBottom: '1px solid var(--border-subtle)', backgroundColor: today ? 'var(--bg-inset)' : undefined }}>
-                      <div className="w-7 h-7 rounded-full flex items-center justify-center text-sm font-bold"
+            return (
+              <div className="card overflow-hidden"
+                style={today ? { borderColor: 'var(--accent)', borderWidth: 1.5 } : undefined}>
+
+                {/* Day header with nutrition */}
+                <div className="px-4 pt-3.5 pb-2.5"
+                  style={{ borderBottom: '1px solid var(--border-subtle)', backgroundColor: today ? 'var(--bg-inset)' : undefined }}>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold shrink-0"
                         style={today
                           ? { backgroundColor: 'var(--accent)', color: 'var(--accent-text)' }
-                          : { color: 'var(--text)' }}>
+                          : { backgroundColor: 'var(--bg-inset)', color: 'var(--text)' }}>
                         {day.getDate()}
                       </div>
                       <div>
-                        <span className="text-sm font-semibold">{DAYS_FR[day.getDay()]}</span>
-                        <span className="text-xs ml-1" style={{ color: 'var(--text-muted)' }}>
-                          {MONTHS_FR[day.getMonth()]}
-                        </span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-semibold">{DAYS_FR[day.getDay()]}</span>
+                          <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                            {day.getDate()} {MONTHS_FR[day.getMonth()]}
+                          </span>
+                          {today && <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-500">Aujourd'hui</span>}
+                          {past && <span className="text-[9px] px-2 py-0.5 rounded-full" style={{ backgroundColor: 'var(--bg-inset)', color: 'var(--text-muted)' }}>Passé</span>}
+                        </div>
                       </div>
-                      {today && (
-                        <span className="text-[9px] font-bold px-2 py-0.5 rounded-full ml-auto"
-                          style={{ backgroundColor: 'var(--accent)', color: 'var(--accent-text)' }}>
-                          Aujourd&apos;hui
-                        </span>
-                      )}
-                      {past && !today && <span className="text-[9px] ml-auto" style={{ color: 'var(--text-muted)' }}>Passé</span>}
                     </div>
-
-                    {/* Meal slots */}
-                    <div>
-                      {MEALS.map(meal => {
-                        const plan = getPlan(dKey, meal.type);
-                        const slotKey = `${dKey}-${meal.type}`;
-                        const saving = savingSlot === slotKey;
-
-                        return (
-                          <div key={meal.type} className="flex items-center gap-2.5 px-3.5 py-2.5 min-h-[48px]">
-                            <span className="text-base w-5 shrink-0">{meal.emoji}</span>
-                            <span className="text-xs w-14 shrink-0" style={{ color: 'var(--text-muted)' }}>{meal.label}</span>
-
-                            {saving ? (
-                              <div className="flex-1 flex items-center gap-1.5">
-                                <Loader2 className="w-3.5 h-3.5 animate-spin" style={{ color: 'var(--text-muted)' }} />
-                                <span className="text-xs" style={{ color: 'var(--text-muted)' }}>Enregistrement…</span>
-                              </div>
-                            ) : plan ? (
-                              <div className="flex-1 flex items-center gap-2 min-w-0">
-                                {/* Recipe chip */}
-                                <div className="flex items-center gap-2 flex-1 min-w-0 rounded-lg px-2.5 py-1.5"
-                                  style={{ backgroundColor: 'var(--bg-inset)' }}>
-                                  <span className="text-sm">{plan.recipe.ingredients[0]?.ingredient?.emoji || '🍽️'}</span>
-                                  <span className="text-xs font-medium truncate flex-1" style={{ color: 'var(--text)' }}>
-                                    {plan.recipe.name}
-                                  </span>
-                                  <span className="text-[10px] shrink-0" style={{ color: 'var(--text-muted)' }}>{plan.recipe.prepTime}min</span>
-                                </div>
-                                <button onClick={() => removeSlot(plan.id)}
-                                  className="w-6 h-6 rounded-md flex items-center justify-center shrink-0 transition-colors hover:bg-red-500/10">
-                                  <X className="w-3 h-3 text-red-400" />
-                                </button>
-                              </div>
-                            ) : (
-                              <button
-                                onClick={() => {
-                                  setPickerDate(dKey);
-                                  setPickerMeal(meal.type);
-                                  setPickerSearch('');
-                                  setPickerOpen(true);
-                                }}
-                                className="flex-1 flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 transition-colors group"
-                                style={{ border: '1.5px dashed var(--border)', color: 'var(--text-muted)' }}
-                              >
-                                <Plus className="w-3.5 h-3.5 group-hover:text-[var(--accent)] transition-colors" />
-                                <span className="text-xs group-hover:text-[var(--accent)] transition-colors">Ajouter</span>
-                              </button>
-                            )}
-                          </div>
-                        );
-                      })}
+                    {/* Prev/Next day */}
+                    <div className="flex gap-1">
+                      <button onClick={() => {
+                        const idx = weekDays.findIndex(d => dateKey(d) === selectedDay);
+                        if (idx > 0) setSelectedDay(dateKey(weekDays[idx - 1]));
+                        else { setWeekOffset(o => o - 1); setSelectedDay(dateKey(new Date(new Date(weekDays[0]).setDate(weekDays[0].getDate() - 1)))); }
+                      }} className="w-6 h-6 rounded-md flex items-center justify-center hover:bg-[var(--bg-inset)]">
+                        <ChevronLeft className="w-3.5 h-3.5" style={{ color: 'var(--text-muted)' }} />
+                      </button>
+                      <button onClick={() => {
+                        const idx = weekDays.findIndex(d => dateKey(d) === selectedDay);
+                        if (idx < 6) setSelectedDay(dateKey(weekDays[idx + 1]));
+                        else { setWeekOffset(o => o + 1); setSelectedDay(dateKey(new Date(new Date(weekDays[6]).setDate(weekDays[6].getDate() + 1)))); }
+                      }} className="w-6 h-6 rounded-md flex items-center justify-center hover:bg-[var(--bg-inset)]">
+                        <ChevronRight className="w-3.5 h-3.5" style={{ color: 'var(--text-muted)' }} />
+                      </button>
                     </div>
                   </div>
+
+                  {/* Daily nutrition summary */}
+                  {nutrition.count > 0 && (
+                    <div className="flex items-center gap-3 mt-2">
+                      {nutrition.kcal > 0 && (
+                        <div className="flex items-center gap-1">
+                          <Flame className="w-3 h-3 text-orange-400" />
+                          <span className="text-[11px] font-medium">{nutrition.kcal} kcal</span>
+                        </div>
+                      )}
+                      {nutrition.protein > 0 && (
+                        <div className="flex items-center gap-1">
+                          <Beef className="w-3 h-3 text-indigo-400" />
+                          <span className="text-[11px] font-medium">{Math.round(nutrition.protein)} g prot.</span>
+                        </div>
+                      )}
+                      <span className="text-[10px] ml-auto" style={{ color: 'var(--text-muted)' }}>{nutrition.count} repas</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Meal slots */}
+                <div className="divide-y" style={{ borderColor: 'var(--border-subtle)' }}>
+                  {MEALS.map(meal => {
+                    const plan = getPlan(dKey, meal.type);
+                    const slotKey = `${dKey}-${meal.type}`;
+                    const saving = savingSlot === slotKey;
+
+                    return (
+                      <div key={meal.type} className="flex items-center gap-3 px-4 py-3 min-h-[60px]">
+                        <div className="flex flex-col items-center w-10 shrink-0">
+                          <span className="text-lg leading-none">{meal.emoji}</span>
+                          <span className="text-[9px] mt-0.5 font-medium" style={{ color: 'var(--text-muted)' }}>{meal.label}</span>
+                        </div>
+
+                        {saving ? (
+                          <div className="flex-1 flex items-center gap-1.5">
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" style={{ color: 'var(--text-muted)' }} />
+                            <span className="text-xs" style={{ color: 'var(--text-muted)' }}>Enregistrement…</span>
+                          </div>
+                        ) : plan ? (
+                          <div className="flex-1 flex items-center gap-2.5 min-w-0">
+                            {/* Recipe card */}
+                            <div className="flex items-center gap-2.5 flex-1 min-w-0 rounded-xl px-3 py-2"
+                              style={{ backgroundColor: 'var(--bg-inset)' }}>
+                              {plan.recipe.imageUrl ? (
+                                <img src={plan.recipe.imageUrl} alt="" className="w-9 h-9 rounded-lg object-cover shrink-0" />
+                              ) : (
+                                <div className="w-9 h-9 rounded-lg flex items-center justify-center text-lg shrink-0"
+                                  style={{ backgroundColor: 'var(--bg-raised)' }}>
+                                  {plan.recipe.ingredients[0]?.ingredient?.emoji || '🍽️'}
+                                </div>
+                              )}
+                              <div className="flex-1 min-w-0">
+                                <p className="text-xs font-medium truncate">{plan.recipe.name}</p>
+                                <div className="flex items-center gap-2 mt-0.5">
+                                  <span className="flex items-center gap-0.5 text-[10px]" style={{ color: 'var(--text-muted)' }}>
+                                    <Clock className="w-2.5 h-2.5" /> {plan.recipe.prepTime}min
+                                  </span>
+                                  {plan.recipe.calories && (
+                                    <span className="flex items-center gap-0.5 text-[10px]" style={{ color: 'var(--text-muted)' }}>
+                                      <Flame className="w-2.5 h-2.5" /> {plan.recipe.calories} kcal
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                            <button onClick={() => removeSlot(plan.id)}
+                              className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 transition-colors hover:bg-red-500/10">
+                              <X className="w-3.5 h-3.5 text-red-400" />
+                            </button>
+                          </div>
+                        ) : (
+                          <button
+                            onClick={() => {
+                              setPickerDate(dKey);
+                              setPickerMeal(meal.type);
+                              setPickerSearch('');
+                              setPickerFilter('all');
+                              setPickerOpen(true);
+                            }}
+                            className="flex-1 flex items-center justify-center gap-2 rounded-xl py-3 transition-all group"
+                            style={{ border: '1.5px dashed var(--border)', color: 'var(--text-muted)' }}
+                          >
+                            <Plus className="w-4 h-4 group-hover:text-[var(--accent)] transition-colors" />
+                            <span className="text-xs group-hover:text-[var(--accent)] transition-colors">
+                              Ajouter une recette
+                            </span>
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })()}
+
+          {/* Week overview mini (other days) */}
+          {!loading && (
+            <div className="mt-4 space-y-1 pb-6">
+              <p className="text-[10px] font-semibold uppercase tracking-wide mb-2" style={{ color: 'var(--text-muted)' }}>
+                Aperçu de la semaine
+              </p>
+              {weekDays.filter(d => dateKey(d) !== selectedDay).map(day => {
+                const dKey = dateKey(day);
+                const dayPlans = plans.filter(p => dateKey(new Date(p.date)) === dKey);
+                const nutrition = getDayNutrition(dKey);
+                return (
+                  <button key={dKey} onClick={() => setSelectedDay(dKey)}
+                    className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-left transition-colors hover:bg-[var(--bg-inset)]"
+                    style={{ border: '1px solid var(--border-subtle)' }}>
+                    <div className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 text-xs font-bold"
+                      style={isToday(day)
+                        ? { backgroundColor: 'var(--accent)', color: 'var(--accent-text)' }
+                        : { backgroundColor: 'var(--bg-inset)', color: 'var(--text-muted)' }}>
+                      {day.getDate()}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-medium">{DAYS_FR[day.getDay()]} {day.getDate()} {MONTHS_FR[day.getMonth()]}</p>
+                      {dayPlans.length > 0 ? (
+                        <p className="text-[10px] truncate mt-0.5" style={{ color: 'var(--text-muted)' }}>
+                          {dayPlans.map(p => p.recipe.name).join(' · ')}
+                        </p>
+                      ) : (
+                        <p className="text-[10px] mt-0.5" style={{ color: 'var(--text-muted)' }}>Aucun repas planifié</p>
+                      )}
+                    </div>
+                    {nutrition.kcal > 0 && (
+                      <span className="text-[10px] font-medium shrink-0" style={{ color: 'var(--text-muted)' }}>
+                        {nutrition.kcal} kcal
+                      </span>
+                    )}
+                    <div className="flex gap-0.5 shrink-0">
+                      {MEALS.map(m => (
+                        <div key={m.type} className="w-1.5 h-1.5 rounded-full"
+                          style={{ backgroundColor: dayPlans.some(p => p.mealType === m.type) ? 'rgb(16,185,129)' : 'var(--border)' }} />
+                      ))}
+                    </div>
+                  </button>
                 );
               })}
-            </div>
-          )}
-
-          {/* Generate list CTA */}
-          {plannedCount > 0 && (
-            <div className="sticky bottom-24 pb-2">
-              <button onClick={() => setTab('courses')}
-                className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl text-sm font-semibold shadow-lg transition-all active:scale-[0.98]"
-                style={{ backgroundColor: 'var(--accent)', color: 'var(--accent-text)' }}>
-                <ShoppingCart className="w-4 h-4" />
-                Voir la liste de courses
-                <span className="text-xs font-normal opacity-75">{plannedCount} repas planifiés</span>
-              </button>
             </div>
           )}
         </>
@@ -759,7 +947,7 @@ export default function ShoppingPage() {
             </div>
 
             {/* Search */}
-            <div className="px-4 pb-3">
+            <div className="px-4 pb-2">
               <div className="flex items-center gap-2 rounded-xl px-3 py-2.5"
                 style={{ backgroundColor: 'var(--bg-inset)', border: '1px solid var(--border)' }}>
                 <Search className="w-4 h-4 shrink-0" style={{ color: 'var(--text-muted)' }} />
@@ -779,19 +967,37 @@ export default function ShoppingPage() {
               </div>
             </div>
 
+            {/* Filter chips */}
+            <div className="flex gap-2 px-4 pb-3 overflow-x-auto hide-scrollbar">
+              {([
+                { key: 'all', label: 'Tous' },
+                { key: 'fridge', label: '🥬 Frigo' },
+                { key: 'quick', label: '⚡ Rapide' },
+                { key: 'vege', label: '🌿 Végé' },
+              ] as const).map(f => (
+                <button key={f.key} onClick={() => setPickerFilter(f.key)}
+                  className="shrink-0 px-3 py-1.5 rounded-full text-xs font-medium transition-all"
+                  style={pickerFilter === f.key
+                    ? { backgroundColor: 'var(--accent)', color: 'var(--accent-text)' }
+                    : { backgroundColor: 'var(--bg-inset)', border: '1px solid var(--border)', color: 'var(--text-muted)' }}>
+                  {f.label}
+                </button>
+              ))}
+            </div>
+
             {/* Recipe list */}
-            <div className="flex-1 overflow-y-auto px-4 pb-6 space-y-1.5">
-              {filteredRecipes.length === 0 ? (
+            <div className="flex-1 overflow-y-auto px-4 pb-6 space-y-2">
+              {filteredPickerRecipes.length === 0 ? (
                 <div className="text-center py-10">
                   <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Aucune recette trouvée</p>
                 </div>
               ) : (
-                filteredRecipes.map(recipe => (
+                filteredPickerRecipes.map(recipe => (
                   <button key={recipe.id} onClick={() => addToSlot(recipe.id)}
-                    className="w-full flex items-center gap-3 p-3 rounded-xl text-left transition-colors hover:bg-[var(--bg-inset)] active:scale-[0.98]"
+                    className="w-full flex items-center gap-3 p-3 rounded-xl text-left transition-all hover:bg-[var(--bg-inset)] active:scale-[0.98]"
                     style={{ border: '1px solid var(--border-subtle)' }}>
-                    {/* Emoji/Image */}
-                    <div className="w-12 h-12 rounded-lg flex items-center justify-center shrink-0 overflow-hidden text-xl"
+                    {/* Image */}
+                    <div className="w-14 h-14 rounded-xl flex items-center justify-center shrink-0 overflow-hidden text-2xl"
                       style={{ backgroundColor: 'var(--bg-inset)' }}>
                       {recipe.imageUrl
                         ? <img src={recipe.imageUrl} alt="" className="w-full h-full object-cover" />
@@ -799,11 +1005,27 @@ export default function ShoppingPage() {
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium truncate">{recipe.name}</p>
-                      <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
-                        {recipe.prepTime}min · {recipe.cuisine}
-                      </p>
+                      <div className="flex items-center gap-2 mt-1 flex-wrap">
+                        <span className="flex items-center gap-0.5 text-[10px]" style={{ color: 'var(--text-muted)' }}>
+                          <Clock className="w-3 h-3" /> {recipe.prepTime}min
+                        </span>
+                        {(recipe as any).calories && (
+                          <span className="flex items-center gap-0.5 text-[10px]" style={{ color: 'var(--text-muted)' }}>
+                            <Flame className="w-3 h-3" /> {(recipe as any).calories} kcal
+                          </span>
+                        )}
+                        {(recipe as any).matchPercent !== undefined && (
+                          <span className="text-[10px] px-1.5 py-0.5 rounded-full font-medium"
+                            style={{
+                              backgroundColor: (recipe as any).matchPercent >= 80 ? 'rgba(16,185,129,0.15)' : (recipe as any).matchPercent >= 50 ? 'rgba(245,158,11,0.15)' : 'var(--bg-inset)',
+                              color: (recipe as any).matchPercent >= 80 ? 'rgb(16,185,129)' : (recipe as any).matchPercent >= 50 ? 'rgb(245,158,11)' : 'var(--text-muted)',
+                            }}>
+                            {(recipe as any).matchPercent}% frigo
+                          </span>
+                        )}
+                      </div>
                     </div>
-                    <Plus className="w-4 h-4 shrink-0" style={{ color: 'var(--accent)' }} />
+                    <ChefHat className="w-4 h-4 shrink-0" style={{ color: 'var(--accent)' }} />
                   </button>
                 ))
               )}
