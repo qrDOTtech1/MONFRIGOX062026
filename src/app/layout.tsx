@@ -32,10 +32,10 @@ export const metadata: Metadata = {
   manifest: '/manifest.json',
   icons: {
     icon: [
+      { url: '/favicon.png', type: 'image/png' },
       { url: '/favicon.svg', type: 'image/svg+xml' },
-      { url: '/icon.png', sizes: '192x192', type: 'image/png' },
     ],
-    apple: '/icon.png',
+    apple: '/favicon.png',
   },
   openGraph: {
     type: 'website',
