@@ -11,6 +11,8 @@ import {
   Plus, ChevronRight, ShoppingCart, ScanLine, Refrigerator,
   Sparkles, Clock, AlertTriangle, Star,
 } from 'lucide-react';
+import FloatingEmojis from '@/components/FloatingEmojis';
+import MascotChat from '@/components/MascotChat';
 
 /* ── Types ── */
 interface DashData {
@@ -110,11 +112,16 @@ export default function HomePage() {
   const { shortcuts, recent } = useRecentPages();
   const [data, setData] = useState<DashData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [allRecipes, setAllRecipes] = useState<any[]>([]);
 
   const load = useCallback(async () => {
     try {
-      const res = await fetch('/api/dashboard');
-      if (res.ok) setData(await res.json());
+      const [dashRes, recipesRes] = await Promise.all([
+        fetch('/api/dashboard'),
+        fetch('/api/recipes'),
+      ]);
+      if (dashRes.ok) setData(await dashRes.json());
+      if (recipesRes.ok) setAllRecipes(await recipesRes.json());
     } finally {
       setLoading(false);
     }
@@ -145,6 +152,7 @@ export default function HomePage() {
 
   return (
     <AppShell>
+      <FloatingEmojis />
       <div className="pb-28" style={{ background: getTimeGradient(), minHeight: '100vh' }}>
         <div className="px-4 pt-4 max-w-lg mx-auto space-y-4">
 
@@ -370,6 +378,9 @@ export default function HomePage() {
               </div>
             )}
           </div>
+
+          {/* ── Assistant mascotte ── */}
+          <MascotChat allRecipes={allRecipes} />
 
         </div>
       </div>

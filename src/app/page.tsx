@@ -4,83 +4,32 @@ import Link from 'next/link';
 import { useEffect, useRef } from 'react';
 import { ScanLine, ChefHat, ShoppingCart, Leaf, Barcode, Sparkles, Check, Brain, X, Calendar } from 'lucide-react';
 import LogoAnim from '@/components/LogoAnim';
+import FloatingEmojis from '@/components/FloatingEmojis';
 
-/* ── Emojis flottants ────────────────────────────────────────────────── */
-const FOOD_EMOJIS = [
-  '🍎','🥑','🧀','🥕','🍋','🥦','🍅','🥚','🧅','🫑',
-  '🍇','🍓','🥩','🍞','🧄','🫐','🥜','🫒','🥐','🍳',
-  '🥗','🫙','🥛','🍄','🌽','🍆','🫚','🧁','🥝','🍯',
-];
-
-const PARTICLES: Array<{
-  emoji: string; left: number; size: number;
-  duration: number; delay: number; opacity: number;
-}> = Array.from({ length: 28 }, (_, i) => ({
-  emoji:    FOOD_EMOJIS[i % FOOD_EMOJIS.length],
-  left:     (i * 37 + 13) % 100,
-  size:     1.2 + ((i * 7) % 14) / 10,
-  duration: 12 + ((i * 11) % 14),
-  delay:    (i * 1.3) % 18,
-  opacity:  0.12 + ((i * 3) % 18) / 100,
-}));
-
-function FloatingEmojis() {
+/* ── Landing-specific styles ─────────────────────────────────────────── */
+function LandingStyles() {
   return (
-    <>
-      <style>{`
-        @keyframes floatUp {
-          0%   { transform: translateY(0)   rotate(0deg);   opacity: 0; }
-          10%  { opacity: var(--op); }
-          85%  { opacity: var(--op); }
-          100% { transform: translateY(-110vh) rotate(20deg); opacity: 0; }
-        }
-        @keyframes shimmer {
-          0%   { background-position: -200% center; }
-          100% { background-position:  200% center; }
-        }
-        @keyframes glow-pulse {
-          0%, 100% { box-shadow: 0 0 0 0 rgba(var(--accent-rgb, 200,200,200), 0); }
-          50%       { box-shadow: 0 0 24px 4px rgba(var(--accent-rgb, 200,200,200), 0.18); }
-        }
-        .btn-glow { animation: glow-pulse 2.8s ease-in-out infinite; }
-        .shimmer-text {
-          background: linear-gradient(90deg,
-            var(--text) 20%,
-            var(--accent) 50%,
-            var(--text) 80%);
-          background-size: 200% auto;
-          -webkit-background-clip: text;
-          -webkit-text-fill-color: transparent;
-          background-clip: text;
-          animation: shimmer 4s linear infinite;
-        }
-        .section-fade { opacity: 0; transform: translateY(24px); transition: opacity 0.6s ease, transform 0.6s ease; }
-        .section-fade.visible { opacity: 1; transform: translateY(0); }
-      `}</style>
-
-      <div aria-hidden className="fixed inset-0 pointer-events-none overflow-hidden z-0">
-        {PARTICLES.map((p, i) => (
-          <span key={i} style={{
-            position:   'absolute',
-            left:       `${p.left}%`,
-            bottom:     '-5%',
-            fontSize:   `${p.size}rem`,
-            '--op':     p.opacity,
-            animation:  `floatUp ${p.duration}s ${p.delay}s linear infinite`,
-            userSelect: 'none',
-          } as React.CSSProperties}>
-            {p.emoji}
-          </span>
-        ))}
-        {/* Blur + fade overlay */}
-        <div style={{
-          position: 'absolute', inset: 0,
-          backdropFilter: 'blur(2px)',
-          WebkitBackdropFilter: 'blur(2px)',
-          background: 'linear-gradient(to bottom, var(--bg) 0%, transparent 18%, transparent 80%, var(--bg) 100%)',
-        }} />
-      </div>
-    </>
+    <style>{`
+      @keyframes shimmer {
+        0%   { background-position: -200% center; }
+        100% { background-position:  200% center; }
+      }
+      @keyframes glow-pulse {
+        0%, 100% { box-shadow: 0 0 0 0 rgba(var(--accent-rgb, 200,200,200), 0); }
+        50%       { box-shadow: 0 0 24px 4px rgba(var(--accent-rgb, 200,200,200), 0.18); }
+      }
+      .btn-glow { animation: glow-pulse 2.8s ease-in-out infinite; }
+      .shimmer-text {
+        background: linear-gradient(90deg, var(--text) 20%, var(--accent) 50%, var(--text) 80%);
+        background-size: 200% auto;
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        animation: shimmer 4s linear infinite;
+      }
+      .section-fade { opacity: 0; transform: translateY(24px); transition: opacity 0.6s ease, transform 0.6s ease; }
+      .section-fade.visible { opacity: 1; transform: translateY(0); }
+    `}</style>
   );
 }
 
@@ -196,6 +145,7 @@ export default function LandingPage() {
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLdFaq }} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLdOrg }} />
       <FloatingEmojis />
+      <LandingStyles />
 
       {/* ── Header ── */}
       <header className="flex items-center justify-between px-6 py-4 sticky top-0 z-20"

@@ -64,7 +64,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
       {/* Contenu décalé sous le top bar */}
       <div className="page-container fade-in" style={{ paddingTop: '3rem' }}>{children}</div>
-      <RecipeChat allRecipes={recipes} />
+      {pathname !== '/home' && <RecipeChat allRecipes={recipes} />}
       <BottomNav />
     </>
   );
