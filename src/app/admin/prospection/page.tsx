@@ -115,115 +115,163 @@ async function drawTicketVisual(
   customTagline: string,
 ) {
   const ctx = canvas.getContext('2d')!;
-  const { width: W, height: H } = template;
+  const W = 950;
+  const H = 600;
   canvas.width = W;
   canvas.height = H;
 
   const black = '#000000';
   const white = '#ffffff';
+  const darkGray = '#333333';
 
-  // Fond blanc partout
+  // Fond blanc
   ctx.fillStyle = white;
   ctx.fillRect(0, 0, W, H);
 
-  // ── LAYOUT: QR ÉNORME gauche (presque carré), contenu dense droit ──
-  const qrSize = 280;
-  const qrX = 12;
-  const qrY = 75;
-  const verticalSeparator = qrX + qrSize + 12;
-  const contentX = verticalSeparator + 12;
-  const contentW = W - contentX - 10;
+  // ── ZONES fixes pour éviter tout chevauchement ──
+  const HEADER_H = 60;
+  const FOOTER_H = 44;
+  const CONTENT_TOP = HEADER_H;
+  const CONTENT_BOT = H - FOOTER_H;
+  const CONTENT_H = CONTENT_BOT - CONTENT_TOP; // 496px
 
-  // QR ÉNORME
-  const qrUrl = promoCode ? `${APP_URL}?promo=${promoCode}` : APP_URL;
-  try {
-    const qrCanvas = await generateQR(qrUrl, qrSize);
-    ctx.drawImage(qrCanvas, qrX, qrY, qrSize, qrSize);
-  } catch {}
+  // Zone gauche QR : x=0..310, QR centré verticalement
+  const QR_ZONE_W = 310;
+  const QR_SIZE = 250;
+  const QR_X = (QR_ZONE_W - QR_SIZE) / 2;
+  const QR_Y = CONTENT_TOP + (CONTENT_H - QR_SIZE) / 2;
 
-  // ── TOP: Black bar full width ──
-  const headerH = 65;
+  // Zone droite content : x=324..940
+  const SEP_X = QR_ZONE_W + 7;
+  const CONT_X = SEP_X + 10;
+  const CONT_W = W - CONT_X - 12;
+  const HALF_W = CONT_W / 2;
+
+  // ── 1. HEADER ──
   ctx.fillStyle = black;
-  ctx.fillRect(0, 0, W, headerH);
+  ctx.fillRect(0, 0, W, HEADER_H);
+  ctx.fillStyle = white;
+  ctx.textAlign = 'left';
+  ctx.font = `900 30px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif`;
+  ctx.fillText('MonFrigo', 14, 38);
+  ctx.fillStyle = '#aaaaaa';
+  ctx.font = `400 30px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif`;
+  ctx.fillText('.app', 14 + ctx.measureText('MonFrigo').width, 38);
 
-  // Mascot top-right
-  const mascotSize = 50;
+  // Mascot in header right
   try {
     const mascotImg = await loadImage('/mascot-happy.png');
-    ctx.drawImage(mascotImg, W - mascotSize - 8, 7, mascotSize, mascotSize);
+    ctx.drawImage(mascotImg, W - 54, 5, 48, 48);
   } catch {}
 
-  // MonFrigo.app + GRATUIT À VIE dans le header noir
+  // ── 2. QR ──
+  const qrUrl = promoCode ? `${APP_URL}?promo=${promoCode}` : APP_URL;
+  try {
+    const qrCanvas = await generateQR(qrUrl, QR_SIZE);
+    ctx.drawImage(qrCanvas, QR_X, QR_Y, QR_SIZE, QR_SIZE);
+  } catch {}
+
+  // Label sous QR
+  ctx.fillStyle = darkGray;
+  ctx.textAlign = 'center';
+  ctx.font = `bold 13px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif`;
+  ctx.fillText('monfrigo.app', QR_ZONE_W / 2, QR_Y + QR_SIZE + 20);
+
+  // ── 3. SEPARATEUR VERTICAL ──
+  ctx.strokeStyle = '#cccccc';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(SEP_X, CONTENT_TOP + 10);
+  ctx.lineTo(SEP_X, CONTENT_BOT - 10);
+  ctx.stroke();
+
+  // ── 4. CONTENU DROIT ──
+  // Distribue le contenu sur CONTENT_H (496px) en sections fixes
+  let ry = CONTENT_TOP;
+
+  // "GRATUIT À VIE" gros — centré dans colonne droite
+  ry += 20;
+  ctx.fillStyle = black;
+  ctx.textAlign = 'center';
+  ctx.font = `900 28px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif`;
+  ctx.fillText('GRATUIT À VIE', CONT_X + CONT_W / 2, ry + 28);
+  ry += 40;
+
+  // Sous-titre
+  ctx.fillStyle = darkGray;
+  ctx.font = `400 13px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif`;
+  ctx.fillText('Sans carte bancaire · Pour toujours', CONT_X + CONT_W / 2, ry + 13);
+  ry += 28;
+
+  // Ligne séparatrice légère
+  ctx.strokeStyle = '#dddddd';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(CONT_X + 10, ry);
+  ctx.lineTo(CONT_X + CONT_W - 10, ry);
+  ctx.stroke();
+  ry += 14;
+
+  // Features en 2 colonnes × 3 lignes (6 features)
+  const features = ['📷 Scan frigo', '🍳 Recettes', '📅 Planning', '🛒 Courses', '♻️ Anti-gaspi', '✓ Badges'];
   ctx.textAlign = 'left';
-  ctx.fillStyle = white;
-  ctx.font = `900 36px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif`;
-  ctx.fillText('MonFrigo.app', 12, 48);
-
-  let ry = headerH + 8;
-
-  // GRATUIT À VIE - GROS et visible
   ctx.fillStyle = black;
-  ctx.font = `900 22px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif`;
-  ctx.fillText('GRATUIT À VIE', contentX, ry + 22);
-  ry += 30;
-
-  // Features - dense et compacte dans l'espace disponible
-  const features = ['📷 Frigo', '🍳 Recettes', '📅 Planning', '🛒 Courses', '♻️ Anti-gaspi', '✓ Badges'];
-
-  ctx.fillStyle = black;
-  ctx.font = `bold 15px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif`;
-
-  // 2 colonnes serrées, bien dans la zone content
-  const col1X = contentX;
-  const col2X = contentX + (contentW / 2);
-
-  for (let i = 0; i < features.length; i++) {
-    const isCol2 = i >= 3;
-    const fx = isCol2 ? col2X : col1X;
-    const localI = isCol2 ? i - 3 : i;
-    const fy = ry + (localI * 24);
+  ctx.font = `600 15px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif`;
+  const ROW_H = 26;
+  for (let i = 0; i < 6; i++) {
+    const col = i < 3 ? 0 : 1;
+    const row = i < 3 ? i : i - 3;
+    const fx = CONT_X + col * HALF_W + 4;
+    const fy = ry + row * ROW_H + 16;
     ctx.fillText(features[i], fx, fy);
   }
+  ry += 3 * ROW_H + 12;
 
-  ry += 76;
-
-  // Code promo ou texte
+  // Ligne séparatrice
   if (promoCode) {
-    ctx.fillStyle = black;
+    ctx.strokeStyle = '#dddddd';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(CONT_X + 10, ry);
+    ctx.lineTo(CONT_X + CONT_W - 10, ry);
+    ctx.stroke();
+    ry += 12;
+
+    // Promo code
+    ctx.fillStyle = darkGray;
     ctx.textAlign = 'center';
-    ctx.font = `600 12px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif`;
-    ctx.fillText('CODE EXCLUSIF', W / 2, ry + 12);
+    ctx.font = `600 11px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif`;
+    ctx.fillText('CODE EXCLUSIF', CONT_X + CONT_W / 2, ry + 11);
     ry += 18;
 
-    ctx.font = `900 28px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif`;
-    ctx.fillText(promoCode.toUpperCase(), W / 2, ry + 28);
-    ry += 8;
+    ctx.fillStyle = black;
+    ctx.font = `900 26px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif`;
+    ctx.fillText(promoCode.toUpperCase(), CONT_X + CONT_W / 2, ry + 26);
+    ry += 36;
   }
 
-  // ── BOTTOM: Black bar full width ──
-  const footerH = 38;
+  // PWA CTA (fill rest of space)
+  const ctaY = Math.max(ry + 8, CONTENT_BOT - 60);
+  ctx.textAlign = 'center';
   ctx.fillStyle = black;
-  ctx.fillRect(0, H - footerH, W, footerH);
+  ctx.font = `bold 12px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif`;
+  ctx.fillText('Web App — Sans téléchargement', CONT_X + CONT_W / 2, ctaY + 13);
+  ctx.fillStyle = darkGray;
+  ctx.font = `400 11px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif`;
+  ctx.fillText('Ouvre directement depuis ton navigateur', CONT_X + CONT_W / 2, ctaY + 28);
 
+  // ── 5. FOOTER ──
+  ctx.fillStyle = black;
+  ctx.fillRect(0, CONTENT_BOT, W, FOOTER_H);
   ctx.fillStyle = white;
   ctx.textAlign = 'center';
-  ctx.font = `900 15px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif`;
-  ctx.fillText('SCANNE & TÉLÉCHARGE', W / 2, H - 18);
+  ctx.font = `900 17px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif`;
+  ctx.fillText('📱 SCANNE & UTILISE MAINTENANT — GRATUIT', W / 2, CONTENT_BOT + 27);
 
-  ctx.font = `bold 11px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif`;
-  ctx.fillText('monfrigo.app', W / 2, H - 4);
-
-  // ── Border + séparateur ──
+  // ── 6. BORDURE ──
   ctx.strokeStyle = black;
   ctx.lineWidth = 3;
   ctx.strokeRect(2, 2, W - 4, H - 4);
-
-  // Vertical separator entre QR et contenu
-  ctx.lineWidth = 1.5;
-  ctx.beginPath();
-  ctx.moveTo(verticalSeparator, headerH);
-  ctx.lineTo(verticalSeparator, H - footerH);
-  ctx.stroke();
 }
 
 async function drawEcoVisual(
@@ -239,42 +287,48 @@ async function drawEcoVisual(
 
   const scale = Math.min(W, H) / 1080;
   const pad = 60 * scale;
-  const black = '#000000';
   const dark = '#18181b';
   const gray = '#52525b';
+  const lightGray = '#a1a1aa';
 
   // White background
   ctx.fillStyle = '#ffffff';
   ctx.fillRect(0, 0, W, H);
 
-  // ── TOP: Black banner ──
-  const bannerH = 220 * scale;
-  ctx.fillStyle = black;
-  ctx.fillRect(0, 0, W, bannerH);
+  // ── TOP: Encadrés légers — ZÉRO aplat noir ──
+  // Ligne fine en haut
+  ctx.fillStyle = dark;
+  ctx.fillRect(pad, 0, W - pad * 2, 4 * scale);
 
-  // Mascot in banner
-  const mascotSize = Math.round(100 * scale);
+  // Logo + mascot — texte pur, pas de fond
+  let y = 30 * scale;
+  const mascotSize = Math.round(80 * scale);
   try {
     const mascotImg = await loadImage('/mascot-happy.png');
     const nameText = 'MonFrigo.app';
-    ctx.font = `bold ${64 * scale}px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif`;
+    ctx.font = `900 ${58 * scale}px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif`;
     const nameW = ctx.measureText(nameText).width;
-    const totalW = mascotSize + 20 * scale + nameW;
+    const totalW = mascotSize + 16 * scale + nameW;
     const startX = (W - totalW) / 2;
-    ctx.drawImage(mascotImg, startX, (bannerH - mascotSize) / 2, mascotSize, mascotSize);
-    ctx.fillStyle = '#ffffff';
+    ctx.drawImage(mascotImg, startX, y, mascotSize, mascotSize);
+    ctx.fillStyle = dark;
     ctx.textAlign = 'left';
-    ctx.fillText(nameText, startX + mascotSize + 20 * scale, bannerH / 2 + 22 * scale);
+    ctx.fillText(nameText, startX + mascotSize + 16 * scale, y + mascotSize * 0.75);
   } catch {
-    ctx.fillStyle = '#ffffff';
-    ctx.font = `bold ${72 * scale}px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif`;
+    ctx.fillStyle = dark;
+    ctx.font = `900 ${58 * scale}px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif`;
     ctx.textAlign = 'center';
-    ctx.fillText('MonFrigo.app', W / 2, bannerH / 2 + 26 * scale);
+    ctx.fillText('MonFrigo.app', W / 2, y + mascotSize * 0.75);
   }
   ctx.textAlign = 'center';
 
+  // Ligne séparatrice fine sous le logo
+  y += mascotSize + 20 * scale;
+  ctx.fillStyle = '#d4d4d8';
+  ctx.fillRect(pad, y, W - pad * 2, 2 * scale);
+
   // ── BIG HOOK ──
-  let y = bannerH + 50 * scale;
+  y += 30 * scale;
 
   ctx.fillStyle = dark;
   ctx.font = `900 ${58 * scale}px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif`;
@@ -453,15 +507,20 @@ async function drawEcoVisual(
 
   ctx.fillStyle = gray;
   ctx.font = `500 ${20 * scale}px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif`;
-  ctx.fillText('Scanne pour', rightX, bottomY + 85 * scale);
-  ctx.fillText('télécharger', rightX, bottomY + 110 * scale);
+  ctx.fillText('Scanne & utilise', rightX, bottomY + 85 * scale);
+  ctx.fillText('maintenant !', rightX, bottomY + 110 * scale);
+  ctx.fillStyle = lightGray;
+  ctx.font = `400 ${16 * scale}px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif`;
+  ctx.fillText('Web App — sans téléchargement', rightX, bottomY + 140 * scale);
 
   ctx.textAlign = 'center';
 
-  // Footer
-  ctx.fillStyle = '#a1a1aa';
+  // Footer — ligne fine + texte, zéro fond noir
+  ctx.fillStyle = '#d4d4d8';
+  ctx.fillRect(pad, H - 36 * scale, W - pad * 2, 1.5 * scale);
+  ctx.fillStyle = lightGray;
   ctx.font = `400 ${14 * scale}px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif`;
-  ctx.fillText('iOS · Android · Web — monfrigo.app', W / 2, H - 20 * scale);
+  ctx.fillText('Web App gratuite · Aucun téléchargement requis · monfrigo.app', W / 2, H - 14 * scale);
 
   // Bold border
   ctx.strokeStyle = dark;
@@ -678,7 +737,7 @@ async function drawVisual(
   // Bottom
   ctx.fillStyle = style.text + '55';
   ctx.font = `400 ${16 * scale}px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif`;
-  ctx.fillText('Disponible sur iOS, Android & Web', W / 2, H - pad / 2);
+  ctx.fillText('Web App gratuite · Aucun téléchargement · monfrigo.app', W / 2, H - pad / 2);
 
   // Border
   ctx.strokeStyle = style.accent + '25';
