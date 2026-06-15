@@ -6,8 +6,7 @@ import AppShell from '@/components/AppShell';
 import NotificationsToggle from '@/components/NotificationsToggle';
 import { useTheme } from '@/components/ThemeProvider';
 import InfoBubble from '@/components/InfoBubble';
-import { useT } from '@/lib/i18n';
-import type { Lang } from '@/lib/i18n';
+import { useT, LANGUAGES } from '@/lib/i18n';
 import { UserCircle, LogOut, Shield, Heart, ShoppingCart, Refrigerator, Sun, Moon, Save, Check, AlertTriangle, Baby, Users, History, Sparkles, ChefHat, Zap, Crown, Star, Plus, Loader2, CalendarDays, ChevronRight, PiggyBank, Leaf, Flame, Receipt, Tag } from 'lucide-react';
 
 // Bouton qui crée une Checkout Session Stripe et redirige
@@ -110,7 +109,7 @@ const KID_MODES = [
 export default function ProfilePage() {
   const router = useRouter();
   const { theme, toggle } = useTheme();
-  const { t, lang, setLang } = useT();
+  const { t, lang, setLang, isLoading } = useT();
   const [user, setUser] = useState<User | null>(null);
   const [stats, setStats] = useState<Stats>({ fridgeCount: 0, favCount: 0, listCount: 0 });
   const [impact, setImpact] = useState<{ sessionsCooked: number; sessionsThisMonth: number; mealsCooked: number; moneyCooked: number; savedVsTakeout: number; avgCaloriesPerServing: number; topCuisine: string | null; trackedExpiry: number; kgCooked: number; kgCookedMonth: number; kgSaved: number; kgSavedMonth: number; co2Saved: number; co2SavedMonth: number } | null>(null);
@@ -880,23 +879,19 @@ export default function ProfilePage() {
             {/* Language selector */}
             <div className="card p-4">
               <p className="text-sm font-semibold mb-3">{t('profile.language')}</p>
-              <div className="flex rounded-xl p-0.5" style={{ backgroundColor: 'var(--bg-inset)' }}>
-                {([
-                  { code: 'fr' as Lang, label: '\u{1F1EB}\u{1F1F7} Français' },
-                  { code: 'en' as Lang, label: '\u{1F1EC}\u{1F1E7} English' },
-                ] as const).map(({ code, label }) => (
-                  <button
-                    key={code}
-                    onClick={() => setLang(code)}
-                    className="flex-1 py-2 rounded-lg text-sm font-medium transition-all text-center"
-                    style={lang === code
-                      ? { backgroundColor: 'var(--accent)', color: 'var(--accent-text)', boxShadow: '0 1px 3px rgba(0,0,0,.12)' }
-                      : { color: 'var(--text-muted)' }}
-                  >
-                    {label}
+              <div className="grid grid-cols-2 gap-1.5">
+                {LANGUAGES.map(l => (
+                  <button key={l.code} onClick={() => setLang(l.code)}
+                    className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-all text-left"
+                    style={lang === l.code
+                      ? { backgroundColor: 'color-mix(in srgb, var(--accent) 15%, transparent)', border: '1.5px solid var(--accent)' }
+                      : { backgroundColor: 'var(--bg-inset)', border: '1.5px solid transparent' }}>
+                    <span>{l.flag}</span>
+                    <span className="font-medium truncate">{l.label}</span>
                   </button>
                 ))}
               </div>
+              {isLoading && <p className="text-xs mt-2 text-center" style={{ color: 'var(--text-muted)' }}>{t('onboarding.lang.loading')}</p>}
             </div>
 
             {user.role === 'ADMIN' && (

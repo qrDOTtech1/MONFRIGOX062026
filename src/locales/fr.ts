@@ -614,6 +614,10 @@ const fr: Record<string, string> = {
   'onboarding.welcome.title': 'Bienvenue sur Mon Frigo !',
   'onboarding.welcome.sub': 'On va personnaliser ton expérience en quelques étapes.',
   // welcome step (step 0)
+  'onboarding.lang.title': 'Choisis ta langue',
+  'onboarding.lang.sub': 'Tu pourras changer à tout moment dans les paramètres.',
+  'onboarding.lang.continue': 'Continuer',
+  'onboarding.lang.loading': 'Traduction en cours…',
   'onboarding.step0.title': 'MonFrigo',
   'onboarding.step0.welcome': 'Bienvenue !',
   'onboarding.step0.sub': '2 minutes pour personnaliser tes recettes selon tes goûts, objectifs et habitudes.',

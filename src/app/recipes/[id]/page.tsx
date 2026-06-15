@@ -337,6 +337,18 @@ export default function RecipeDetailPage() {
       });
   }, [id]);
 
+  // Dynamic translation for non-FR/EN languages
+  useEffect(() => {
+    if (!recipe || lang === 'fr' || lang === 'en') return;
+    fetch('/api/translate/recipe', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: recipe.name, description: recipe.description, instructions: recipe.instructions, ingredients: recipe.ingredients, lang }),
+    }).then(r => r.ok ? r.json() : null).then(data => {
+      if (data) setRecipe(prev => prev ? { ...prev, name: data.name, description: data.description, instructions: data.instructions, ingredients: data.ingredients || prev.ingredients } : prev);
+    });
+  }, [recipe?.id, lang]);
+
   // Chargement du coût estimé
   useEffect(() => {
     if (!id) return;

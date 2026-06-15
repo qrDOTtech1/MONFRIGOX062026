@@ -2,8 +2,8 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { ChevronRight, ChevronLeft, Check, Loader2, Refrigerator } from 'lucide-react';
-import { useT } from '@/lib/i18n';
+import { ChevronRight, ChevronLeft, Check, Loader2, Refrigerator, Globe } from 'lucide-react';
+import { useT, LANGUAGES } from '@/lib/i18n';
 
 const TOTAL_STEPS = 10;
 
@@ -23,8 +23,8 @@ function StepDots({ current }: { current: number }) {
 
 export default function OnboardingPage() {
   const router = useRouter();
-  const { t } = useT();
-  const [step, setStep] = useState(0);
+  const { t, lang, setLang, isLoading: langLoading } = useT();
+  const [step, setStep] = useState(-1);
 
   const [dietMode,   setDietMode]   = useState('');
   const [allergens,  setAllergens]  = useState<string[]>([]);
@@ -157,7 +157,42 @@ export default function OnboardingPage() {
   }
 
   function next() { setStep(s => s + 1); }
-  function back() { setStep(s => Math.max(0, s - 1)); }
+  function back() { setStep(s => Math.max(-1, s - 1)); }
+
+  if (step === -1) return (
+    <div className="min-h-dvh flex flex-col items-center justify-center px-6 text-center fade-in"
+      style={{ backgroundColor: 'var(--bg)' }}>
+      <Globe className="w-12 h-12 mb-4" style={{ color: 'var(--accent)' }} />
+      <h1 className="text-2xl font-bold mb-2">{t('onboarding.lang.title')}</h1>
+      <p className="text-sm mb-6" style={{ color: 'var(--text-muted)' }}>{t('onboarding.lang.sub')}</p>
+      <div className="grid grid-cols-2 gap-2 w-full max-w-sm mb-8">
+        {LANGUAGES.map(l => (
+          <button key={l.code} onClick={() => setLang(l.code)}
+            className="flex items-center gap-2.5 px-4 py-3 rounded-xl text-left transition-all"
+            style={{
+              backgroundColor: lang === l.code ? 'color-mix(in srgb, var(--accent) 15%, transparent)' : 'var(--bg-card)',
+              border: lang === l.code ? '2px solid var(--accent)' : '2px solid var(--border)',
+            }}>
+            <span className="text-xl">{l.flag}</span>
+            <span className="text-sm font-medium">{l.label}</span>
+            {lang === l.code && <Check className="w-4 h-4 ml-auto" style={{ color: 'var(--accent)' }} />}
+          </button>
+        ))}
+      </div>
+      {langLoading && (
+        <div className="flex items-center gap-2 mb-4 text-xs" style={{ color: 'var(--text-muted)' }}>
+          <Loader2 className="w-3 h-3 animate-spin" />
+          {t('onboarding.lang.loading')}
+        </div>
+      )}
+      <button onClick={next}
+        className="w-full max-w-xs flex items-center justify-center gap-2 py-4 rounded-2xl text-base font-semibold transition-all active:scale-[0.97]"
+        style={{ backgroundColor: 'var(--accent)', color: 'var(--accent-text)' }}>
+        {t('onboarding.lang.continue')}
+        <ChevronRight className="w-5 h-5" />
+      </button>
+    </div>
+  );
 
   if (step === 0) return (
     <div className="min-h-dvh flex flex-col items-center justify-center px-6 text-center fade-in"

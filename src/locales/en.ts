@@ -614,6 +614,10 @@ const en: Record<string, string> = {
   'onboarding.welcome.title': 'Welcome to Mon Frigo!',
   'onboarding.welcome.sub': "Let's personalize your experience in a few steps.",
   // welcome step (step 0)
+  'onboarding.lang.title': 'Choose your language',
+  'onboarding.lang.sub': 'You can change this anytime in settings.',
+  'onboarding.lang.continue': 'Continue',
+  'onboarding.lang.loading': 'Translating…',
   'onboarding.step0.title': 'MonFrigo',
   'onboarding.step0.welcome': 'Welcome!',
   'onboarding.step0.sub': '2 minutes to personalize your recipes based on your tastes, goals and habits.',
