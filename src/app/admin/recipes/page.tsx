@@ -1,5 +1,6 @@
 'use client';
 
+import MascotLoader from '@/components/MascotLoader';
 import { useState, useEffect, useCallback } from 'react';
 import {
   ChefHat, Trash2, Plus, Clock, Pencil, X, Check,
