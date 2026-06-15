@@ -14,6 +14,11 @@ interface DetectedItem {
   confidence: number;
   ingredientId?: string;
   manual?: boolean; // ajouté à la main (produit manqué par l'IA)
+  expiresAt?: string | null;   // date de péremption estimée (yyyy-mm-dd)
+  quantity?: number;
+  unit?: string;
+  freezable?: boolean;
+  freezeTip?: string | null;
 }
 
 interface IngredientSuggestion { id: string; name: string; emoji: string; }
@@ -354,7 +359,12 @@ function ScanPageInner() {
     try {
       await fetch('/api/fridge', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ingredientId }),
+        body: JSON.stringify({
+          ingredientId,
+          quantity: item.quantity,
+          unit: item.unit,
+          expiresAt: item.expiresAt || undefined, // date de péremption estimée
+        }),
       });
       return true;
     } catch { return false; }
@@ -646,6 +656,14 @@ function ScanPageInner() {
               </button>
             </div>
 
+            {/* Rappel congélation */}
+            {results.some(r => r.freezable) && (
+              <div className="rounded-lg px-3 py-2 mb-2 text-xs flex items-start gap-2" style={{ backgroundColor: 'rgba(59,130,246,0.06)', border: '1px solid rgba(59,130,246,0.15)', color: 'var(--text-secondary)' }}>
+                <span>❄️</span>
+                <span>Certains aliments (marqués <strong>congelable</strong>) peuvent être congelés pour éviter le gaspillage et se conserver bien plus longtemps.</span>
+              </div>
+            )}
+
             {/* Liste avec cases à cocher */}
             <div className="space-y-1.5">
               {results.map((item, i) => {
@@ -661,10 +679,27 @@ function ScanPageInner() {
                       {isSel && <Check className="w-3.5 h-3.5" style={{ color: 'var(--accent-text)' }} />}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="font-medium text-sm truncate">{item.name}</p>
-                      <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-                        {item.manual ? 'Ajouté manuellement' : `${Math.round(item.confidence * 100)}% confiance`}
+                      <p className="font-medium text-sm truncate">
+                        {item.name}
+                        {item.quantity && item.quantity !== 1 && (
+                          <span className="font-normal" style={{ color: 'var(--text-muted)' }}> · {item.quantity} {item.unit}</span>
+                        )}
                       </p>
+                      <div className="flex items-center gap-1.5 flex-wrap mt-0.5">
+                        <span className="text-[11px]" style={{ color: 'var(--text-muted)' }}>
+                          {item.manual ? 'Ajouté manuellement' : `${Math.round(item.confidence * 100)}% confiance`}
+                        </span>
+                        {item.expiresAt && (
+                          <span className="text-[10px] px-1.5 py-0.5 rounded-full" style={{ backgroundColor: 'rgba(234,179,8,0.12)', color: 'rgb(180,120,0)' }}>
+                            ⏳ ~{new Date(item.expiresAt).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}
+                          </span>
+                        )}
+                        {item.freezable && (
+                          <span className="text-[10px] px-1.5 py-0.5 rounded-full" style={{ backgroundColor: 'rgba(59,130,246,0.12)', color: 'rgb(59,130,246)' }} title={item.freezeTip || 'Peut être congelé'}>
+                            ❄️ congelable
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </button>
                 );

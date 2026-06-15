@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth';
 import { analyzeImage } from '@/lib/ollama';
+import { getShelfInfo, estimateExpiryDate } from '@/lib/shelf-life';
 
 export async function POST(req: NextRequest) {
   const user = await getCurrentUser();
@@ -43,12 +44,17 @@ Sois précis et utilise des noms simples en français (ex: "tomate", "lait", "be
       items.map(async (item: { name: string; confidence: number }) => {
         const ingredient = await prisma.ingredient.findFirst({
           where: { name: { contains: item.name, mode: 'insensitive' } },
-          select: { id: true, name: true },
+          select: { id: true, name: true, category: true },
         });
+        const name = ingredient?.name || item.name;
+        const shelf = getShelfInfo(name, ingredient?.category);
         return {
-          name: ingredient?.name || item.name,
+          name,
           confidence: item.confidence,
           ingredientId: ingredient?.id || null,
+          expiresAt: estimateExpiryDate(name, ingredient?.category),
+          freezable: shelf?.freezable ?? false,
+          freezeTip: shelf?.tip ?? null,
         };
       })
     );

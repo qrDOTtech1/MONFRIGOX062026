@@ -1,6 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth';
+import { getShelfInfo, estimateExpiryDate } from '@/lib/shelf-life';
+
+// Extrait une quantité / unité d'une ligne de ticket (best-effort)
+function extractQuantity(raw: string): { quantity: number; unit: string } {
+  const s = raw.toLowerCase().replace(',', '.');
+  let m;
+  if ((m = s.match(/(\d+(?:\.\d+)?)\s*kg/))) return { quantity: parseFloat(m[1]), unit: 'kg' };
+  if ((m = s.match(/(\d+(?:\.\d+)?)\s*g\b/))) return { quantity: parseFloat(m[1]), unit: 'g' };
+  if ((m = s.match(/(\d+(?:\.\d+)?)\s*(?:l|litre)\b/))) return { quantity: parseFloat(m[1]), unit: 'L' };
+  if ((m = s.match(/(?:^|\s)x\s?(\d+)|(\d+)\s?x(?:\s|$)/))) return { quantity: parseInt(m[1] || m[2]), unit: 'unité' };
+  return { quantity: 1, unit: 'unité' };
+}
 
 /**
  * POST /api/scan/receipt  { text }
@@ -103,12 +115,14 @@ export async function POST(req: NextRequest) {
   const ingredientsNorm = allIngredients.map(i => ({ ...i, n: norm(i.name) }));
 
   const lines = text.split('\n').map(l => l.trim()).filter(l => l.length >= 3);
-  const found = new Map<string, { name: string; confidence: number; ingredientId?: string }>();
+  type Found = { name: string; confidence: number; ingredientId?: string; quantity: number; unit: string };
+  const found = new Map<string, Found>();
 
   for (const rawLine of lines) {
     if (SKIP_PATTERNS.some(p => p.test(rawLine))) continue;
     const line = norm(rawLine);
     if (line.length < 3) continue;
+    const qty = extractQuantity(rawLine);
 
     // 1. Alias tickets (plus spécifiques, confiance haute)
     let matched = false;
@@ -118,7 +132,7 @@ export async function POST(req: NextRequest) {
         if (!found.has(k)) {
           const ing = ingredientsNorm.find(i => i.n === k)
             || ingredientsNorm.find(i => i.n.includes(k) || k.includes(i.n));
-          found.set(k, { name: alias.name, confidence: 0.85, ingredientId: ing?.id });
+          found.set(k, { name: alias.name, confidence: 0.85, ingredientId: ing?.id, quantity: qty.quantity, unit: qty.unit });
         }
         matched = true;
         break;
@@ -130,14 +144,25 @@ export async function POST(req: NextRequest) {
     for (const ing of ingredientsNorm) {
       if (ing.n.length >= 4 && line.includes(ing.n)) {
         if (!found.has(ing.n)) {
-          found.set(ing.n, { name: ing.name, confidence: 0.7, ingredientId: ing.id });
+          found.set(ing.n, { name: ing.name, confidence: 0.7, ingredientId: ing.id, quantity: qty.quantity, unit: qty.unit });
         }
         break;
       }
     }
   }
 
-  const items = Array.from(found.values());
+  // Enrichit chaque produit : date de péremption estimée + congelable
+  const items = Array.from(found.values()).map(it => {
+    const shelf = getShelfInfo(it.name);
+    return {
+      ...it,
+      expiresAt: estimateExpiryDate(it.name),
+      shelfDays: shelf?.days ?? null,
+      freezable: shelf?.freezable ?? false,
+      freezerDays: shelf?.freezerDays ?? null,
+      freezeTip: shelf?.tip ?? null,
+    };
+  });
   return NextResponse.json({
     items,
     linesAnalyzed: lines.length,
