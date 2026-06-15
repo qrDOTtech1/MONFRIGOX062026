@@ -1,9 +1,10 @@
-﻿'use client';
+'use client';
 
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import AppShell from '@/components/AppShell';
 import MascotLoader from '@/components/MascotLoader';
+import { useT } from '@/lib/i18n';
 import {
   ArrowLeft, Clock, Users, Heart, ShoppingCart, Check, X, ChefHat,
   Minus, Plus, Flame, Wheat, Droplets, Beef, Sparkles,
@@ -88,15 +89,17 @@ const NUTRISCORE_COLORS: Record<string, string> = {
   A: 'bg-emerald-600', B: 'bg-lime-500', C: 'bg-yellow-500', D: 'bg-orange-500', E: 'bg-red-600',
 };
 
-const MEAL_TYPES = [
-  { key: 'BREAKFAST', label: 'Matin' },
-  { key: 'LUNCH', label: 'Déjeuner' },
-  { key: 'DINNER', label: 'Dîner' },
-];
-
 export default function RecipeDetailPage() {
   const { id } = useParams();
   const router = useRouter();
+  const { t } = useT();
+
+  const MEAL_TYPES = [
+    { key: 'BREAKFAST', label: t('recipe.mealType.breakfast') },
+    { key: 'LUNCH', label: t('recipe.mealType.lunch') },
+    { key: 'DINNER', label: t('recipe.mealType.dinner') },
+  ];
+
   const [recipe, setRecipe] = useState<Recipe | null>(null);
   const [loading, setLoading] = useState(true);
   const [servings, setServings] = useState<number>(4);
@@ -229,7 +232,7 @@ export default function RecipeDetailPage() {
       // Ingredients
       ctx.fillStyle = '#fbbf24';
       ctx.font = 'bold 30px system-ui, sans-serif';
-      ctx.fillText('Ingrédients', 70, y); y += 40;
+      ctx.fillText(t('recipe.ingredients.title'), 70, y); y += 40;
       ctx.fillStyle = 'rgba(255,255,255,0.9)';
       ctx.font = '26px system-ui, sans-serif';
       const ratio = servings / (recipe.servings || 1);
@@ -441,7 +444,7 @@ export default function RecipeDetailPage() {
     setDeletingNote(false);
   }
 
-  // Auto-enrichissement : si la recette n'a pas de nutrition → l'IA traduit + calcule en arrière-plan
+  // Auto-enrichissement
   useEffect(() => {
     if (!recipe || recipe.calories !== null || enrichTriggered.current) return;
     enrichTriggered.current = true;
@@ -543,7 +546,7 @@ export default function RecipeDetailPage() {
   if (loading) {
     return (
       <AppShell>
-        <MascotLoader message="Chargement de la recette…" variant="chef" />
+        <MascotLoader message={t('loading.recipe')} variant="chef" />
       </AppShell>
     );
   }
@@ -551,7 +554,7 @@ export default function RecipeDetailPage() {
   if (!recipe) {
     return (
       <AppShell>
-        <p className="text-center py-20" style={{ color: 'var(--text-muted)' }}>Recette introuvable</p>
+        <p className="text-center py-20" style={{ color: 'var(--text-muted)' }}>{t('recipe.notFound')}</p>
       </AppShell>
     );
   }
@@ -561,12 +564,16 @@ export default function RecipeDetailPage() {
   const pct = total > 0 ? Math.round((available / total) * 100) : 0;
 
   const diffColors: Record<string, string> = { FACILE: 'badge-easy', MOYEN: 'badge-medium', DIFFICILE: 'badge-hard' };
-  const diffLabels: Record<string, string> = { FACILE: 'Facile', MOYEN: 'Moyen', DIFFICILE: 'Difficile' };
+  const diffLabels: Record<string, string> = {
+    FACILE: t('dashboard.difficulty.easy'),
+    MOYEN: t('dashboard.difficulty.medium'),
+    DIFFICILE: t('dashboard.difficulty.hard'),
+  };
 
   return (
     <AppShell>
       <button onClick={() => router.back()} className="flex items-center gap-1.5 text-sm mb-4 transition-colors" style={{ color: 'var(--text-muted)' }}>
-        <ArrowLeft className="w-4 h-4" /> Retour
+        <ArrowLeft className="w-4 h-4" /> {t('recipe.back')}
       </button>
 
       {recipe.imageUrl && (
@@ -581,7 +588,7 @@ export default function RecipeDetailPage() {
         <h1 className="text-xl font-semibold mb-1.5">{recipe.name}</h1>
         {recipe.isCommunity && recipe.authorName && (
           <p className="text-xs mb-1.5 inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full" style={{ backgroundColor: 'rgba(59,130,246,0.1)', color: 'rgb(59,130,246)' }}>
-            👥 Partagé par {recipe.authorName}
+            👥 {t('recipe.sharedBy', { name: recipe.authorName })}
           </p>
         )}
         <p className="text-sm mb-3" style={{ color: 'var(--text-secondary)' }}>{recipe.description}</p>
@@ -591,9 +598,9 @@ export default function RecipeDetailPage() {
           <div className="rounded-lg p-3 mb-3 flex items-start gap-2.5" style={{ backgroundColor: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.25)' }}>
             <AlertTriangle className="w-4 h-4 text-red-500 shrink-0 mt-0.5" />
             <div>
-              <p className="text-sm font-medium text-red-600 dark:text-red-400">Attention — allergènes détectés</p>
+              <p className="text-sm font-medium text-red-600 dark:text-red-400">{t('recipe.allergenWarning')}</p>
               <p className="text-xs mt-0.5" style={{ color: 'var(--text-secondary)' }}>
-                Cette recette peut contenir : {recipe.allergenWarnings!.map(a => ALLERGEN_LABELS[a] || a).join(', ')}.
+                {t('recipe.allergenDesc', { list: recipe.allergenWarnings!.map(a => ALLERGEN_LABELS[a] || a).join(', ') })}
               </p>
             </div>
           </div>
@@ -602,7 +609,7 @@ export default function RecipeDetailPage() {
           <div className="rounded-lg p-3 mb-3 flex items-start gap-2.5" style={{ backgroundColor: 'rgba(234,179,8,0.06)', border: '1px solid rgba(234,179,8,0.2)' }}>
             <Ban className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
             <div>
-              <p className="text-sm font-medium text-amber-600 dark:text-amber-400">Non compatible avec votre régime {recipe.dietLabel}</p>
+              <p className="text-sm font-medium text-amber-600 dark:text-amber-400">{t('recipe.dietConflict', { diet: recipe.dietLabel ?? '' })}</p>
               {(recipe.dietConflictIngredients?.length ?? 0) > 0 && (
                 <p className="text-xs mt-0.5" style={{ color: 'var(--text-secondary)' }}>
                   En cause : {recipe.dietConflictIngredients!.slice(0, 4).join(', ')}.
@@ -630,7 +637,7 @@ export default function RecipeDetailPage() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Users className="w-4 h-4" style={{ color: 'var(--text-secondary)' }} />
-              <span className="text-sm font-medium">Portions</span>
+              <span className="text-sm font-medium">{t('recipe.servings')}</span>
             </div>
             <div className="flex items-center gap-2.5">
               <button
@@ -648,12 +655,12 @@ export default function RecipeDetailPage() {
               >
                 <Plus className="w-3.5 h-3.5" />
               </button>
-              <span className="text-xs" style={{ color: 'var(--text-muted)' }}>pers.</span>
+              <span className="text-xs" style={{ color: 'var(--text-muted)' }}>{t('recipe.servingsUnit')}</span>
             </div>
           </div>
           {servings !== recipe.servings && (
             <p className="text-[10px] mt-2 text-center" style={{ color: 'var(--text-muted)' }}>
-              Quantités ajustées (base {recipe.servings} pers.)
+              {t('recipe.servingsAdjusted', { n: String(recipe.servings) })}
             </p>
           )}
         </div>
@@ -662,17 +669,17 @@ export default function RecipeDetailPage() {
           onClick={() => router.push(`/recipes/${recipe.id}/cook`)}
           className="btn-primary w-full flex items-center justify-center gap-2 mb-3 !py-3 text-base"
         >
-          <ChefHat className="w-5 h-5" /> Cuisiner ({servings} pers.)
+          <ChefHat className="w-5 h-5" /> {t('recipe.cook', { n: String(servings) })}
         </button>
 
         <div className="flex gap-2">
           <button onClick={toggleFav} className={`btn-secondary flex items-center gap-2 flex-1 justify-center ${recipe.isFavorite ? '!border-red-400' : ''}`}>
             <Heart className={`w-4 h-4 ${recipe.isFavorite ? 'fill-red-500 text-red-500' : ''}`} />
-            {recipe.isFavorite ? 'Favori' : 'Ajouter'}
+            {recipe.isFavorite ? t('recipe.removeFav') : t('recipe.addFav')}
           </button>
           {pct < 100 && (
             <button onClick={generateList} className="btn-primary flex items-center gap-2 flex-1 justify-center">
-              <ShoppingCart className="w-4 h-4" /> Liste de courses
+              <ShoppingCart className="w-4 h-4" /> {t('recipe.shoppingList')}
             </button>
           )}
         </div>
@@ -680,36 +687,38 @@ export default function RecipeDetailPage() {
         {/* Partager en image */}
         <button onClick={shareAsImage} disabled={sharing} className="btn-secondary w-full flex items-center justify-center gap-2 mt-2">
           {sharing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Share2 className="w-4 h-4" />}
-          {sharing ? 'Création...' : 'Partager en image'}
+          {sharing ? t('recipe.sharing') : t('recipe.shareImage')}
         </button>
 
         {/* Ajouter au planning */}
         <button onClick={() => setShowPlan(!showPlan)} className="btn-secondary w-full flex items-center justify-center gap-2 mt-2">
-          <CalendarPlus className="w-4 h-4" /> Ajouter au planning
+          <CalendarPlus className="w-4 h-4" /> {t('recipe.addPlanning')}
         </button>
         {showPlan && (
           <div className="card p-3.5 mt-2 fade-in">
             <div className="grid grid-cols-2 gap-2 mb-2.5">
               <div>
-                <label className="text-[10px] block mb-1" style={{ color: 'var(--text-muted)' }}>Date</label>
+                <label className="text-[10px] block mb-1" style={{ color: 'var(--text-muted)' }}>{t('recipe.planDate')}</label>
                 <input type="date" value={planDate} onChange={e => setPlanDate(e.target.value)} className="input-field !py-2 text-sm" />
               </div>
               <div>
-                <label className="text-[10px] block mb-1" style={{ color: 'var(--text-muted)' }}>Repas</label>
+                <label className="text-[10px] block mb-1" style={{ color: 'var(--text-muted)' }}>{t('recipe.planMeal')}</label>
                 <select value={planMeal} onChange={e => setPlanMeal(e.target.value)} className="input-field !py-2 text-sm">
                   {MEAL_TYPES.map(m => <option key={m.key} value={m.key}>{m.label}</option>)}
                 </select>
               </div>
             </div>
             <button onClick={addToPlanning} disabled={planSaved} className="btn-primary w-full flex items-center justify-center gap-2 disabled:opacity-60">
-              {planSaved ? <><Check className="w-4 h-4" /> Ajouté au planning</> : <><CalendarPlus className="w-4 h-4" /> Confirmer</>}
+              {planSaved
+                ? <><Check className="w-4 h-4" /> {t('recipe.planAdded')}</>
+                : <><CalendarPlus className="w-4 h-4" /> {t('recipe.planConfirm')}</>}
             </button>
           </div>
         )}
 
         {/* Ajouter à un carnet */}
         <button onClick={openCollections} className="btn-secondary w-full flex items-center justify-center gap-2 mt-2">
-          <FolderHeart className="w-4 h-4" /> Ajouter à un carnet
+          <FolderHeart className="w-4 h-4" /> {t('recipe.addCollection')}
         </button>
 
         {/* Bouton "J'ai cuisiné" + notation */}
@@ -720,12 +729,12 @@ export default function RecipeDetailPage() {
             ? { backgroundColor: 'rgba(16,185,129,0.1)', color: '#10b981', border: '1px solid rgba(16,185,129,0.2)' }
             : { backgroundColor: 'rgba(234,179,8,0.08)', color: '#ca8a04', border: '1px solid rgba(234,179,8,0.15)' }}
         >
-          {cookDone ? <><Check className="w-4 h-4" /> Enregistré !</> : '🍳 J\'ai cuisiné cette recette'}
+          {cookDone ? <><Check className="w-4 h-4" /> {t('recipe.cookedSaved')}</> : `🍳 ${t('recipe.cookedBtn')}`}
         </button>
 
         {showCookLog && (
           <div className="card p-3.5 mt-2 fade-in">
-            <p className="text-xs font-medium mb-2" style={{ color: 'var(--text-primary)' }}>Note cette recette</p>
+            <p className="text-xs font-medium mb-2" style={{ color: 'var(--text-primary)' }}>{t('recipe.rateTitle')}</p>
             <div className="flex gap-1 mb-3 justify-center">
               {[1, 2, 3, 4, 5].map(star => (
                 <button key={star} onClick={() => setCookRating(star)} className="text-2xl transition-transform hover:scale-110">
@@ -734,7 +743,11 @@ export default function RecipeDetailPage() {
               ))}
             </div>
             <button onClick={logCook} disabled={cookSaving} className="btn-primary w-full flex items-center justify-center gap-2 disabled:opacity-60">
-              {cookSaving ? 'Enregistrement...' : `Valider${cookRating > 0 ? ` (${cookRating}/5)` : ''}`}
+              {cookSaving
+                ? t('recipe.rateSaving')
+                : cookRating > 0
+                  ? t('recipe.rateSaveWith', { n: String(cookRating) })
+                  : t('recipe.rateSave')}
             </button>
           </div>
         )}
@@ -744,12 +757,12 @@ export default function RecipeDetailPage() {
       <div className="card p-4 mb-3">
         <div className="flex items-center justify-between mb-3">
           <h2 className="font-medium text-sm">
-            Valeurs nutritionnelles{' '}
-            <span className="font-normal text-xs" style={{ color: 'var(--text-muted)' }}>(par portion)</span>
+            {t('recipe.nutrition.title')}{' '}
+            <span className="font-normal text-xs" style={{ color: 'var(--text-muted)' }}>{t('recipe.nutrition.perServing')}</span>
           </h2>
           {enriching && (
             <span className="flex items-center gap-1 text-[10px]" style={{ color: 'var(--text-muted)' }}>
-              <Sparkles className="w-3 h-3 animate-pulse" /> calcul en cours…
+              <Sparkles className="w-3 h-3 animate-pulse" /> {t('recipe.nutrition.computing')}
             </span>
           )}
         </div>
@@ -795,49 +808,49 @@ export default function RecipeDetailPage() {
             <div className="grid grid-cols-4 gap-2 mb-3">
               {(() => {
                 const AJR_KCAL = 2000;
-                const pct = Math.round((recipe.calories / AJR_KCAL) * 100);
+                const calPct = Math.round((recipe.calories / AJR_KCAL) * 100);
                 return (
                   <div className="text-center p-2 rounded-lg" style={{ backgroundColor: 'var(--bg-inset)' }}>
                     <Flame className="w-4 h-4 mx-auto mb-1 text-orange-500" />
                     <p className="text-sm font-semibold">{Math.round(recipe.calories)}</p>
-                    <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>kcal</p>
-                    <p className="text-[9px] mt-0.5 text-orange-400 font-medium">{pct}% AJR</p>
+                    <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>{t('recipe.nutrition.kcal')}</p>
+                    <p className="text-[9px] mt-0.5 text-orange-400 font-medium">{calPct}% AJR</p>
                   </div>
                 );
               })()}
               {(() => {
                 const AJR_PROT = 50;
-                const pct = recipe.protein != null ? Math.round((recipe.protein / AJR_PROT) * 100) : null;
+                const protPct = recipe.protein != null ? Math.round((recipe.protein / AJR_PROT) * 100) : null;
                 return (
                   <div className="text-center p-2 rounded-lg" style={{ backgroundColor: 'var(--bg-inset)' }}>
                     <Beef className="w-4 h-4 mx-auto mb-1 text-red-500" />
                     <p className="text-sm font-semibold">{recipe.protein != null ? recipe.protein.toFixed(1) : '–'}g</p>
-                    <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>Protéines</p>
-                    {pct != null && <p className="text-[9px] mt-0.5 text-red-400 font-medium">{pct}% AJR</p>}
+                    <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>{t('recipe.nutrition.proteins')}</p>
+                    {protPct != null && <p className="text-[9px] mt-0.5 text-red-400 font-medium">{protPct}% AJR</p>}
                   </div>
                 );
               })()}
               {(() => {
                 const AJR_CARBS = 260;
-                const pct = recipe.carbs != null ? Math.round((recipe.carbs / AJR_CARBS) * 100) : null;
+                const carbsPct = recipe.carbs != null ? Math.round((recipe.carbs / AJR_CARBS) * 100) : null;
                 return (
                   <div className="text-center p-2 rounded-lg" style={{ backgroundColor: 'var(--bg-inset)' }}>
                     <Wheat className="w-4 h-4 mx-auto mb-1 text-amber-500" />
                     <p className="text-sm font-semibold">{recipe.carbs != null ? recipe.carbs.toFixed(1) : '–'}g</p>
-                    <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>Glucides</p>
-                    {pct != null && <p className="text-[9px] mt-0.5 text-amber-400 font-medium">{pct}% AJR</p>}
+                    <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>{t('recipe.nutrition.carbs')}</p>
+                    {carbsPct != null && <p className="text-[9px] mt-0.5 text-amber-400 font-medium">{carbsPct}% AJR</p>}
                   </div>
                 );
               })()}
               {(() => {
                 const AJR_FAT = 70;
-                const pct = recipe.fat != null ? Math.round((recipe.fat / AJR_FAT) * 100) : null;
+                const fatPct = recipe.fat != null ? Math.round((recipe.fat / AJR_FAT) * 100) : null;
                 return (
                   <div className="text-center p-2 rounded-lg" style={{ backgroundColor: 'var(--bg-inset)' }}>
                     <Droplets className="w-4 h-4 mx-auto mb-1 text-yellow-500" />
                     <p className="text-sm font-semibold">{recipe.fat != null ? recipe.fat.toFixed(1) : '–'}g</p>
-                    <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>Lipides</p>
-                    {pct != null && <p className="text-[9px] mt-0.5 text-yellow-400 font-medium">{pct}% AJR</p>}
+                    <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>{t('recipe.nutrition.fat')}</p>
+                    {fatPct != null && <p className="text-[9px] mt-0.5 text-yellow-400 font-medium">{fatPct}% AJR</p>}
                   </div>
                 );
               })()}
@@ -846,21 +859,21 @@ export default function RecipeDetailPage() {
             {/* Progress bars AJR */}
             <div className="space-y-1.5 mb-3">
               {[
-                { label: 'Calories', value: recipe.calories, ajr: 2000, unit: 'kcal', color: '#f97316' },
-                { label: 'Protéines', value: recipe.protein, ajr: 50, unit: 'g', color: '#ef4444' },
-                { label: 'Glucides', value: recipe.carbs, ajr: 260, unit: 'g', color: '#f59e0b' },
-                { label: 'Lipides', value: recipe.fat, ajr: 70, unit: 'g', color: '#eab308' },
+                { label: t('recipe.nutrition.calories'), value: recipe.calories, ajr: 2000, unit: 'kcal', color: '#f97316' },
+                { label: t('recipe.nutrition.proteins'), value: recipe.protein, ajr: 50, unit: 'g', color: '#ef4444' },
+                { label: t('recipe.nutrition.carbs'), value: recipe.carbs, ajr: 260, unit: 'g', color: '#f59e0b' },
+                { label: t('recipe.nutrition.fat'), value: recipe.fat, ajr: 70, unit: 'g', color: '#eab308' },
               ].map(({ label, value, ajr, unit, color }) => {
                 if (value == null) return null;
-                const pct = Math.min(100, Math.round((value / ajr) * 100));
+                const barPct = Math.min(100, Math.round((value / ajr) * 100));
                 return (
                   <div key={label}>
                     <div className="flex justify-between text-[10px] mb-0.5" style={{ color: 'var(--text-muted)' }}>
                       <span>{label}</span>
-                      <span>{value.toFixed(0)}{unit} / {ajr}{unit} <span style={{ color }}> ({pct}%)</span></span>
+                      <span>{value.toFixed(0)}{unit} / {ajr}{unit} <span style={{ color }}> ({barPct}%)</span></span>
                     </div>
                     <div className="h-1.5 rounded-full overflow-hidden" style={{ backgroundColor: 'var(--bg-inset)' }}>
-                      <div className="h-full rounded-full transition-all" style={{ width: `{pct}%`, backgroundColor: color }} />
+                      <div className="h-full rounded-full transition-all" style={{ width: `${barPct}%`, backgroundColor: color }} />
                     </div>
                   </div>
                 );
@@ -879,7 +892,7 @@ export default function RecipeDetailPage() {
             {/* Fibres + Sel */}
             {(recipe.fiber != null || recipe.salt != null) && (
               <div className="flex gap-4 text-xs justify-center mb-3" style={{ color: 'var(--text-muted)' }}>
-                {recipe.fiber != null && <span>🌾 Fibres : <strong>{recipe.fiber.toFixed(1)}g</strong>{recipe.fiber >= 3 ? ' ✅' : ''}</span>}
+                {recipe.fiber != null && <span>🌾 {t('recipe.nutrition.fiber')} : <strong>{recipe.fiber.toFixed(1)}g</strong>{recipe.fiber >= 3 ? ' ✅' : ''}</span>}
                 {recipe.salt != null && <span>🧂 Sel : <strong>{recipe.salt.toFixed(1)}g</strong>{recipe.salt > 2.5 ? ' ⚠️' : ' ✅'}</span>}
               </div>
             )}
@@ -890,13 +903,13 @@ export default function RecipeDetailPage() {
               className="w-full text-xs flex items-center justify-center gap-1 py-1.5 rounded-lg transition-colors"
               style={{ color: 'var(--text-muted)', backgroundColor: 'var(--bg-inset)' }}
             >
-              {showNutritionDetails ? '▲ Moins de détails' : '▼ Plus de détails'}
+              {showNutritionDetails ? t('recipe.nutrition.lessDetails') : t('recipe.nutrition.moreDetails')}
             </button>
 
             {/* Détails étendus */}
             {showNutritionDetails && (
               <div className="mt-3 space-y-2 text-[11px]" style={{ color: 'var(--text-muted)' }}>
-                <p className="font-semibold text-xs mb-2" style={{ color: 'var(--text-primary)' }}>Détails nutritionnels</p>
+                <p className="font-semibold text-xs mb-2" style={{ color: 'var(--text-primary)' }}>{t('recipe.nutrition.details')}</p>
 
                 {recipe.fiber != null && (
                   <div className="rounded-lg p-2.5" style={{ backgroundColor: 'var(--bg-inset)' }}>
@@ -905,7 +918,7 @@ export default function RecipeDetailPage() {
                       <span className="font-medium">{recipe.fiber.toFixed(1)}g / 25g AJR</span>
                     </div>
                     <div className="h-1.5 rounded-full overflow-hidden" style={{ backgroundColor: 'var(--border)' }}>
-                      <div className="h-full rounded-full" style={{ width: `{Math.min(100, (recipe.fiber / 25) * 100)}%`, backgroundColor: '#22c55e' }} />
+                      <div className="h-full rounded-full" style={{ width: `${Math.min(100, (recipe.fiber / 25) * 100)}%`, backgroundColor: '#22c55e' }} />
                     </div>
                     <p className="mt-1 text-[10px]">{recipe.fiber < 2 ? 'Faible teneur en fibres' : recipe.fiber < 5 ? 'Bonne source de fibres' : 'Excellente source de fibres'}</p>
                   </div>
@@ -918,7 +931,7 @@ export default function RecipeDetailPage() {
                       <span className="font-medium">{recipe.salt.toFixed(1)}g / 6g max OMS</span>
                     </div>
                     <div className="h-1.5 rounded-full overflow-hidden" style={{ backgroundColor: 'var(--border)' }}>
-                      <div className="h-full rounded-full" style={{ width: `{Math.min(100, (recipe.salt / 6) * 100)}%`, backgroundColor: recipe.salt > 3 ? '#ef4444' : recipe.salt > 1.5 ? '#f59e0b' : '#22c55e' }} />
+                      <div className="h-full rounded-full" style={{ width: `${Math.min(100, (recipe.salt / 6) * 100)}%`, backgroundColor: recipe.salt > 3 ? '#ef4444' : recipe.salt > 1.5 ? '#f59e0b' : '#22c55e' }} />
                     </div>
                     <p className="mt-1 text-[10px]">{recipe.salt > 3 ? '⚠️ Teneur en sel élevée' : recipe.salt > 1.5 ? 'Teneur en sel modérée' : '✅ Teneur en sel raisonnable'}</p>
                   </div>
@@ -937,7 +950,7 @@ export default function RecipeDetailPage() {
                 )}
 
                 <p className="text-[10px] italic pt-1" style={{ color: 'var(--text-muted)' }}>
-                  AJR = Apports Journaliers de Référence pour un adulte moyen (2000 kcal/j). Les besoins varient selon l&apos;âge, le sexe et l&apos;activité physique.
+                  {t('recipe.nutrition.ajrNote')}
                 </p>
               </div>
             )}
@@ -954,7 +967,7 @@ export default function RecipeDetailPage() {
           </div>
         ) : (
           <p className="text-xs text-center py-2" style={{ color: 'var(--text-muted)' }}>
-            Aucune donnée — l&apos;IA calculera automatiquement à la prochaine visite.
+            {t('recipe.nutrition.noData')}
           </p>
         )}
       </div>
@@ -964,9 +977,9 @@ export default function RecipeDetailPage() {
         <div className="card p-3 mb-3 flex items-center gap-3">
           <span className="text-lg">📊</span>
           <div className="flex-1">
-            <p className="text-xs font-semibold" style={{ color: 'var(--text-primary)' }}>Nutrition réelle (EAN)</p>
+            <p className="text-xs font-semibold" style={{ color: 'var(--text-primary)' }}>{t('recipe.nutrition.ean.title')}</p>
             <p className="text-[10px] mt-0.5" style={{ color: 'var(--text-muted)' }}>
-              Calculé depuis les codes-barres scannés — couverture {eanNutrition.coverage}%
+              {t('recipe.nutrition.ean.sub', { n: String(eanNutrition.coverage) })}
             </p>
             <div className="flex gap-3 mt-1.5 text-[10px] font-medium">
               <span className="text-orange-500">{eanNutrition.perServing.kcal} kcal</span>
@@ -1004,15 +1017,15 @@ export default function RecipeDetailPage() {
             {highlights.length > 0 && (
               <div className="flex gap-2 mb-3 overflow-x-auto pb-1">
                 {highlights.map(e => {
-                  const pct = Math.round((e.value / e.ajr) * 100);
+                  const hPct = Math.round((e.value / e.ajr) * 100);
                   return (
                     <div key={e.key} className="shrink-0 px-2.5 py-2 rounded-lg text-center min-w-[70px]"
-                      style={{ backgroundColor: pct >= 50 ? 'rgba(16,185,129,0.08)' : 'var(--bg-inset)' }}>
+                      style={{ backgroundColor: hPct >= 50 ? 'rgba(16,185,129,0.08)' : 'var(--bg-inset)' }}>
                       <span className="text-lg block">{e.emoji}</span>
-                      <p className="text-[10px] font-semibold mt-0.5" style={{ color: pct >= 50 ? 'rgb(16,185,129)' : 'var(--text)' }}>
+                      <p className="text-[10px] font-semibold mt-0.5" style={{ color: hPct >= 50 ? 'rgb(16,185,129)' : 'var(--text)' }}>
                         {e.value < 1 ? e.value.toFixed(2) : e.value < 10 ? e.value.toFixed(1) : Math.round(e.value)}{e.unit}
                       </p>
-                      <p className="text-[9px]" style={{ color: 'var(--text-muted)' }}>{pct}% AJR</p>
+                      <p className="text-[9px]" style={{ color: 'var(--text-muted)' }}>{hPct}% AJR</p>
                     </div>
                   );
                 })}
@@ -1022,9 +1035,9 @@ export default function RecipeDetailPage() {
             {/* Full list with bars */}
             <div className="space-y-2">
               {entries.map(e => {
-                const pct = Math.min(Math.round((e.value / e.ajr) * 100), 200);
-                const barPct = Math.min(pct, 100);
-                const barColor = pct >= 50 ? '#10b981' : pct >= 25 ? '#f59e0b' : 'var(--text-muted)';
+                const ePct = Math.min(Math.round((e.value / e.ajr) * 100), 200);
+                const barPct = Math.min(ePct, 100);
+                const barColor = ePct >= 50 ? '#10b981' : ePct >= 25 ? '#f59e0b' : 'var(--text-muted)';
                 return (
                   <div key={e.key}>
                     <div className="flex items-center justify-between mb-0.5">
@@ -1034,7 +1047,7 @@ export default function RecipeDetailPage() {
                       </span>
                       <span className="text-[10px]" style={{ color: 'var(--text-muted)' }}>
                         {e.value < 1 ? e.value.toFixed(2) : e.value < 10 ? e.value.toFixed(1) : Math.round(e.value)}{e.unit}
-                        <span className="ml-1 font-semibold" style={{ color: barColor }}>{pct}%</span>
+                        <span className="ml-1 font-semibold" style={{ color: barColor }}>{ePct}%</span>
                       </span>
                     </div>
                     <div className="h-1 rounded-full overflow-hidden" style={{ backgroundColor: 'var(--bg-inset)' }}>
@@ -1055,7 +1068,7 @@ export default function RecipeDetailPage() {
       {/* Ingrédients avec grammages ajustés */}
       <div className="card p-4 mb-3">
         <div className="flex items-center justify-between mb-3">
-          <h2 className="font-medium text-sm">Ingrédients</h2>
+          <h2 className="font-medium text-sm">{t('recipe.ingredients.title')}</h2>
           <span className={`text-sm font-semibold ${pct >= 80 ? 'text-emerald-600 dark:text-emerald-400' : pct >= 50 ? 'text-amber-600 dark:text-amber-400' : 'text-orange-600 dark:text-orange-400'}`}>
             {available}/{total}
           </span>
@@ -1096,7 +1109,7 @@ export default function RecipeDetailPage() {
                     <span style={{ color: '#818cf8' }}>✂️</span>
                     <span className="flex-1">
                       <strong>{sub.substitute}</strong> ({sub.quantity} {sub.unit})
-                      {sub.inFridge && <span className="ml-1 text-emerald-500">dans ton frigo</span>}
+                      {sub.inFridge && <span className="ml-1 text-emerald-500">{t('recipe.ingredients.inFridge')}</span>}
                       <span className="block text-[10px] mt-0.5" style={{ color: 'var(--text-muted)' }}>{sub.reason}</span>
                     </span>
                   </div>
@@ -1113,7 +1126,7 @@ export default function RecipeDetailPage() {
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
               <Euro className="w-4 h-4" style={{ color: 'var(--text-secondary)' }} />
-              <h2 className="font-medium text-sm">Coût estimé</h2>
+              <h2 className="font-medium text-sm">{t('recipe.cost.title')}</h2>
               <span className="text-[10px] px-1.5 py-0.5 rounded-full"
                 style={{
                   backgroundColor: cost.confidence === 'high' ? 'rgba(16,185,129,0.1)' : cost.confidence === 'medium' ? 'rgba(245,158,11,0.1)' : 'rgba(107,114,128,0.1)',
@@ -1124,7 +1137,7 @@ export default function RecipeDetailPage() {
             </div>
             <div className="text-right">
               <span className="text-lg font-bold">{cost.total.toFixed(2)}€</span>
-              <span className="text-xs ml-1" style={{ color: 'var(--text-muted)' }}>total</span>
+              <span className="text-xs ml-1" style={{ color: 'var(--text-muted)' }}>{t('recipe.cost.total')}</span>
             </div>
           </div>
 
@@ -1132,7 +1145,7 @@ export default function RecipeDetailPage() {
           <div className="flex items-center justify-between py-2 px-3 rounded-lg mb-3"
             style={{ backgroundColor: 'var(--bg-inset)' }}>
             <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
-              Par portion ({servings > recipe.servings ? servings : recipe.servings} pers.)
+              {t('recipe.cost.perServing', { n: String(servings > recipe.servings ? servings : recipe.servings) })}
             </span>
             <span className="text-sm font-semibold text-emerald-600 dark:text-emerald-400">
               ~{cost.perServing.toFixed(2)}€ / pers.
@@ -1159,11 +1172,11 @@ export default function RecipeDetailPage() {
             className="flex items-center justify-between w-full px-3 py-2.5 rounded-lg text-xs font-medium transition-opacity hover:opacity-80"
             style={{ backgroundColor: 'rgba(0,88,179,0.08)', color: 'rgb(0,88,179)', border: '1px solid rgba(0,88,179,0.2)' }}
           >
-            <span>🛒 Commander les ingrédients manquants sur Carrefour Drive</span>
+            <span>🛒 {t('recipe.cost.carrefour')}</span>
             <ExternalLink className="w-3.5 h-3.5 shrink-0 ml-2" />
           </a>
           <p className="text-[10px] mt-1.5 text-center" style={{ color: 'var(--text-muted)' }}>
-            Prix indicatifs supermarché France · Open Food Facts
+            {t('recipe.cost.sourceNote')}
           </p>
         </div>
       )}
@@ -1171,10 +1184,10 @@ export default function RecipeDetailPage() {
       {/* Préparation */}
       <div className="card p-4 mb-3">
         <div className="flex items-center justify-between mb-3">
-          <h2 className="font-medium text-sm">Préparation</h2>
+          <h2 className="font-medium text-sm">{t('recipe.steps.title')}</h2>
           {enriching && (
             <span className="flex items-center gap-1 text-[10px]" style={{ color: 'var(--text-muted)' }}>
-              <Sparkles className="w-3 h-3 animate-pulse" /> traduction en cours…
+              <Sparkles className="w-3 h-3 animate-pulse" /> {t('recipe.steps.translating')}
             </span>
           )}
         </div>
@@ -1196,19 +1209,23 @@ export default function RecipeDetailPage() {
           className="w-full flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Wand2 className="w-4 h-4" style={{ color: 'var(--text-secondary)' }} />
-            <h2 className="font-medium text-sm">Revisiter avec l&apos;IA</h2>
+            <h2 className="font-medium text-sm">{t('recipe.revisit.title')}</h2>
             <span className="text-[10px] px-1.5 py-0.5 rounded-full font-medium text-amber-600 dark:text-amber-400"
               style={{ backgroundColor: 'rgba(245,158,11,0.1)' }}>Premium / VIP</span>
           </div>
           {revisitRemaining !== null && (
-            <span className="text-[10px]" style={{ color: 'var(--text-muted)' }}>{revisitRemaining} restante{revisitRemaining !== 1 ? 's' : ''}</span>
+            <span className="text-[10px]" style={{ color: 'var(--text-muted)' }}>
+              {revisitRemaining !== 1
+                ? t('recipe.revisit.remainingPlural', { n: String(revisitRemaining) })
+                : t('recipe.revisit.remaining', { n: String(revisitRemaining) })}
+            </span>
           )}
         </button>
 
         {revisitOpen && !revisitResult && (
           <div className="mt-3 space-y-2">
             <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-              Demande à l&apos;IA de réécrire cette recette selon ton instruction.
+              {t('recipe.revisit.hint')}
             </p>
             <div className="grid grid-cols-2 gap-1.5">
               {['Rends-la végétarienne', 'Version sans gluten', 'Plus rapide (< 20 min)', 'Moins calorique'].map(s => (
@@ -1231,14 +1248,14 @@ export default function RecipeDetailPage() {
             <button onClick={revisitRecipe} disabled={revisiting || !revisitInstruction.trim()}
               className="btn-primary w-full flex items-center justify-center gap-2 disabled:opacity-40">
               {revisiting
-                ? <><Loader2 className="w-4 h-4 animate-spin" /> Génération en cours…</>
-                : <><Wand2 className="w-4 h-4" /> Générer la version revisitée</>}
+                ? <><Loader2 className="w-4 h-4 animate-spin" /> {t('recipe.revisit.generating')}</>
+                : <><Wand2 className="w-4 h-4" /> {t('recipe.revisit.generate')}</>}
             </button>
             {revisitError && (
               <div className="rounded-lg p-3 text-sm" style={{ backgroundColor: 'rgba(239,68,68,0.08)', color: 'rgb(239,68,68)', border: '1px solid rgba(239,68,68,0.2)' }}>
                 {revisitError}
                 {revisitError.startsWith('🔒') && (
-                  <a href="/profile" className="block mt-1.5 underline text-xs">Passer Premium →</a>
+                  <a href="/profile" className="block mt-1.5 underline text-xs">{t('recipe.revisit.upgradePremium')}</a>
                 )}
               </div>
             )}
@@ -1252,7 +1269,7 @@ export default function RecipeDetailPage() {
               {revisitResult.description && <p className="text-sm mb-3" style={{ color: 'var(--text-secondary)' }}>{revisitResult.description}</p>}
               {revisitResult.ingredients && revisitResult.ingredients.length > 0 && (
                 <div className="mb-3">
-                  <p className="text-xs font-semibold mb-1.5" style={{ color: 'var(--text-muted)' }}>INGRÉDIENTS</p>
+                  <p className="text-xs font-semibold mb-1.5" style={{ color: 'var(--text-muted)' }}>{t('recipe.revisit.ingredients')}</p>
                   <ul className="space-y-1">
                     {revisitResult.ingredients.map((ing, i) => (
                       <li key={i} className="text-sm flex gap-2">
@@ -1265,7 +1282,7 @@ export default function RecipeDetailPage() {
               )}
               {revisitResult.instructions && (
                 <div className="mb-3">
-                  <p className="text-xs font-semibold mb-1.5" style={{ color: 'var(--text-muted)' }}>PRÉPARATION</p>
+                  <p className="text-xs font-semibold mb-1.5" style={{ color: 'var(--text-muted)' }}>{t('recipe.revisit.steps')}</p>
                   <p className="text-sm leading-relaxed" style={{ color: 'var(--text-secondary)' }}>{revisitResult.instructions}</p>
                 </div>
               )}
@@ -1278,17 +1295,19 @@ export default function RecipeDetailPage() {
             <button onClick={saveRevisit} disabled={savingRevisit}
               className="btn-primary w-full flex items-center justify-center gap-2 text-sm disabled:opacity-50">
               {savingRevisit
-                ? <><Loader2 className="w-4 h-4 animate-spin" /> Enregistrement…</>
-                : <><Sparkles className="w-4 h-4" /> Enregistrer comme recette</>}
+                ? <><Loader2 className="w-4 h-4 animate-spin" /> {t('recipe.revisit.saving')}</>
+                : <><Sparkles className="w-4 h-4" /> {t('recipe.revisit.save')}</>}
             </button>
             <div className="flex gap-2">
               <button onClick={() => { setRevisitResult(null); setRevisitInstruction(''); }}
-                className="btn-secondary flex-1 text-sm">Nouvelle revisit</button>
-              <button onClick={() => setRevisitOpen(false)} className="btn-secondary flex-1 text-sm">Fermer</button>
+                className="btn-secondary flex-1 text-sm">{t('recipe.revisit.newRevisit')}</button>
+              <button onClick={() => setRevisitOpen(false)} className="btn-secondary flex-1 text-sm">{t('recipe.revisit.close')}</button>
             </div>
             {revisitRemaining !== null && (
               <p className="text-[11px] text-center" style={{ color: 'var(--text-muted)' }}>
-                {revisitRemaining} revisit{revisitRemaining !== 1 ? 's' : ''} restante{revisitRemaining !== 1 ? 's' : ''} cette semaine
+                {revisitRemaining !== 1
+                  ? t('recipe.revisit.weekRemainingPlural', { n: String(revisitRemaining) })
+                  : t('recipe.revisit.weekRemaining', { n: String(revisitRemaining) })}
               </p>
             )}
           </div>
@@ -1299,7 +1318,7 @@ export default function RecipeDetailPage() {
       <div className="card p-4 mb-3">
         <div className="flex items-center gap-2 mb-3">
           <MessageSquare className="w-4 h-4" style={{ color: 'var(--text-secondary)' }} />
-          <h2 className="font-medium text-sm">Ma note</h2>
+          <h2 className="font-medium text-sm">{t('recipe.note.title')}</h2>
           {myNote && (
             <button onClick={deleteNote} disabled={deletingNote}
               className="ml-auto p-1 rounded-lg transition-colors"
@@ -1310,7 +1329,7 @@ export default function RecipeDetailPage() {
         </div>
 
         <textarea
-          placeholder="Écris tes astuces, modifications, avis… (visible que par toi sauf si tu rends public)"
+          placeholder={t('recipe.note.placeholder')}
           value={noteContent}
           onChange={e => setNoteContent(e.target.value)}
           rows={3}
@@ -1341,13 +1360,15 @@ export default function RecipeDetailPage() {
             <button onClick={() => notePhotoRef.current?.click()}
               className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg"
               style={{ backgroundColor: 'var(--bg-inset)', border: '1px solid var(--border)', color: 'var(--text-muted)' }}>
-              <ImagePlus className="w-3.5 h-3.5" /> Photo
+              <ImagePlus className="w-3.5 h-3.5" /> {t('recipe.note.photo')}
             </button>
 
             <button onClick={() => setNotePublic(p => !p)}
               className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg transition-all ${notePublic ? 'text-amber-600 dark:text-amber-400' : ''}`}
               style={{ backgroundColor: notePublic ? 'rgba(245,158,11,0.1)' : 'var(--bg-inset)', border: `1px solid ${notePublic ? 'rgba(245,158,11,0.3)' : 'var(--border)'}`, color: notePublic ? undefined : 'var(--text-muted)' }}>
-              {notePublic ? <><Globe className="w-3.5 h-3.5" /> Public</> : <><Lock className="w-3.5 h-3.5" /> Privé</>}
+              {notePublic
+                ? <><Globe className="w-3.5 h-3.5" /> {t('recipe.note.public')}</>
+                : <><Lock className="w-3.5 h-3.5" /> {t('recipe.note.private')}</>}
             </button>
           </div>
 
@@ -1355,13 +1376,13 @@ export default function RecipeDetailPage() {
             className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg font-medium disabled:opacity-40 transition-all"
             style={{ backgroundColor: noteSaved ? 'rgba(16,185,129,0.15)' : 'var(--accent)', color: noteSaved ? 'rgb(16,185,129)' : 'var(--accent-text)' }}>
             {savingNote ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : noteSaved ? <Check className="w-3.5 h-3.5" /> : <Send className="w-3.5 h-3.5" />}
-            {noteSaved ? 'Sauvegardé' : 'Sauvegarder'}
+            {noteSaved ? t('recipe.note.saved') : t('recipe.note.save')}
           </button>
         </div>
 
         {notePublic && (
           <p className="text-[10px] mt-2 px-1" style={{ color: 'var(--text-muted)' }}>
-            🌍 Ta note et ta photo seront visibles par tous les utilisateurs sur cette recette.
+            {t('recipe.note.publicHint')}
           </p>
         )}
       </div>
@@ -1371,7 +1392,7 @@ export default function RecipeDetailPage() {
         <div className="card p-4 mb-6">
           <div className="flex items-center gap-2 mb-3">
             <Users className="w-4 h-4" style={{ color: 'var(--text-secondary)' }} />
-            <h2 className="font-medium text-sm">Communauté</h2>
+            <h2 className="font-medium text-sm">{t('recipe.community.title')}</h2>
             <span className="text-xs px-2 py-0.5 rounded-full" style={{ backgroundColor: 'var(--bg-inset)', color: 'var(--text-muted)' }}>
               {communityNotes.length}
             </span>
@@ -1384,7 +1405,7 @@ export default function RecipeDetailPage() {
                     style={{ backgroundColor: 'var(--bg-inset)', color: 'var(--text-secondary)' }}>
                     {(note.user?.name || note.user?.email || '?')[0].toUpperCase()}
                   </div>
-                  <span className="text-xs font-medium">{note.user?.name || note.user?.email?.split('@')[0] || 'Anonyme'}</span>
+                  <span className="text-xs font-medium">{note.user?.name || note.user?.email?.split('@')[0] || t('recipe.community.anonymous')}</span>
                   <span className="text-[10px] ml-auto" style={{ color: 'var(--text-muted)' }}>
                     {new Date(note.createdAt).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}
                   </span>
@@ -1408,7 +1429,7 @@ export default function RecipeDetailPage() {
           <div className="w-full max-w-sm rounded-t-2xl sm:rounded-2xl p-4 max-h-[80vh] flex flex-col" style={{ backgroundColor: 'var(--bg-raised)' }} onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-3">
               <h2 className="font-semibold text-sm flex items-center gap-2">
-                <FolderHeart className="w-4 h-4" style={{ color: 'var(--text-secondary)' }} /> Ajouter à un carnet
+                <FolderHeart className="w-4 h-4" style={{ color: 'var(--text-secondary)' }} /> {t('recipe.collections.title')}
               </h2>
               <button onClick={() => setShowCollections(false)} className="w-7 h-7 rounded-lg flex items-center justify-center hover:bg-[var(--bg-inset)]">
                 <X className="w-4 h-4" />
@@ -1417,7 +1438,7 @@ export default function RecipeDetailPage() {
 
             <div className="overflow-y-auto flex-1 space-y-1.5 mb-3">
               {collections.length === 0 ? (
-                <p className="text-xs text-center py-4" style={{ color: 'var(--text-muted)' }}>Aucun carnet. Crée-en un ci-dessous.</p>
+                <p className="text-xs text-center py-4" style={{ color: 'var(--text-muted)' }}>{t('recipe.collections.empty')}</p>
               ) : collections.map(c => (
                 <button key={c.id} onClick={() => toggleCollection(c.id)}
                   className="w-full flex items-center gap-3 p-2.5 rounded-lg transition-colors hover:bg-[var(--bg-inset)]"
@@ -1435,7 +1456,7 @@ export default function RecipeDetailPage() {
             <div className="flex gap-2 pt-2 border-t" style={{ borderColor: 'var(--border-subtle)' }}>
               <input value={newColName} onChange={e => setNewColName(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && createCollectionAndAdd()}
-                placeholder="Nouveau carnet…" className="input-field !py-2 text-sm flex-1" />
+                placeholder={t('recipe.collections.newPlaceholder')} className="input-field !py-2 text-sm flex-1" />
               <button onClick={createCollectionAndAdd} disabled={!newColName.trim()} className="btn-primary !px-3 disabled:opacity-40">
                 <Plus className="w-4 h-4" />
               </button>
