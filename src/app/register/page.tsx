@@ -4,8 +4,10 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Mail, Lock, User, Eye, EyeOff, ShieldCheck } from 'lucide-react';
+import { useT } from '@/lib/i18n';
 
 export default function RegisterPage() {
+  const { t } = useT();
   const router = useRouter();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -30,7 +32,7 @@ export default function RegisterPage() {
       // Onboarding lancé automatiquement juste après la création du compte
       router.push('/onboarding');
     } catch {
-      setError('Erreur de connexion au serveur');
+      setError(t('register.error'));
     } finally {
       setLoading(false);
     }
@@ -41,8 +43,8 @@ export default function RegisterPage() {
       <div className="w-full max-w-sm">
         <div className="flex flex-col items-center mb-8">
           <p className="text-2xl font-bold tracking-tight mb-4">Mon Frigo</p>
-          <h1 className="text-xl font-semibold">Crée ton compte</h1>
-          <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>Rejoins Mon Frigo gratuitement</p>
+          <h1 className="text-xl font-semibold">{t('register.title')}</h1>
+          <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>{t('register.sub')}</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-3">
@@ -54,19 +56,19 @@ export default function RegisterPage() {
 
           <div className="relative">
             <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: 'var(--text-muted)' }} />
-            <input type="text" placeholder="Prénom" value={name} onChange={e => setName(e.target.value)} className="input-field !pl-10" required />
+            <input type="text" placeholder={t('register.name')} value={name} onChange={e => setName(e.target.value)} className="input-field !pl-10" required />
           </div>
 
           <div className="relative">
             <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: 'var(--text-muted)' }} />
-            <input type="email" placeholder="Email" value={email} onChange={e => setEmail(e.target.value)} className="input-field !pl-10" required />
+            <input type="email" placeholder={t('register.email')} value={email} onChange={e => setEmail(e.target.value)} className="input-field !pl-10" required />
           </div>
 
           <div className="relative">
             <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: 'var(--text-muted)' }} />
             <input
               type={showPw ? 'text' : 'password'}
-              placeholder="Mot de passe (min. 6 caractères)"
+              placeholder={t('register.password')}
               value={password}
               onChange={e => setPassword(e.target.value)}
               className="input-field !pl-10 !pr-10"
@@ -79,7 +81,7 @@ export default function RegisterPage() {
           </div>
 
           <button type="submit" disabled={loading} className="btn-primary w-full">
-            {loading ? 'Inscription...' : 'Créer mon compte'}
+            {loading ? t('register.loading') : t('register.submit')}
           </button>
         </form>
 
@@ -88,16 +90,16 @@ export default function RegisterPage() {
           style={{ backgroundColor: 'rgba(16,185,129,0.06)', border: '1px solid rgba(16,185,129,0.15)' }}>
           <ShieldCheck className="w-4 h-4 mt-0.5 shrink-0" style={{ color: 'rgb(16,185,129)' }} />
           <p className="text-xs leading-relaxed" style={{ color: 'var(--text-muted)' }}>
-            Tes données restent les tiennes. On ne vend rien, on ne fait pas de pub, on ne partage rien.{' '}
+            {t('register.privacy')}{' '}
             <Link href="/privacy" className="underline font-medium" style={{ color: 'rgb(16,185,129)' }}>
-              Politique de confidentialité →
+              {t('register.privacyLink')}
             </Link>
           </p>
         </div>
 
         <p className="text-center text-sm mt-4" style={{ color: 'var(--text-muted)' }}>
-          Déjà un compte?{' '}
-          <Link href="/login" className="font-medium" style={{ color: 'var(--text)' }}>Se connecter</Link>
+          {t('register.hasAccount')}{' '}
+          <Link href="/login" className="font-medium" style={{ color: 'var(--text)' }}>{t('register.login')}</Link>
         </p>
       </div>
     </div>

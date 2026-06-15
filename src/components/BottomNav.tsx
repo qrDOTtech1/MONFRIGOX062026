@@ -3,17 +3,19 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Home, ScanLine, Refrigerator, LayoutGrid, UserCircle } from 'lucide-react';
-
-const items = [
-  { href: '/home',      icon: Home,        label: 'Accueil'  },
-  { href: '/scan',      icon: ScanLine,    label: 'Scan'     },
-  { href: '/fridge',    icon: Refrigerator,label: 'Frigo'    },
-  { href: '/dashboard', icon: LayoutGrid,  label: 'Recettes' },
-  { href: '/profile',   icon: UserCircle,  label: 'Profil'   },
-];
+import { useT } from '@/lib/i18n';
 
 export default function BottomNav() {
   const pathname = usePathname();
+  const { t } = useT();
+
+  const items = [
+    { href: '/home',      icon: Home,        label: t('nav.home')    },
+    { href: '/scan',      icon: ScanLine,    label: t('nav.scan')    },
+    { href: '/fridge',    icon: Refrigerator,label: t('nav.fridge')  },
+    { href: '/dashboard', icon: LayoutGrid,  label: t('nav.recipes') },
+    { href: '/profile',   icon: UserCircle,  label: t('nav.profile') },
+  ];
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50"

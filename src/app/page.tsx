@@ -2,9 +2,10 @@
 
 import Link from 'next/link';
 import { useEffect, useRef } from 'react';
-import { ScanLine, ChefHat, ShoppingCart, Leaf, Barcode, Sparkles, Check, Brain, X, Calendar, MessageSquare, Trophy, Share2, UtensilsCrossed, Volume2, Timer } from 'lucide-react';
+import { ScanLine, ChefHat, ShoppingCart, Leaf, Barcode, Sparkles, Check, Brain, X, Calendar, MessageSquare, Trophy, Share2, UtensilsCrossed, Volume2, Timer, Globe } from 'lucide-react';
 import LogoAnim from '@/components/LogoAnim';
 import FloatingEmojis from '@/components/FloatingEmojis';
+import { useT } from '@/lib/i18n';
 
 /* ── Landing-specific styles ─────────────────────────────────────────── */
 function LandingStyles() {
@@ -49,87 +50,69 @@ function useFadeIn() {
   return ref;
 }
 
-/* ── Data ────────────────────────────────────────────────────────────── */
-const features = [
-  { icon: ScanLine,          title: 'Scan IA du frigo',       desc: 'Une photo, et l\'IA identifie chaque aliment. Instantanément. Sans fautes.' },
-  { icon: Barcode,           title: 'Code-barres EAN',         desc: 'N\'importe quel produit emballé, scanné en un instant. Données nutritionnelles incluses.' },
-  { icon: ChefHat,           title: 'Recettes personnalisées', desc: 'Régime, allergènes, portions, cuisines du monde — chaque recette est faite pour toi.' },
-  { icon: MessageSquare,     title: 'Assistant culinaire IA',  desc: 'Discute avec ton assistant : il connaît ton frigo, ton planning, et crée des recettes sur mesure.' },
-  { icon: Calendar,          title: 'Planning de repas',       desc: 'Planifie ta semaine en quelques tapotements. Ajoute ou retire des repas depuis le chat.' },
-  { icon: UtensilsCrossed,   title: 'Mode cuisine pas-à-pas', desc: 'Suis chaque étape à voix haute avec minuteur intégré. Les mains libres, la tête tranquille.' },
-  { icon: ShoppingCart,      title: 'Liste de courses',        desc: 'Générée depuis tes recettes ou ajoutée par l\'IA. Partageable en un lien.' },
-  { icon: Leaf,              title: 'Zéro gaspillage',         desc: 'Alertes péremption, bilan anti-gaspi mensuel, recettes vide-frigo. Rien ne se perd.' },
-  { icon: Trophy,            title: 'Succès & gamification',   desc: 'Débloque des badges, suis ta progression, grimpe dans les classements de la communauté.' },
-  { icon: Volume2,           title: 'Commande vocale',         desc: 'Parle à ton assistant, écoute les recettes. Idéal les mains dans la farine.' },
+/* ── Feature icon mapping ───────────────────────────────────────────── */
+const featureIcons = [
+  { icon: ScanLine,        titleKey: 'feat.scan.title',     descKey: 'feat.scan.desc' },
+  { icon: Barcode,         titleKey: 'feat.barcode.title',  descKey: 'feat.barcode.desc' },
+  { icon: ChefHat,         titleKey: 'feat.recipes.title',  descKey: 'feat.recipes.desc' },
+  { icon: MessageSquare,   titleKey: 'feat.ai.title',       descKey: 'feat.ai.desc' },
+  { icon: Calendar,        titleKey: 'feat.planning.title', descKey: 'feat.planning.desc' },
+  { icon: UtensilsCrossed, titleKey: 'feat.cooking.title',  descKey: 'feat.cooking.desc' },
+  { icon: ShoppingCart,    titleKey: 'feat.shopping.title',  descKey: 'feat.shopping.desc' },
+  { icon: Leaf,            titleKey: 'feat.waste.title',     descKey: 'feat.waste.desc' },
+  { icon: Trophy,          titleKey: 'feat.badges.title',    descKey: 'feat.badges.desc' },
+  { icon: Volume2,         titleKey: 'feat.voice.title',     descKey: 'feat.voice.desc' },
 ];
 
 type PlanDef = {
-  name: string; price: string; priceAnnual?: string;
-  period: string; periodAnnual?: string; desc: string;
+  nameKey: string; price: string; priceAnnual?: string;
+  periodKey: string; periodAnnualKey?: string; periodAnnualSuffix?: string; descKey: string;
   color: string; border: string;
-  badge?: string; badgeColor?: string; badgeBg?: string;
-  cta: string; href: string;
-  features: string[]; excluded: string[];
+  badgeKey?: string; badgeColor?: string; badgeBg?: string;
+  ctaKey: string; href: string;
+  featureKeys: string[]; excludedKeys: string[];
 };
 
-const plans: PlanDef[] = [
+const planDefs: PlanDef[] = [
   {
-    name: 'Gratuit', price: '0€', period: 'à vie',
-    desc: 'Tout ce qu\'il faut pour cuisiner malin, sans payer.',
+    nameKey: 'plan.free', price: '0€', periodKey: 'plan.free.period',
+    descKey: 'plan.free.desc',
     color: 'transparent', border: 'var(--border)',
-    cta: 'Commencer gratuitement', href: '/register',
-    features: [
-      'Gestion du frigo illimitée',
-      '20 scans code-barres EAN / semaine',
-      'Accès à 50% des recettes',
-      'Planning de repas complet',
-      'Liste de courses partageable',
-      'Mode cuisine pas-à-pas avec minuteur',
-      'Alertes péremption & anti-gaspi',
-      'Succès & badges',
-      '3 requêtes IA (essai)',
+    ctaKey: 'plan.free.cta', href: '/register',
+    featureKeys: [
+      'planfeat.fridge', 'planfeat.barcode20', 'planfeat.recipes50',
+      'planfeat.planning', 'planfeat.shopping', 'planfeat.cookmode',
+      'planfeat.expiry', 'planfeat.badges', 'planfeat.ai3',
     ],
-    excluded: ['Scan frigo IA', 'Assistant IA illimité', 'Coach nutritionnel'],
+    excludedKeys: ['planfeat.noScanIA', 'planfeat.noAIUnlimited', 'planfeat.noCoach'],
   },
   {
-    name: 'Premium', price: '3,99€', priceAnnual: '34,99€',
-    period: '/ mois', periodAnnual: '/ an  −27%',
-    desc: 'L\'IA en plus, pour ceux qui cuisinent vraiment.',
+    nameKey: 'plan.premium', price: '3,99€', priceAnnual: '34,99€',
+    periodKey: 'plan.period.month', periodAnnualKey: 'plan.period.annual', periodAnnualSuffix: '  −27%',
+    descKey: 'plan.premium.desc',
     color: 'rgba(245,158,11,0.04)', border: 'rgba(245,158,11,0.35)',
-    badge: 'Le plus populaire', badgeColor: 'text-amber-600 dark:text-amber-400', badgeBg: 'rgba(245,158,11,0.12)',
-    cta: 'Essayer Premium', href: '/register',
-    features: [
-      'Tout le plan Gratuit inclus',
-      '10 requêtes IA / semaine',
-      '5 scans frigo IA / semaine',
-      '100 scans code-barres / semaine',
-      'Toutes les recettes (100%)',
-      'Création de recettes par l\'IA',
-      'Commande vocale du chat',
-      'Notes communautaires',
-      'Historique de cuisine',
+    badgeKey: 'plan.premium.badge', badgeColor: 'text-amber-600 dark:text-amber-400', badgeBg: 'rgba(245,158,11,0.12)',
+    ctaKey: 'plan.premium.cta', href: '/register',
+    featureKeys: [
+      'planfeat.freeIncl', 'planfeat.ai10', 'planfeat.scanFrigo5',
+      'planfeat.barcode100', 'planfeat.allRecipes', 'planfeat.aiRecipes',
+      'planfeat.voice', 'planfeat.notes', 'planfeat.history',
     ],
-    excluded: [],
+    excludedKeys: [],
   },
   {
-    name: 'VIP', price: '6,99€', priceAnnual: '59,99€',
-    period: '/ mois', periodAnnual: '/ an  −28%',
-    desc: 'Zéro limite. Le chef, c\'est toi.',
+    nameKey: 'plan.vip', price: '6,99€', priceAnnual: '59,99€',
+    periodKey: 'plan.period.month', periodAnnualKey: 'plan.period.annual', periodAnnualSuffix: '  −28%',
+    descKey: 'plan.vip.desc',
     color: 'rgba(168,85,247,0.04)', border: 'rgba(168,85,247,0.35)',
-    badge: 'Illimité', badgeColor: 'text-purple-600 dark:text-purple-400', badgeBg: 'rgba(168,85,247,0.12)',
-    cta: 'Passer VIP', href: '/register',
-    features: [
-      'Tout le plan Premium inclus',
-      'Requêtes IA illimitées',
-      '14 scans frigo IA / semaine',
-      'Scans EAN illimités',
-      'Coach nutritionnel IA intégré',
-      'Suivi nutritionnel & radar stats',
-      'Bilan anti-gaspi mensuel détaillé',
-      'Support prioritaire',
-      'Accès aux nouveautés en avant-première',
+    badgeKey: 'plan.vip.badge', badgeColor: 'text-purple-600 dark:text-purple-400', badgeBg: 'rgba(168,85,247,0.12)',
+    ctaKey: 'plan.vip.cta', href: '/register',
+    featureKeys: [
+      'planfeat.premIncl', 'planfeat.aiUnlimited', 'planfeat.scanFrigo14',
+      'planfeat.barcodeUnlimited', 'planfeat.coach', 'planfeat.nutrition',
+      'planfeat.wasteBilan', 'planfeat.support', 'planfeat.early',
     ],
-    excluded: [],
+    excludedKeys: [],
   },
 ];
 
@@ -165,10 +148,35 @@ const jsonLdOrg = JSON.stringify({
 
 /* ── Page ────────────────────────────────────────────────────────────── */
 export default function LandingPage() {
+  const { t, lang, setLang } = useT();
   const statsRef    = useFadeIn();
   const featuresRef = useFadeIn();
   const pricingRef  = useFadeIn();
   const ctaRef      = useFadeIn();
+
+  const features = featureIcons.map(f => ({
+    icon: f.icon,
+    title: t(f.titleKey),
+    desc: t(f.descKey),
+  }));
+
+  const plans = planDefs.map(p => ({
+    name: t(p.nameKey),
+    price: p.price,
+    priceAnnual: p.priceAnnual,
+    period: t(p.periodKey),
+    periodAnnual: p.periodAnnualKey ? t(p.periodAnnualKey) + (p.periodAnnualSuffix || '') : undefined,
+    desc: t(p.descKey),
+    color: p.color,
+    border: p.border,
+    badge: p.badgeKey ? t(p.badgeKey) : undefined,
+    badgeColor: p.badgeColor,
+    badgeBg: p.badgeBg,
+    cta: t(p.ctaKey),
+    href: p.href,
+    features: p.featureKeys.map(k => t(k)),
+    excluded: p.excludedKeys.map(k => t(k)),
+  }));
 
   return (
     <div className="min-h-screen flex flex-col relative" style={{ backgroundColor: 'var(--bg)' }}>
@@ -187,9 +195,18 @@ export default function LandingPage() {
           WebkitBackdropFilter: 'blur(8px)',
         }}>
         <LogoAnim size={36} withName nameSize="text-base" />
-        <div className="flex gap-2">
-          <Link href="/login"    className="btn-secondary !px-4 !py-2 text-sm">Connexion</Link>
-          <Link href="/register" className="btn-primary  !px-4 !py-2 text-sm">S&apos;inscrire</Link>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setLang(lang === 'fr' ? 'en' : 'fr')}
+            className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all hover:scale-105 active:scale-95"
+            style={{ backgroundColor: 'var(--bg-inset)', border: '1px solid var(--border)', color: 'var(--text-secondary)' }}
+            aria-label="Switch language"
+          >
+            <Globe className="w-3.5 h-3.5" />
+            {lang === 'fr' ? 'FR' : 'EN'}
+          </button>
+          <Link href="/login"    className="btn-secondary !px-4 !py-2 text-sm">{t('landing.login')}</Link>
+          <Link href="/register" className="btn-primary  !px-4 !py-2 text-sm">{t('landing.register')}</Link>
         </div>
       </header>
 
@@ -204,29 +221,28 @@ export default function LandingPage() {
 
           <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium mb-7"
             style={{ backgroundColor: 'rgba(16,185,129,0.1)', color: 'rgb(16,185,129)', border: '1px solid rgba(16,185,129,0.2)' }}>
-            <Sparkles className="w-3 h-3" /> Gratuit pour commencer · Aucune carte requise
+            <Sparkles className="w-3 h-3" /> {t('landing.badge')}
           </div>
 
           <h1 className="text-4xl md:text-5xl font-bold leading-tight tracking-tight mb-5">
-            Cuisine <span className="shimmer-text">mieux</span>,<br />
-            avec ce que tu as déjà.
+            {t('landing.hero.title1')} <span className="shimmer-text">{t('landing.hero.title2')}</span><br />
+            {t('landing.hero.title3')}
           </h1>
 
           <p className="text-base leading-relaxed mb-2 max-w-md mx-auto" style={{ color: 'var(--text-secondary)' }}>
-            Gère ton frigo, planifie tes repas, cuisine pas-à-pas
-            et réduis le gaspillage — gratuitement, pour toujours.
+            {t('landing.hero.sub')}
           </p>
           <p className="text-sm mb-10 max-w-sm mx-auto" style={{ color: 'var(--text-muted)' }}>
-            L&apos;assistant culinaire IA qui mérite une place permanente sur ton téléphone.
+            {t('landing.hero.sub2')}
           </p>
 
           <Link href="/register"
             className="btn-glow inline-flex items-center gap-2 px-8 py-3.5 rounded-xl text-base font-semibold transition-all hover:scale-[1.03] active:scale-95"
             style={{ backgroundColor: 'var(--accent)', color: 'var(--accent-text)' }}>
-            Commencer gratuitement
+            {t('landing.cta')}
           </Link>
           <p className="text-xs mt-3" style={{ color: 'var(--text-muted)' }}>
-            Inscription en 30 secondes · Email vérifié · Gratuit pour toujours
+            {t('landing.cta.sub')}
           </p>
         </section>
 
@@ -234,14 +250,14 @@ export default function LandingPage() {
         <div ref={statsRef}>
           <section className="grid grid-cols-3 gap-3 mb-14">
             {[
-              { value: '< 3s',  label: 'pour scanner un frigo' },
-              { value: '100%',  label: 'recettes sur mesure'   },
-              { value: '0€',    label: 'pour démarrer'         },
+              { value: '< 3s',  labelKey: 'landing.stats.scan' },
+              { value: '100%',  labelKey: 'landing.stats.recipes' },
+              { value: '0€',    labelKey: 'landing.stats.price' },
             ].map((s, i) => (
-              <div key={s.label} className="card p-4 text-center"
+              <div key={s.labelKey} className="card p-4 text-center"
                 style={{ transitionDelay: `${i * 80}ms`, backdropFilter: 'blur(4px)', WebkitBackdropFilter: 'blur(4px)' }}>
                 <p className="text-2xl font-bold mb-1">{s.value}</p>
-                <p className="text-[11px] leading-tight" style={{ color: 'var(--text-muted)' }}>{s.label}</p>
+                <p className="text-[11px] leading-tight" style={{ color: 'var(--text-muted)' }}>{t(s.labelKey)}</p>
               </div>
             ))}
           </section>
@@ -250,9 +266,9 @@ export default function LandingPage() {
         {/* ── Features ── */}
         <div ref={featuresRef}>
           <section className="mb-14">
-            <h2 className="text-xl font-bold text-center mb-1.5">Ce que ça fait, concrètement.</h2>
+            <h2 className="text-xl font-bold text-center mb-1.5">{t('landing.features.title')}</h2>
             <p className="text-sm text-center mb-6" style={{ color: 'var(--text-muted)' }}>
-              Pas une appli de plus. Une vraie différence dans ta cuisine.
+              {t('landing.features.sub')}
             </p>
             <div className="grid grid-cols-1 gap-2.5">
               {features.map((f, i) => (
@@ -279,9 +295,9 @@ export default function LandingPage() {
         {/* ── Pricing ── */}
         <div ref={pricingRef}>
           <section className="mb-14">
-            <h2 className="text-xl font-bold text-center mb-1.5">Transparent. Sans surprise.</h2>
+            <h2 className="text-xl font-bold text-center mb-1.5">{t('landing.pricing.title')}</h2>
             <p className="text-sm text-center mb-7" style={{ color: 'var(--text-muted)' }}>
-              Moins cher qu&apos;un café par mois. Bien plus utile.
+              {t('landing.pricing.sub')}
             </p>
 
             <div className="space-y-3">
@@ -310,7 +326,7 @@ export default function LandingPage() {
                       <span className="text-xs ml-1" style={{ color: 'var(--text-muted)' }}>{plan.period}</span>
                       {plan.priceAnnual && (
                         <p className="text-[11px] mt-0.5" style={{ color: 'var(--text-muted)' }}>
-                          ou <span className="font-semibold">{plan.priceAnnual}</span>
+                          {t('plan.or')} <span className="font-semibold">{plan.priceAnnual}</span>
                           {' '}<span className="text-emerald-500 font-medium">{plan.periodAnnual}</span>
                         </p>
                       )}
@@ -345,7 +361,7 @@ export default function LandingPage() {
             </div>
 
             <p className="text-center text-xs mt-4" style={{ color: 'var(--text-muted)' }}>
-              Besoin de plus ? Des packs de requêtes IA supplémentaires sont disponibles à partir de 0,99€.
+              {t('landing.pricing.extra')}
             </p>
           </section>
         </div>
@@ -358,21 +374,21 @@ export default function LandingPage() {
               backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)',
             }}>
             <div className="text-5xl mb-4 animate-bounce" style={{ animationDuration: '2.5s' }}>🍽️</div>
-            <h2 className="text-xl font-bold mb-2">Prêt à ne plus jamais fixer un frigo vide ?</h2>
+            <h2 className="text-xl font-bold mb-2">{t('landing.final.title')}</h2>
             <p className="text-sm mb-6 max-w-xs mx-auto" style={{ color: 'var(--text-muted)' }}>
-              Gratuit. Sans carte. Et franchement, tu t&apos;en veux déjà de ne pas l&apos;avoir fait avant.
+              {t('landing.final.sub')}
             </p>
             <Link href="/register"
               className="btn-glow inline-flex items-center gap-2 px-8 py-3 rounded-xl text-sm font-semibold transition-all hover:scale-[1.03] active:scale-95"
               style={{ backgroundColor: 'var(--accent)', color: 'var(--accent-text)' }}>
-              Créer mon compte — c&apos;est gratuit
+              {t('landing.final.cta')}
             </Link>
           </section>
         </div>
       </main>
 
       <footer className="text-center text-xs py-8 space-y-4 relative z-10" style={{ color: 'var(--text-muted)' }}>
-        {/* SEO internal links */}
+        {/* SEO internal links — kept in French for SEO */}
         <nav className="max-w-2xl mx-auto px-5">
           <p className="font-medium mb-2" style={{ color: 'var(--text-secondary)' }}>Découvrir aussi</p>
           <div className="flex flex-wrap justify-center gap-x-4 gap-y-1.5">

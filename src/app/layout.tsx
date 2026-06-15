@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next';
 import ThemeProvider from '@/components/ThemeProvider';
+import { I18nProvider } from '@/lib/i18n';
 import ServiceWorkerRegistrar from '@/components/ServiceWorkerRegistrar';
 import './globals.css';
 
@@ -76,7 +77,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="fr" suppressHydrationWarning>
+    <html lang="" suppressHydrationWarning>
       <head>
         {/* Inline theme script — applique le thème AVANT le premier paint, évite le flash blanc sur Edge */}
         <script dangerouslySetInnerHTML={{ __html: `
@@ -86,15 +87,19 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               var dark = t ? t === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches;
               document.documentElement.classList.toggle('dark', dark);
               document.documentElement.style.background = dark ? '#0f0f11' : '#fafafa';
+              var lang = localStorage.getItem('lang') || (navigator.language && navigator.language.slice(0,2) === 'fr' ? 'fr' : 'en');
+              document.documentElement.lang = lang;
             } catch(e){}
           })();
         ` }} />
       </head>
       <body className="antialiased">
-        <ThemeProvider>
-          <ServiceWorkerRegistrar />
-          {children}
-        </ThemeProvider>
+        <I18nProvider>
+          <ThemeProvider>
+            <ServiceWorkerRegistrar />
+            {children}
+          </ThemeProvider>
+        </I18nProvider>
       </body>
     </html>
   );

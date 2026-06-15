@@ -6,6 +6,7 @@ import InfoBubble from '@/components/InfoBubble';
 import Mascot from '@/components/Mascot';
 import { useUserPlan, showPlanBadge } from '@/lib/useUserPlan';
 import { useMealTypes } from '@/lib/useMealTypes';
+import { useT } from '@/lib/i18n';
 import {
   CalendarDays, ShoppingCart, ChevronLeft, ChevronRight, ChevronDown,
   Plus, X, Search, Check, Refrigerator, Share2,
@@ -45,8 +46,7 @@ interface ShoppingData {
 
 /* ── Constants ── */
 // MEALS is now dynamic — see useMealTypes() hook inside the component
-const DAYS_FR = ['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam'];
-const MONTHS_FR = ['janv.','févr.','mars','avr.','mai','juin','juil.','août','sept.','oct.','nov.','déc.'];
+// DAYS and MONTHS are now translated via t() — see inside component
 const CAT_EMOJI: Record<string, string> = {
   'Légumes':'🥕','Fruits':'🍎','Viandes':'🥩','Poissons':'🐟',
   'Produits laitiers':'🧀','Féculents':'🌾','Condiments':'🧂',
@@ -76,6 +76,9 @@ function isPast(d: Date) { return d < new Date(new Date().setHours(0,0,0,0)); }
 export default function ShoppingPage() {
   const { plan: userPlan } = useUserPlan();
   const MEALS = useMealTypes();
+  const { t } = useT();
+  const DAYS_FR = [t('day.0'),t('day.1'),t('day.2'),t('day.3'),t('day.4'),t('day.5'),t('day.6')];
+  const MONTHS_FR = [t('month.0'),t('month.1'),t('month.2'),t('month.3'),t('month.4'),t('month.5'),t('month.6'),t('month.7'),t('month.8'),t('month.9'),t('month.10'),t('month.11')];
   const [tab, setTab] = useState<'plan'|'courses'>('plan');
   const [weekOffset, setWeekOffset] = useState(0);
   const [plans, setPlans] = useState<MealPlanEntry[]>([]);
@@ -235,7 +238,7 @@ export default function ShoppingPage() {
         }
       } else {
         const err = await res.json();
-        setAutoPlanError(err.error || 'Erreur');
+        setAutoPlanError(err.error || t('common.loadError'));
       }
     } finally { setAutoPlanning(false); }
   }
@@ -261,16 +264,16 @@ export default function ShoppingPage() {
           copied++;
         }
       }
-      setCopyResult(`✅ ${copied} repas copiés vers S+1`);
+      setCopyResult(t('shopping.copySuccess', { n: copied }));
       setTimeout(() => setCopyResult(null), 4000);
-    } catch { setCopyResult('❌ Erreur'); }
+    } catch { setCopyResult(t('shopping.copyError')); }
     finally { setCopyingWeek(false); }
   }
 
   /* Share shopping list as text */
   function shareList() {
     if (!shopData) return;
-    const lines: string[] = [`🛒 Liste de courses – ${weekLabel}`, ''];
+    const lines: string[] = [t('shopping.shoppingListHeader', { week: weekLabel }), ''];
     for (const [cat, entries] of Object.entries(shopData.categories)) {
       lines.push(`${CAT_EMOJI[cat] || '📦'} ${cat}`);
       for (const e of entries) {
@@ -329,11 +332,11 @@ export default function ShoppingPage() {
       {/* Titre + aide */}
       <div className="flex items-center gap-2.5 mb-3">
         <CalendarDays className="w-5 h-5" style={{ color: 'var(--text-secondary)' }} />
-        <h1 className="text-lg font-semibold">Repas &amp; Courses</h1>
+        <h1 className="text-lg font-semibold">{t('shopping.pageTitle')}</h1>
         <InfoBubble
           align="left"
-          label="Repas & Courses"
-          text="« Planning » : choisis tes recettes pour chaque jour de la semaine. « Courses » : la liste des ingrédients à acheter est générée automatiquement à partir de ton planning."
+          label={t('shopping.pageTitle')}
+          text={t('shopping.infoBubble')}
         />
       </div>
 
@@ -341,8 +344,8 @@ export default function ShoppingPage() {
       <div className="flex rounded-xl p-0.5 mb-5"
         style={{ backgroundColor: 'var(--bg-inset)' }}>
         {[
-          { id: 'plan' as const, label: 'Planning', icon: CalendarDays },
-          { id: 'courses' as const, label: `Courses${shopData?.missingCount ? ` · ${shopData.missingCount}` : ''}`, icon: ShoppingCart },
+          { id: 'plan' as const, label: t('shopping.tab.plan'), icon: CalendarDays },
+          { id: 'courses' as const, label: `${t('shopping.tab.courses')}${shopData?.missingCount ? ` · ${shopData.missingCount}` : ''}`, icon: ShoppingCart },
         ].map(({ id, label, icon: Icon }) => (
           <button key={id} onClick={() => setTab(id)}
             className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-sm font-medium transition-all"
@@ -363,18 +366,18 @@ export default function ShoppingPage() {
             <button onClick={() => setWeekOffset(o => o - 1)}
               className="flex items-center gap-1 px-3 py-2 rounded-xl text-sm font-medium transition-all active:scale-95"
               style={{ backgroundColor: 'var(--bg-inset)', border: '1px solid var(--border)', color: 'var(--text-secondary)' }}>
-              <ChevronLeft className="w-4 h-4" /> Préc.
+              <ChevronLeft className="w-4 h-4" /> {t('shopping.prev')}
             </button>
             <div className="flex-1 text-center">
               <p className="text-xs font-semibold">{weekLabel}</p>
               <p className="text-[10px]" style={{ color: weekOffset === 0 ? 'rgb(16,185,129)' : 'var(--text-muted)' }}>
-                {weekOffset === 0 ? '● Semaine actuelle' : weekOffset < 0 ? `${Math.abs(weekOffset)} sem. passée${Math.abs(weekOffset) > 1 ? 's' : ''}` : `Dans ${weekOffset} sem.`}
+                {weekOffset === 0 ? `● ${t('shopping.currentWeek')}` : weekOffset < 0 ? (Math.abs(weekOffset) > 1 ? t('shopping.weeksPastPlural', { n: Math.abs(weekOffset) }) : t('shopping.weeksPast', { n: Math.abs(weekOffset) })) : t('shopping.weeksAhead', { n: weekOffset })}
               </p>
             </div>
             <button onClick={() => setWeekOffset(o => o + 1)}
               className="flex items-center gap-1 px-3 py-2 rounded-xl text-sm font-medium transition-all active:scale-95"
               style={{ backgroundColor: 'var(--bg-inset)', border: '1px solid var(--border)', color: 'var(--text-secondary)' }}>
-              Suiv. <ChevronRight className="w-4 h-4" />
+              {t('shopping.next')} <ChevronRight className="w-4 h-4" />
             </button>
           </div>
 
@@ -384,19 +387,19 @@ export default function ShoppingPage() {
               className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-medium transition-all"
               style={{ backgroundColor: 'rgba(168,85,247,0.08)', color: '#a855f7', border: '1px solid rgba(168,85,247,0.2)' }}>
               {autoPlanning ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
-              {autoPlanning ? 'IA…' : showPlanBadge(userPlan, 'VIP') ? 'Auto 🔒 VIP' : 'Auto IA'}
+              {autoPlanning ? t('shopping.autoGenerating') : showPlanBadge(userPlan, 'VIP') ? t('shopping.autoVIP') : t('shopping.autoIA')}
             </button>
             <button onClick={copyWeekToNext} disabled={copyingWeek || !plans.length}
               className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-medium transition-all disabled:opacity-40"
               style={{ backgroundColor: 'var(--bg-inset)', border: '1px solid var(--border)', color: 'var(--text-secondary)' }}>
               {copyingWeek ? <Loader2 className="w-3 h-3 animate-spin" /> : <Copy className="w-3 h-3" />}
-              Copier S+1
+              {t('shopping.copyNext')}
             </button>
             {plannedCount > 0 && (
               <button onClick={() => setTab('courses')}
                 className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-medium transition-all"
                 style={{ backgroundColor: 'var(--accent)', color: 'var(--accent-text)' }}>
-                <ShoppingCart className="w-3 h-3" /> Courses
+                <ShoppingCart className="w-3 h-3" /> {t('shopping.tab.courses')}
               </button>
             )}
           </div>
@@ -457,7 +460,7 @@ export default function ShoppingPage() {
                           <span className="text-sm font-semibold">
                             {DAYS_FR[day.getDay()]} {day.getDate()} {MONTHS_FR[day.getMonth()]}
                           </span>
-                          {today && <span className="text-[9px] font-bold px-2 py-0.5 rounded-full" style={{ backgroundColor: 'rgba(16,185,129,0.12)', color: 'rgb(16,185,129)' }}>Aujourd'hui</span>}
+                          {today && <span className="text-[9px] font-bold px-2 py-0.5 rounded-full" style={{ backgroundColor: 'rgba(16,185,129,0.12)', color: 'rgb(16,185,129)' }}>{t('shopping.today')}</span>}
                         </div>
                         {/* Summary when collapsed */}
                         {!expanded && (
@@ -474,7 +477,7 @@ export default function ShoppingPage() {
                                 )}
                               </>
                             ) : (
-                              <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>Aucun repas</p>
+                              <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>{t('shopping.noMeals')}</p>
                             )}
                           </div>
                         )}
@@ -513,7 +516,7 @@ export default function ShoppingPage() {
                                 {saving ? (
                                   <div className="flex-1 flex items-center gap-2 rounded-xl px-3 py-2.5" style={{ backgroundColor: 'var(--bg-inset)' }}>
                                     <Loader2 className="w-3.5 h-3.5 animate-spin" style={{ color: 'var(--text-muted)' }} />
-                                    <span className="text-xs" style={{ color: 'var(--text-muted)' }}>Enregistrement…</span>
+                                    <span className="text-xs" style={{ color: 'var(--text-muted)' }}>{t('shopping.saving')}</span>
                                   </div>
                                 ) : plan ? (
                                   /* ── Filled slot: tap to view/change ── */
@@ -557,7 +560,7 @@ export default function ShoppingPage() {
                                     className="flex-1 flex items-center justify-center gap-2 rounded-xl py-3 transition-all group"
                                     style={{ border: '1.5px dashed var(--border)', color: 'var(--text-muted)' }}>
                                     <Plus className="w-3.5 h-3.5 group-hover:text-[var(--accent)] transition-colors" />
-                                    <span className="text-xs group-hover:text-[var(--accent)] transition-colors">Ajouter</span>
+                                    <span className="text-xs group-hover:text-[var(--accent)] transition-colors">{t('shopping.addMeal')}</span>
                                   </button>
                                 )}
                               </div>
@@ -569,7 +572,7 @@ export default function ShoppingPage() {
                         {nutrition.count > 0 && (
                           <div className="flex items-center gap-3 px-4 py-2.5"
                             style={{ borderTop: '1px solid var(--border-subtle)', backgroundColor: 'var(--bg-inset)' }}>
-                            <span className="text-[10px] font-semibold uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>Total</span>
+                            <span className="text-[10px] font-semibold uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>{t('shopping.total')}</span>
                             {nutrition.kcal > 0 && (
                               <span className="flex items-center gap-1 text-[11px] font-semibold text-orange-400">
                                 <Flame className="w-3 h-3" /> {nutrition.kcal} kcal
@@ -577,10 +580,10 @@ export default function ShoppingPage() {
                             )}
                             {nutrition.protein > 0 && (
                               <span className="flex items-center gap-1 text-[11px] font-semibold" style={{ color: '#818cf8' }}>
-                                <Beef className="w-3 h-3" /> {Math.round(nutrition.protein)} g prot.
+                                <Beef className="w-3 h-3" /> {Math.round(nutrition.protein)} {t('shopping.prot')}
                               </span>
                             )}
-                            <span className="ml-auto text-[10px]" style={{ color: 'var(--text-muted)' }}>{nutrition.count}/3 repas</span>
+                            <span className="ml-auto text-[10px]" style={{ color: 'var(--text-muted)' }}>{t('shopping.mealsCount', { n: nutrition.count })}</span>
                           </div>
                         )}
                       </>
@@ -637,12 +640,12 @@ export default function ShoppingPage() {
                 )}
                 {viewingPlan.recipe.protein && (
                   <span className="flex items-center gap-1 text-sm font-semibold" style={{ color: '#818cf8' }}>
-                    <Beef className="w-3.5 h-3.5" /> {Math.round(viewingPlan.recipe.protein)} g prot.
+                    <Beef className="w-3.5 h-3.5" /> {Math.round(viewingPlan.recipe.protein)} {t('shopping.prot')}
                   </span>
                 )}
                 {viewingPlan.recipe.servings && (
                   <span className="flex items-center gap-1 text-sm" style={{ color: 'var(--text-muted)' }}>
-                    <ChefHat className="w-3.5 h-3.5" /> {viewingPlan.recipe.servings} pers.
+                    <ChefHat className="w-3.5 h-3.5" /> {t('shopping.servings', { n: viewingPlan.recipe.servings })}
                   </span>
                 )}
               </div>
@@ -678,13 +681,13 @@ export default function ShoppingPage() {
                   }}
                   className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-semibold transition-all active:scale-[0.98]"
                   style={{ backgroundColor: 'var(--accent)', color: 'var(--accent-text)' }}>
-                  <ChefHat className="w-4 h-4" /> Changer la recette
+                  <ChefHat className="w-4 h-4" /> {t('shopping.changeRecipe')}
                 </button>
                 <button
                   onClick={() => { removeSlot(viewingPlan.id); setViewingPlan(null); }}
                   className="flex items-center justify-center gap-1.5 px-4 py-3 rounded-xl text-sm font-medium transition-all active:scale-[0.98]"
                   style={{ backgroundColor: 'rgba(239,68,68,0.1)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.2)' }}>
-                  <X className="w-4 h-4" /> Retirer
+                  <X className="w-4 h-4" /> {t('shopping.remove')}
                 </button>
               </div>
             </div>
@@ -703,13 +706,13 @@ export default function ShoppingPage() {
           ) : !shopData || shopData.totalItems === 0 ? (
             /* Empty state */
             <div className="text-center py-10">
-              <Mascot variant="sad" size="lg" animate="float" message="Rien à cuisiner cette semaine 😢" className="mx-auto mb-4" />
-              <p className="font-medium text-sm mb-1">Aucun repas planifié</p>
-              <p className="text-xs mb-6" style={{ color: 'var(--text-muted)' }}>Ajoute des recettes à ton planning pour générer une liste de courses</p>
+              <Mascot variant="sad" size="lg" animate="float" message={t('shopping.emptyPlanMascot')} className="mx-auto mb-4" />
+              <p className="font-medium text-sm mb-1">{t('shopping.noPlannedMeals')}</p>
+              <p className="text-xs mb-6" style={{ color: 'var(--text-muted)' }}>{t('shopping.noPlannedSub')}</p>
               <button onClick={() => setTab('plan')}
                 className="px-5 py-2.5 rounded-lg text-sm font-medium transition-all"
                 style={{ backgroundColor: 'var(--accent)', color: 'var(--accent-text)' }}>
-                Aller au planning
+                {t('shopping.goToPlanning')}
               </button>
             </div>
           ) : (
@@ -720,12 +723,12 @@ export default function ShoppingPage() {
                   <div>
                     <p className="text-sm font-semibold">
                       {boughtCount === 0
-                        ? `${shopData.totalItems} ingrédients`
-                        : `${boughtCount}/${totalShop} cochés`}
+                        ? t('shopping.ingredients', { n: shopData.totalItems })
+                        : t('shopping.checked', { n: boughtCount, total: totalShop })}
                     </p>
                     <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
-                      {shopData.inFridgeCount > 0 && `${shopData.inFridgeCount} déjà dans le frigo · `}
-                      {shopData.missingCount} à acheter
+                      {shopData.inFridgeCount > 0 && `${t('shopping.alreadyInFridge', { n: shopData.inFridgeCount })} · `}
+                      {t('shopping.toBuy', { n: shopData.missingCount })}
                       {typeof shopData.missingCost === 'number' && shopData.missingCost > 0 && (
                         <span className="font-semibold text-emerald-600 dark:text-emerald-400"> · ~{shopData.missingCost.toFixed(2)}€</span>
                       )}
@@ -734,7 +737,7 @@ export default function ShoppingPage() {
                   <div className="flex items-center gap-1.5">
                     <button onClick={shareList}
                       className="w-9 h-9 rounded-lg flex items-center justify-center transition-colors hover:bg-[var(--bg-inset)]"
-                      title="Copier la liste">
+                      title={t('shopping.copyList')}>
                       <Share2 className="w-4 h-4" style={{ color: 'var(--text-muted)' }} />
                     </button>
                     <button onClick={async () => {
@@ -758,16 +761,16 @@ export default function ShoppingPage() {
                             navigator.share({ title: `Courses ${weekLabel}`, url: fullUrl });
                           } else {
                             navigator.clipboard.writeText(fullUrl);
-                            alert('Lien copié !');
+                            alert(t('shopping.linkCopied'));
                           }
                         }
                       }
                     }}
                       className="text-[10px] px-2.5 py-1.5 rounded-lg transition-colors"
                       style={{ backgroundColor: 'var(--bg-inset)', color: 'var(--text-muted)', border: '1px solid var(--border-subtle)' }}
-                      title="Lien QR partageable"
+                      title={t('shopping.shareableLink')}
                     >
-                      🔗 Lien
+                      {t('shopping.link')}
                     </button>
                   </div>
                 </div>
@@ -780,7 +783,7 @@ export default function ShoppingPage() {
                 {/* Cost summary */}
                 {typeof shopData.totalCost === 'number' && shopData.totalCost > 0 && (
                   <div className="flex items-center justify-between mt-3 pt-3" style={{ borderTop: '1px solid var(--border-subtle)' }}>
-                    <span className="text-xs" style={{ color: 'var(--text-muted)' }}>Budget total estimé</span>
+                    <span className="text-xs" style={{ color: 'var(--text-muted)' }}>{t('shopping.estimatedBudget')}</span>
                     <span className="text-sm font-bold" style={{ color: 'var(--text)' }}>~{shopData.totalCost.toFixed(2)}€</span>
                   </div>
                 )}
@@ -791,7 +794,7 @@ export default function ShoppingPage() {
                 <div className="flex items-center gap-2 px-3 py-2.5 rounded-lg mb-4 fade-in"
                   style={{ backgroundColor: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.2)' }}>
                   <Check className="w-4 h-4 text-emerald-500" />
-                  <span className="text-sm text-emerald-600 dark:text-emerald-400 font-medium">Ajouté au frigo !</span>
+                  <span className="text-sm text-emerald-600 dark:text-emerald-400 font-medium">{t('shopping.addedToFridge')}</span>
                 </div>
               )}
 
@@ -818,8 +821,8 @@ export default function ShoppingPage() {
                         <div className="flex-1 min-w-0">
                           <h3 className="text-sm font-semibold">{cat}</h3>
                           <p className="text-[10px] mt-0.5" style={{ color: 'var(--text-muted)' }}>
-                            {entries.length} article{entries.length > 1 ? 's' : ''}
-                            {catChecked > 0 && ` · ${catChecked} ok`}
+                            {entries.length > 1 ? t('shopping.articleCountPlural', { n: entries.length }) : t('shopping.articleCount', { n: entries.length })}
+                            {catChecked > 0 && ` · ${catChecked} ${t('shopping.ok')}`}
                           </p>
                         </div>
                         {catCost > 0 && (
@@ -919,8 +922,8 @@ export default function ShoppingPage() {
                     <div className="card p-4">
                       <div className="flex items-center gap-2 mb-3">
                         <TrendingUp className="w-4 h-4 text-indigo-400" />
-                        <h3 className="text-sm font-semibold">Suggestions d&apos;achat</h3>
-                        <span className="text-[10px] ml-auto" style={{ color: 'var(--text-muted)' }}>basé sur tes habitudes</span>
+                        <h3 className="text-sm font-semibold">{t('shopping.suggestionsTitle')}</h3>
+                        <span className="text-[10px] ml-auto" style={{ color: 'var(--text-muted)' }}>{t('shopping.suggestionsSub')}</span>
                       </div>
                       <div className="flex flex-wrap gap-2">
                         {suggestions.slice(0, 10).map(s => (
@@ -938,8 +941,8 @@ export default function ShoppingPage() {
                     <div className="card p-4">
                       <div className="flex items-center gap-2 mb-3">
                         <AlertCircle className="w-4 h-4 text-amber-500" />
-                        <h3 className="text-sm font-semibold">Bientôt périmés</h3>
-                        <span className="text-[10px] ml-auto" style={{ color: 'var(--text-muted)' }}>à consommer vite</span>
+                        <h3 className="text-sm font-semibold">{t('shopping.expiringTitle')}</h3>
+                        <span className="text-[10px] ml-auto" style={{ color: 'var(--text-muted)' }}>{t('shopping.expiringSub')}</span>
                       </div>
                       <div className="flex flex-wrap gap-2">
                         {expiringSugg.map(e => (
@@ -962,8 +965,8 @@ export default function ShoppingPage() {
                     className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl text-sm font-semibold shadow-xl transition-all active:scale-[0.98] disabled:opacity-60"
                     style={{ background: 'linear-gradient(135deg,#10b981,#059669)', color: 'white' }}>
                     {addingToFridge
-                      ? <><Loader2 className="w-4 h-4 animate-spin" /> Ajout en cours…</>
-                      : <><Refrigerator className="w-4 h-4" /> Ajouter {checked.size} article{checked.size>1?'s':''} au frigo</>}
+                      ? <><Loader2 className="w-4 h-4 animate-spin" /> {t('shopping.addingToFridge')}</>
+                      : <><Refrigerator className="w-4 h-4" /> {t('shopping.addToFridge', { n: checked.size })}</>}
                   </button>
                 </div>
               )}
@@ -990,7 +993,7 @@ export default function ShoppingPage() {
             {/* Header */}
             <div className="px-4 pb-3">
               <div className="flex items-center justify-between mb-1">
-                <h3 className="font-semibold text-base">Choisir une recette</h3>
+                <h3 className="font-semibold text-base">{t('shopping.pickRecipe')}</h3>
                 <button onClick={() => setPickerOpen(false)} className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-[var(--bg-inset)]">
                   <X className="w-4 h-4" style={{ color: 'var(--text-muted)' }} />
                 </button>
@@ -1012,7 +1015,7 @@ export default function ShoppingPage() {
                 <Search className="w-4 h-4 shrink-0" style={{ color: 'var(--text-muted)' }} />
                 <input
                   type="text"
-                  placeholder="Rechercher une recette…"
+                  placeholder={t('shopping.searchRecipe')}
                   value={pickerSearch}
                   onChange={e => setPickerSearch(e.target.value)}
                   className="flex-1 bg-transparent text-sm outline-none placeholder:text-[var(--text-muted)]"
@@ -1029,10 +1032,10 @@ export default function ShoppingPage() {
             {/* Filter chips */}
             <div className="flex gap-2 px-4 pb-3 overflow-x-auto hide-scrollbar">
               {([
-                { key: 'all', label: 'Tous' },
-                { key: 'fridge', label: '🥬 Frigo' },
-                { key: 'quick', label: '⚡ Rapide' },
-                { key: 'vege', label: '🌿 Végé' },
+                { key: 'all', label: t('shopping.filterAll') },
+                { key: 'fridge', label: t('shopping.filterFridge') },
+                { key: 'quick', label: t('shopping.filterQuick') },
+                { key: 'vege', label: t('shopping.filterVege') },
               ] as const).map(f => (
                 <button key={f.key} onClick={() => setPickerFilter(f.key)}
                   className="shrink-0 px-3 py-1.5 rounded-full text-xs font-medium transition-all"
@@ -1048,7 +1051,7 @@ export default function ShoppingPage() {
             <div className="flex-1 overflow-y-auto px-4 pb-6 space-y-2">
               {filteredPickerRecipes.length === 0 ? (
                 <div className="text-center py-10">
-                  <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Aucune recette trouvée</p>
+                  <p className="text-sm" style={{ color: 'var(--text-muted)' }}>{t('shopping.noRecipeFound')}</p>
                 </div>
               ) : (
                 filteredPickerRecipes.map(recipe => (
@@ -1079,7 +1082,7 @@ export default function ShoppingPage() {
                               backgroundColor: (recipe as any).matchPercent >= 80 ? 'rgba(16,185,129,0.15)' : (recipe as any).matchPercent >= 50 ? 'rgba(245,158,11,0.15)' : 'var(--bg-inset)',
                               color: (recipe as any).matchPercent >= 80 ? 'rgb(16,185,129)' : (recipe as any).matchPercent >= 50 ? 'rgb(245,158,11)' : 'var(--text-muted)',
                             }}>
-                            {(recipe as any).matchPercent}% frigo
+                            {t('shopping.fridgePercent', { n: (recipe as any).matchPercent })}
                           </span>
                         )}
                       </div>

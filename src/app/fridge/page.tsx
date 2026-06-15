@@ -10,6 +10,7 @@ import {
   Wand2, Loader2, Minus, SlidersHorizontal, Calendar, Check, Barcode,
 } from 'lucide-react';
 import Link from 'next/link';
+import { useT } from '@/lib/i18n';
 
 interface FridgeItem {
   id: string;
@@ -37,16 +38,6 @@ function daysUntil(date: string) {
   return Math.ceil((new Date(date).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
 }
 
-function expiryLabel(date: string | null) {
-  if (!date) return null;
-  const days = daysUntil(date);
-  if (days < 0) return { text: 'Expiré', color: 'text-red-500' };
-  if (days === 0) return { text: "Auj.", color: 'text-red-500' };
-  if (days === 1) return { text: 'Demain', color: 'text-amber-500' };
-  if (days <= 3) return { text: `J-${days}`, color: 'text-amber-500' };
-  return { text: `J-${days}`, color: 'text-emerald-600 dark:text-emerald-400' };
-}
-
 export default function FridgePage() {
   const [fridgeItems, setFridgeItems] = useState<FridgeItem[]>([]);
   const [allRecipes, setAllRecipes] = useState<Recipe[]>([]);
@@ -59,10 +50,21 @@ export default function FridgePage() {
   const [aiError, setAiError] = useState('');
   const [creatingIngredient, setCreatingIngredient] = useState(false);
 
-  // Péremption : id de l'item en cours d'édition
   const [editExpiryId, setEditExpiryId] = useState<string | null>(null);
   const [editExpiryValue, setEditExpiryValue] = useState('');
   const [savingExpiry, setSavingExpiry] = useState(false);
+
+  const { t } = useT();
+
+  function expiryLabel(date: string | null) {
+    if (!date) return null;
+    const days = daysUntil(date);
+    if (days < 0) return { text: t('fridge.expired'), color: 'text-red-500' };
+    if (days === 0) return { text: t('fridge.expiry.today'), color: 'text-red-500' };
+    if (days === 1) return { text: t('fridge.expiry.tomorrow'), color: 'text-amber-500' };
+    if (days <= 3) return { text: `J-${days}`, color: 'text-amber-500' };
+    return { text: `J-${days}`, color: 'text-emerald-600 dark:text-emerald-400' };
+  }
 
   const loadData = useCallback(async () => {
     try {
@@ -81,11 +83,11 @@ export default function FridgePage() {
 
   useEffect(() => {
     if (searchIngredient.length < 2) { setSuggestions([]); return; }
-    const t = setTimeout(async () => {
+    const timer = setTimeout(async () => {
       const res = await fetch(`/api/ingredients/search?q=${encodeURIComponent(searchIngredient)}`);
       if (res.ok) setSuggestions(await res.json());
     }, 300);
-    return () => clearTimeout(t);
+    return () => clearTimeout(timer);
   }, [searchIngredient]);
 
   function notifyBadgeUpdate() {
@@ -142,7 +144,6 @@ export default function FridgePage() {
 
   function openExpiryEdit(item: FridgeItem) {
     setEditExpiryId(item.id);
-    // Pré-remplir avec la date existante au format YYYY-MM-DD
     setEditExpiryValue(item.expiresAt ? item.expiresAt.split('T')[0] : '');
   }
 
@@ -153,7 +154,6 @@ export default function FridgePage() {
 
   const suggestedRecipes = allRecipes.filter(r => r.matchPercent > 0).slice(0, count);
 
-  // Date min = aujourd'hui
   const today = new Date().toISOString().split('T')[0];
 
   if (loading) {
@@ -170,9 +170,11 @@ export default function FridgePage() {
         <div className="flex items-center gap-2.5">
           <Refrigerator className="w-5 h-5" style={{ color: 'var(--text-secondary)' }} />
           <div>
-            <h2 className="font-semibold text-base">Mon Frigo</h2>
+            <h2 className="font-semibold text-base">{t('fridge.title')}</h2>
             <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-              {fridgeItems.length} ingrédient{fridgeItems.length !== 1 ? 's' : ''}
+              {fridgeItems.length !== 1
+                ? t('fridge.ingredientCountPlural').replace('{n}', String(fridgeItems.length))
+                : t('fridge.ingredientCount').replace('{n}', String(fridgeItems.length))}
             </p>
           </div>
         </div>
@@ -185,7 +187,6 @@ export default function FridgePage() {
 
       {showAdd && (
         <div className="card p-3.5 mb-4 fade-in">
-          {/* Bouton scan EAN */}
           <Link href="/scan?mode=barcode"
             className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl mb-2.5 transition-all"
             style={{ backgroundColor: 'rgba(59,130,246,0.06)', border: '1px solid rgba(59,130,246,0.2)' }}>
@@ -194,21 +195,21 @@ export default function FridgePage() {
               <Barcode className="w-4 h-4 text-blue-500" />
             </div>
             <div>
-              <p className="text-sm font-medium text-blue-600 dark:text-blue-400">Scanner un code-barres EAN</p>
-              <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>Recommandé · précis, sans quota IA</p>
+              <p className="text-sm font-medium text-blue-600 dark:text-blue-400">{t('fridge.scanBarcode')}</p>
+              <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>{t('fridge.scanBarcode.sub')}</p>
             </div>
           </Link>
 
           <div className="relative flex items-center gap-0 mb-1.5" style={{ borderBottom: '1px solid var(--border-subtle)' }}>
             <span className="absolute inset-x-0 -bottom-px flex justify-center">
-              <span className="px-2 text-[10px]" style={{ backgroundColor: 'var(--bg-card, var(--bg-raised))', color: 'var(--text-muted)' }}>ou chercher par nom</span>
+              <span className="px-2 text-[10px]" style={{ backgroundColor: 'var(--bg-card, var(--bg-raised))', color: 'var(--text-muted)' }}>{t('fridge.orSearchByName')}</span>
             </span>
           </div>
           <div className="h-3" />
 
           <input
             type="text"
-            placeholder="Chercher un ingrédient…"
+            placeholder={t('fridge.searchIngredient')}
             value={searchIngredient}
             onChange={e => setSearchIngredient(e.target.value)}
             onKeyDown={e => e.stopPropagation()}
@@ -232,14 +233,14 @@ export default function FridgePage() {
                 ? <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0" style={{ color: 'var(--text-muted)' }} />
                 : <Plus className="w-3.5 h-3.5 shrink-0" style={{ color: 'var(--text-muted)' }} />}
               <span style={{ color: 'var(--text-secondary)' }}>
-                Ajouter «&nbsp;<span className="font-medium">{searchIngredient.trim()}</span>&nbsp;»
+                {t('fridge.addCustom').replace('{name}', searchIngredient.trim())}
               </span>
             </button>
           )}
         </div>
       )}
 
-      {/* Chips ingrédients */}
+      {/* Chips ingredients */}
       {fridgeItems.length > 0 && (
         <div className="flex flex-wrap gap-1.5 mb-5">
           {fridgeItems.map(item => {
@@ -249,7 +250,6 @@ export default function FridgePage() {
             return (
               <div key={item.id}>
                 {isEditing ? (
-                  /* Mini formulaire date de péremption */
                   <div className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 fade-in"
                     style={{ backgroundColor: 'var(--bg-raised)', border: '1px solid var(--border)' }}>
                     <span className="text-xs">{item.ingredient.emoji}</span>
@@ -280,15 +280,13 @@ export default function FridgePage() {
                     <span className="text-xs">{item.ingredient.emoji}</span>
                     <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>{item.ingredient.name}</span>
 
-                    {/* Badge péremption */}
                     {expiry && (
                       <span className={`text-[9px] font-semibold ${expiry.color}`}>{expiry.text}</span>
                     )}
 
-                    {/* Bouton calendrier (visible au hover) */}
                     <button
                       onClick={() => openExpiryEdit(item)}
-                      title="Définir date de péremption"
+                      title={t('fridge.expiry.setDate')}
                       className="w-5 h-5 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
                     >
                       <Calendar className="w-3 h-3" style={{ color: 'var(--text-muted)' }} />
@@ -311,7 +309,7 @@ export default function FridgePage() {
           style={{ backgroundColor: 'rgba(234,179,8,0.06)', border: '1px solid rgba(234,179,8,0.15)' }}>
           <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
           <div>
-            <p className="text-sm font-medium text-amber-600 dark:text-amber-400">Expire bientôt</p>
+            <p className="text-sm font-medium text-amber-600 dark:text-amber-400">{t('fridge.expiry.soon')}</p>
             <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
               {expiringSoon.map(i => i.ingredient.name).join(', ')}
             </p>
@@ -322,17 +320,17 @@ export default function FridgePage() {
       {fridgeItems.length === 0 ? (
         <div className="text-center py-10">
           <div className="flex justify-center mb-2">
-            <Mascot variant="sad" size="lg" animate="float" message="Mon frigo est vide 😢" />
+            <Mascot variant="sad" size="lg" animate="float" message={t('fridge.empty.mascot')} />
           </div>
-          <p className="text-sm font-medium mb-1">Frigo vide</p>
-          <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Ajoute des ingrédients pour voir les recettes adaptées</p>
+          <p className="text-sm font-medium mb-1">{t('fridge.empty.label')}</p>
+          <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{t('fridge.empty.hint')}</p>
         </div>
       ) : (
         <>
           <div className="card p-4 mb-5">
             <div className="flex items-center gap-2 mb-4">
               <SlidersHorizontal className="w-4 h-4" style={{ color: 'var(--text-secondary)' }} />
-              <span className="text-sm font-medium">Combien de suggestions ?</span>
+              <span className="text-sm font-medium">{t('fridge.howMany')}</span>
             </div>
             <div className="flex items-center justify-center gap-4 mb-4">
               <button onClick={() => setCount(c => Math.max(3, c - 1))}
@@ -366,15 +364,15 @@ export default function FridgePage() {
                   const data = await res.json();
                   if (!res.ok) setAiError(data.error);
                   else loadData();
-                } catch { setAiError('Erreur réseau'); }
+                } catch { setAiError(t('fridge.networkError')); }
                 finally { setAiLoading(false); }
               }}
               disabled={aiLoading}
               className="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-medium transition-all disabled:opacity-50"
               style={{ backgroundColor: 'var(--bg-inset)', color: 'var(--text-secondary)', border: '1px solid var(--border)' }}>
               {aiLoading
-                ? <><Loader2 className="w-4 h-4 animate-spin" /> Génération IA en cours…</>
-                : <><Wand2 className="w-4 h-4" /> Générer de nouvelles recettes avec l&apos;IA</>}
+                ? <><Loader2 className="w-4 h-4 animate-spin" /> {t('fridge.aiGenerating')}</>
+                : <><Wand2 className="w-4 h-4" /> {t('fridge.aiGenerate')}</>}
             </button>
             {aiError && <p className="text-xs text-red-500 mt-2 text-center">{aiError}</p>}
           </div>
@@ -383,8 +381,10 @@ export default function FridgePage() {
             <ChefHat className="w-4 h-4" style={{ color: 'var(--text-secondary)' }} />
             <h2 className="font-semibold text-sm">
               {suggestedRecipes.length > 0
-                ? `Top ${suggestedRecipes.length} recette${suggestedRecipes.length > 1 ? 's' : ''} avec ton frigo`
-                : 'Aucune recette disponible'}
+                ? (suggestedRecipes.length > 1
+                    ? t('fridge.topRecipesPlural').replace('{n}', String(suggestedRecipes.length))
+                    : t('fridge.topRecipes').replace('{n}', String(suggestedRecipes.length)))
+                : t('fridge.noRecipes')}
             </h2>
           </div>
 
@@ -392,7 +392,7 @@ export default function FridgePage() {
             <div className="text-center py-10">
               <ChefHat className="w-10 h-10 mx-auto mb-3" style={{ color: 'var(--text-muted)', opacity: 0.4 }} />
               <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>
-                Utilise &quot;Générer&quot; pour que l&apos;IA crée de nouvelles recettes.
+                {t('fridge.noRecipes.hint')}
               </p>
             </div>
           ) : (

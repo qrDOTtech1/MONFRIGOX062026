@@ -4,8 +4,10 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Mail, Lock, Eye, EyeOff } from 'lucide-react';
+import { useT } from '@/lib/i18n';
 
 export default function LoginPage() {
+  const { t } = useT();
   const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -33,7 +35,7 @@ export default function LoginPage() {
         router.push('/dashboard');
       }
     } catch {
-      setError('Erreur de connexion au serveur');
+      setError(t('login.error'));
     } finally {
       setLoading(false);
     }
@@ -44,8 +46,8 @@ export default function LoginPage() {
       <div className="w-full max-w-sm">
         <div className="flex flex-col items-center mb-8">
           <p className="text-2xl font-bold tracking-tight mb-4">Mon Frigo</p>
-          <h1 className="text-xl font-semibold">Connexion</h1>
-          <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>Content de te revoir</p>
+          <h1 className="text-xl font-semibold">{t('login.title')}</h1>
+          <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>{t('login.welcome')}</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-3">
@@ -57,14 +59,14 @@ export default function LoginPage() {
 
           <div className="relative">
             <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: 'var(--text-muted)' }} />
-            <input type="email" placeholder="Email" value={email} onChange={e => setEmail(e.target.value)} className="input-field !pl-10" required />
+            <input type="email" placeholder={t('login.email')} value={email} onChange={e => setEmail(e.target.value)} className="input-field !pl-10" required />
           </div>
 
           <div className="relative">
             <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: 'var(--text-muted)' }} />
             <input
               type={showPw ? 'text' : 'password'}
-              placeholder="Mot de passe"
+              placeholder={t('login.password')}
               value={password}
               onChange={e => setPassword(e.target.value)}
               className="input-field !pl-10 !pr-10"
@@ -76,13 +78,13 @@ export default function LoginPage() {
           </div>
 
           <button type="submit" disabled={loading} className="btn-primary w-full">
-            {loading ? 'Connexion...' : 'Se connecter'}
+            {loading ? t('login.loading') : t('login.submit')}
           </button>
         </form>
 
         <p className="text-center text-sm mt-6" style={{ color: 'var(--text-muted)' }}>
-          Pas encore de compte?{' '}
-          <Link href="/register" className="font-medium" style={{ color: 'var(--text)' }}>S&apos;inscrire</Link>
+          {t('login.noAccount')}{' '}
+          <Link href="/register" className="font-medium" style={{ color: 'var(--text)' }}>{t('login.register')}</Link>
         </p>
       </div>
     </div>

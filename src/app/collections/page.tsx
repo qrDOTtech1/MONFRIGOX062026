@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import AppShell from '@/components/AppShell';
+import { useT } from '@/lib/i18n';
 import { FolderHeart, Plus, ChevronRight, X, Loader2, ArrowLeft } from 'lucide-react';
 
 interface Collection { id: string; name: string; emoji: string; count: number; }
@@ -11,6 +12,7 @@ const EMOJIS = ['📁', '⭐', '🍝', '🍰', '🥗', '🍲', '👨‍👩‍�
 
 export default function CollectionsPage() {
   const router = useRouter();
+  const { t } = useT();
   const [collections, setCollections] = useState<Collection[]>([]);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
@@ -43,13 +45,13 @@ export default function CollectionsPage() {
   return (
     <AppShell>
       <button onClick={() => router.back()} className="flex items-center gap-1.5 text-sm mb-4" style={{ color: 'var(--text-muted)' }}>
-        <ArrowLeft className="w-4 h-4" /> Retour
+        <ArrowLeft className="w-4 h-4" /> {t('collections.back')}
       </button>
 
       <div className="flex items-center justify-between mb-5">
         <div className="flex items-center gap-2.5">
           <FolderHeart className="w-5 h-5" style={{ color: 'var(--text-secondary)' }} />
-          <h1 className="text-lg font-semibold">Mes carnets</h1>
+          <h1 className="text-lg font-semibold">{t('collections.myCollections')}</h1>
         </div>
         <button onClick={() => setCreating(c => !c)} className="w-9 h-9 rounded-lg flex items-center justify-center" style={{ backgroundColor: 'var(--accent)', color: 'var(--accent-text)' }}>
           <Plus className="w-4 h-4" />
@@ -58,7 +60,7 @@ export default function CollectionsPage() {
 
       {creating && (
         <div className="card p-4 mb-4 fade-in">
-          <input value={name} onChange={e => setName(e.target.value)} placeholder="Nom du carnet (ex: Repas de semaine)" className="input-field mb-3" autoFocus />
+          <input value={name} onChange={e => setName(e.target.value)} placeholder={t('collections.namePlaceholder')} className="input-field mb-3" autoFocus />
           <div className="flex flex-wrap gap-1.5 mb-3">
             {EMOJIS.map(e => (
               <button key={e} onClick={() => setEmoji(e)} className="w-9 h-9 rounded-lg text-lg flex items-center justify-center transition-all"
@@ -68,7 +70,7 @@ export default function CollectionsPage() {
             ))}
           </div>
           <button onClick={create} disabled={!name.trim() || saving} className="btn-primary w-full flex items-center justify-center gap-2 disabled:opacity-40">
-            {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />} Créer le carnet
+            {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />} {t('collections.createBtn')}
           </button>
         </div>
       )}
@@ -78,8 +80,8 @@ export default function CollectionsPage() {
       ) : collections.length === 0 ? (
         <div className="text-center py-16">
           <FolderHeart className="w-12 h-12 mx-auto mb-3" style={{ color: 'var(--text-muted)', opacity: 0.3 }} />
-          <p className="text-sm font-medium mb-1">Aucun carnet</p>
-          <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Crée des carnets pour organiser tes recettes par thème.</p>
+          <p className="text-sm font-medium mb-1">{t('collections.empty')}</p>
+          <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{t('collections.emptySub')}</p>
         </div>
       ) : (
         <div className="space-y-2">
@@ -89,7 +91,7 @@ export default function CollectionsPage() {
               <span className="text-2xl">{c.emoji}</span>
               <div className="flex-1">
                 <p className="font-medium text-sm">{c.name}</p>
-                <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{c.count} recette{c.count !== 1 ? 's' : ''}</p>
+                <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{c.count !== 1 ? t('collections.recipeCountPlural', { n: c.count }) : t('collections.recipeCount', { n: c.count })}</p>
               </div>
               <ChevronRight className="w-4 h-4" style={{ color: 'var(--text-muted)' }} />
             </button>

@@ -6,6 +6,8 @@ import AppShell from '@/components/AppShell';
 import NotificationsToggle from '@/components/NotificationsToggle';
 import { useTheme } from '@/components/ThemeProvider';
 import InfoBubble from '@/components/InfoBubble';
+import { useT } from '@/lib/i18n';
+import type { Lang } from '@/lib/i18n';
 import { UserCircle, LogOut, Shield, Heart, ShoppingCart, Refrigerator, Sun, Moon, Save, Check, AlertTriangle, Baby, Users, History, Sparkles, ChefHat, Zap, Crown, Star, Plus, Loader2, CalendarDays, ChevronRight, PiggyBank, Leaf, Flame, Receipt, Tag } from 'lucide-react';
 
 // Bouton qui crée une Checkout Session Stripe et redirige
@@ -20,7 +22,7 @@ function CheckoutButton({ priceId, label, sub, color, Icon, compact = false }:
     });
     const d = await res.json();
     if (d.url) window.location.href = d.url;
-    else { alert(d.error || 'Erreur Stripe'); setLoading(false); }
+    else { alert(d.error || 'Stripe error'); setLoading(false); }
   }
   const amber  = color === 'amber';
   const purple = color === 'purple';
@@ -108,6 +110,7 @@ const KID_MODES = [
 export default function ProfilePage() {
   const router = useRouter();
   const { theme, toggle } = useTheme();
+  const { t, lang, setLang } = useT();
   const [user, setUser] = useState<User | null>(null);
   const [stats, setStats] = useState<Stats>({ fridgeCount: 0, favCount: 0, listCount: 0 });
   const [impact, setImpact] = useState<{ sessionsCooked: number; sessionsThisMonth: number; mealsCooked: number; moneyCooked: number; savedVsTakeout: number; avgCaloriesPerServing: number; topCuisine: string | null; trackedExpiry: number; kgCooked: number; kgCookedMonth: number; kgSaved: number; kgSavedMonth: number; co2Saved: number; co2SavedMonth: number } | null>(null);
@@ -115,7 +118,7 @@ export default function ProfilePage() {
   const [cookLogs, setCookLogs] = useState<CookLogEntry[]>([]);
   const [cookCounts, setCookCounts] = useState<Record<string,number>>({});
   const [historyLoaded, setHistoryLoaded] = useState(false);
-  const [badges, setBadges] = useState<Array<{ code: string; emoji: string; label: string; desc: string; unlocked: boolean; unlockedAt: string | null; exclusive?: boolean; remaining?: number; soldOut?: boolean }>>([]);
+  const [badges, setBadges] = useState<Array<{ code: string; emoji: string; label: string; desc: string; unlocked: boolean; unlockedAt: string | null }>>([]);
   const [badgesLoaded, setBadgesLoaded] = useState(false);
   const [spending, setSpending] = useState<{ monthlyHistory: Array<{ month: string; total: number; sessions: number }>; totalSpent: number } | null>(null);
   const [spendingLoaded, setSpendingLoaded] = useState(false);
@@ -153,7 +156,7 @@ export default function ProfilePage() {
     setPromoState('applying');
     const res = await fetch('/api/promo/apply', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ code: promoCode }) });
     const data = await res.json();
-    if (!res.ok) { setPromoState('error'); setPromoMsg(data.error || 'Erreur'); return; }
+    if (!res.ok) { setPromoState('error'); setPromoMsg(data.error || 'Error'); return; }
     setPromoState('done');
     setPromoMsg(data.message);
     // Rafraîchir billing
@@ -237,7 +240,7 @@ export default function ProfilePage() {
   }
 
   async function deleteAccount() {
-    if (!confirm('Supprimer ton compte? Cette action est irréversible.')) return;
+    if (!confirm(t('profile.delete.confirm'))) return;
     const res = await fetch('/api/profile', { method: 'DELETE' });
     if (res.ok) { await logout(); }
   }
@@ -246,7 +249,7 @@ export default function ProfilePage() {
     <AppShell>
       <div className="flex items-center gap-2.5 mb-6">
         <UserCircle className="w-5 h-5" style={{ color: 'var(--text-secondary)' }} />
-        <h1 className="text-lg font-semibold">Mon profil</h1>
+        <h1 className="text-lg font-semibold">{t('profile.title')}</h1>
       </div>
 
       {user && (
@@ -264,7 +267,7 @@ export default function ProfilePage() {
               </span>
             )}
             <p className="text-xs mt-2" style={{ color: 'var(--text-muted)' }}>
-              Membre depuis {new Date(user.createdAt).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })}
+              {t('profile.memberSince', { date: new Date(user.createdAt).toLocaleDateString(lang === 'fr' ? 'fr-FR' : 'en-US', { month: 'long', year: 'numeric' }) })}
             </p>
           </div>
 
@@ -273,17 +276,17 @@ export default function ProfilePage() {
             <div className="card p-3.5 text-center">
               <Refrigerator className="w-4 h-4 mx-auto mb-1" style={{ color: 'var(--text-muted)' }} />
               <p className="text-base font-semibold">{stats.fridgeCount}</p>
-              <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>Ingrédients</p>
+              <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>{t('profile.stats.ingredients')}</p>
             </div>
             <div className="card p-3.5 text-center">
               <Heart className="w-4 h-4 mx-auto mb-1 text-red-400" />
               <p className="text-base font-semibold">{stats.favCount}</p>
-              <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>Favoris</p>
+              <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>{t('profile.stats.favorites')}</p>
             </div>
             <div className="card p-3.5 text-center">
               <ShoppingCart className="w-4 h-4 mx-auto mb-1 text-amber-400" />
               <p className="text-base font-semibold">{stats.listCount}</p>
-              <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>Listes</p>
+              <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>{t('profile.stats.lists')}</p>
             </div>
           </div>
 
@@ -292,9 +295,9 @@ export default function ProfilePage() {
             <div className="card p-4 mb-5">
               <div className="flex items-center gap-2 mb-3">
                 <Sparkles className="w-4 h-4 text-emerald-500" />
-                <h2 className="font-semibold text-sm">Mon impact</h2>
+                <h2 className="font-semibold text-sm">{t('profile.impact')}</h2>
                 <span className="text-[10px] ml-auto" style={{ color: 'var(--text-muted)' }}>
-                  {impact.sessionsThisMonth} ce mois-ci
+                  {t('profile.impact.thisMonth', { n: impact.sessionsThisMonth })}
                 </span>
               </div>
               <div className="grid grid-cols-2 gap-2 mb-2">
@@ -302,28 +305,28 @@ export default function ProfilePage() {
                   <PiggyBank className="w-5 h-5 text-emerald-500 shrink-0" />
                   <div>
                     <p className="text-lg font-bold leading-none">{impact.savedVsTakeout} €</p>
-                    <p className="text-[10px] mt-0.5" style={{ color: 'var(--text-muted)' }}>économisés vs livraison</p>
+                    <p className="text-[10px] mt-0.5" style={{ color: 'var(--text-muted)' }}>{t('profile.impact.savedVsDelivery')}</p>
                   </div>
                 </div>
                 <div className="rounded-lg p-3 flex items-center gap-2.5" style={{ backgroundColor: 'rgba(99,102,241,0.08)' }}>
                   <ChefHat className="w-5 h-5 text-indigo-400 shrink-0" />
                   <div>
                     <p className="text-lg font-bold leading-none">{impact.sessionsCooked}</p>
-                    <p className="text-[10px] mt-0.5" style={{ color: 'var(--text-muted)' }}>repas cuisinés</p>
+                    <p className="text-[10px] mt-0.5" style={{ color: 'var(--text-muted)' }}>{t('profile.impact.mealsCooked')}</p>
                   </div>
                 </div>
                 <div className="rounded-lg p-3 flex items-center gap-2.5" style={{ backgroundColor: 'rgba(234,179,8,0.08)' }}>
                   <Leaf className="w-5 h-5 text-amber-500 shrink-0" />
                   <div>
                     <p className="text-lg font-bold leading-none">{impact.trackedExpiry}</p>
-                    <p className="text-[10px] mt-0.5" style={{ color: 'var(--text-muted)' }}>aliments anti-gaspi suivis</p>
+                    <p className="text-[10px] mt-0.5" style={{ color: 'var(--text-muted)' }}>{t('profile.impact.antiWasteTracked')}</p>
                   </div>
                 </div>
                 <div className="rounded-lg p-3 flex items-center gap-2.5" style={{ backgroundColor: 'rgba(239,68,68,0.06)' }}>
                   <Flame className="w-5 h-5 text-orange-500 shrink-0" />
                   <div>
                     <p className="text-lg font-bold leading-none">{impact.avgCaloriesPerServing || '—'}</p>
-                    <p className="text-[10px] mt-0.5" style={{ color: 'var(--text-muted)' }}>kcal moy. / portion</p>
+                    <p className="text-[10px] mt-0.5" style={{ color: 'var(--text-muted)' }}>{t('profile.impact.avgKcal')}</p>
                   </div>
                 </div>
               </div>
@@ -333,27 +336,27 @@ export default function ProfilePage() {
                 <div className="rounded-xl p-3 mb-2"
                   style={{ background: 'linear-gradient(135deg, rgba(16,185,129,0.08), rgba(34,197,94,0.05))', border: '1px solid rgba(16,185,129,0.2)' }}>
                   <p className="text-xs font-semibold mb-2 flex items-center gap-1.5">
-                    <Leaf className="w-3.5 h-3.5 text-emerald-500" /> Bilan anti-gaspi de {new Date().toLocaleDateString('fr-FR', { month: 'long' })}
+                    <Leaf className="w-3.5 h-3.5 text-emerald-500" /> {t('profile.impact.antiWasteMonth', { month: new Date().toLocaleDateString(lang === 'fr' ? 'fr-FR' : 'en-US', { month: 'long' }) })}
                   </p>
                   <div className="flex justify-around text-center">
                     <div>
                       <p className="text-base font-bold text-emerald-500">{impact.kgSavedMonth} kg</p>
-                      <p className="text-[9px]" style={{ color: 'var(--text-muted)' }}>nourriture sauvée</p>
+                      <p className="text-[9px]" style={{ color: 'var(--text-muted)' }}>{t('profile.impact.foodSaved')}</p>
                     </div>
                     <div>
                       <p className="text-base font-bold text-emerald-500">{impact.co2SavedMonth} kg</p>
-                      <p className="text-[9px]" style={{ color: 'var(--text-muted)' }}>CO₂ évité</p>
+                      <p className="text-[9px]" style={{ color: 'var(--text-muted)' }}>{t('profile.impact.co2Avoided')}</p>
                     </div>
                     <div>
                       <p className="text-base font-bold text-emerald-500">{impact.kgCookedMonth} kg</p>
-                      <p className="text-[9px]" style={{ color: 'var(--text-muted)' }}>cuisinés ce mois</p>
+                      <p className="text-[9px]" style={{ color: 'var(--text-muted)' }}>{t('profile.impact.cookedMonth')}</p>
                     </div>
                   </div>
                 </div>
               )}
 
               <p className="text-[10px] text-center" style={{ color: 'var(--text-muted)' }}>
-                Estimations basées sur tes recettes cuisinées{impact.topCuisine ? ` · cuisine préférée : ${impact.topCuisine}` : ''}.
+                {t('profile.impact.estimate')}{impact.topCuisine ? ` · ${t('profile.impact.favCuisine', { cuisine: impact.topCuisine })}` : ''}.
               </p>
             </div>
           )}
@@ -370,14 +373,14 @@ export default function ProfilePage() {
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-semibold flex items-center gap-1.5">
-                Repas &amp; Courses
+                {t('profile.meals')}
                 <InfoBubble
                   align="left"
-                  label="Repas & Courses"
-                  text="Planifie tes repas de la semaine, puis génère automatiquement ta liste de courses à partir des recettes choisies."
+                  label={t('profile.meals')}
+                  text={t('profile.meals.info')}
                 />
               </p>
-              <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>Planning de la semaine &amp; liste de courses</p>
+              <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>{t('profile.meals.desc')}</p>
             </div>
             <ChevronRight className="w-4 h-4" style={{ color: 'var(--text-muted)' }} />
           </button>
@@ -390,8 +393,8 @@ export default function ProfilePage() {
               <Star className="w-4 h-4" style={{ color: 'var(--text-secondary)' }} />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold">Mes carnets</p>
-              <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>Organise tes recettes en collections</p>
+              <p className="text-sm font-semibold">{t('profile.collections')}</p>
+              <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>{t('profile.collections.desc')}</p>
             </div>
             <ChevronRight className="w-4 h-4" style={{ color: 'var(--text-muted)' }} />
           </button>
@@ -405,8 +408,8 @@ export default function ProfilePage() {
               <Zap className="w-4 h-4 text-white" />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold">Mon Coach IA</p>
-              <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>Profil sport, objectifs, compléments</p>
+              <p className="text-sm font-semibold">{t('profile.coach')}</p>
+              <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>{t('profile.coach.desc')}</p>
             </div>
             <Crown className="w-4 h-4 text-purple-400" />
           </button>
@@ -421,12 +424,12 @@ export default function ProfilePage() {
                   {billing.plan === 'PREMIUM' && <Star  className="w-4 h-4 text-amber-500" />}
                   {billing.plan === 'FREE'    && <Zap   className="w-4 h-4" style={{ color: 'var(--text-muted)' }} />}
                   <span className="font-semibold text-sm">
-                    Plan {billing.plan === 'FREE' ? 'Gratuit' : billing.plan === 'VIP' ? 'VIP 👑' : '⭐ Premium'}
+                    {t('profile.plan')} {billing.plan === 'FREE' ? t('profile.plan.free') : billing.plan === 'VIP' ? t('profile.plan.vip') : t('profile.plan.premium')}
                   </span>
                 </div>
                 {billing.planExpiresAt && (
                   <span className="text-[10px]" style={{ color: 'var(--text-muted)' }}>
-                    expire {new Date(billing.planExpiresAt).toLocaleDateString('fr-FR')}
+                    {t('profile.plan.expires', { date: new Date(billing.planExpiresAt).toLocaleDateString(lang === 'fr' ? 'fr-FR' : 'en-US') })}
                   </span>
                 )}
               </div>
@@ -435,14 +438,14 @@ export default function ProfilePage() {
               {!billing.isUnlimited && (
                 <div className="space-y-2 mb-4">
                   {[
-                    { label: 'Cette semaine', used: billing.aiCallsWeek, max: billing.limitWeekly },
+                    { label: 'week', used: billing.aiCallsWeek, max: billing.limitWeekly },
                   ].map(row => {
                     const pct = Math.min(100, Math.round(row.used / row.max * 100));
                     const danger = pct >= 80;
                     return (
                       <div key={row.label}>
                         <div className="flex justify-between text-[10px] mb-0.5" style={{ color: 'var(--text-muted)' }}>
-                          <span>Requêtes IA — {row.label}</span>
+                          <span>{t('profile.plan.aiWeek')}</span>
                           <span className={danger ? 'text-amber-500 font-semibold' : ''}>{row.used}/{row.max}</span>
                         </div>
                         <div className="h-1.5 rounded-full overflow-hidden" style={{ backgroundColor: 'var(--bg-inset)' }}>
@@ -455,7 +458,7 @@ export default function ProfilePage() {
                 </div>
               )}
               {billing.isUnlimited && (
-                <p className="text-xs mb-4 text-purple-500 font-medium">✨ Requêtes IA illimitées</p>
+                <p className="text-xs mb-4 text-purple-500 font-medium">{t('profile.plan.unlimited')}</p>
               )}
 
               {/* Extra quota */}
@@ -464,7 +467,7 @@ export default function ProfilePage() {
                   style={{ backgroundColor: 'rgba(16,185,129,0.06)', border: '1px solid rgba(16,185,129,0.15)' }}>
                   <Zap className="w-3.5 h-3.5 text-emerald-500" />
                   <span className="text-xs text-emerald-600 dark:text-emerald-400">
-                    <strong>{billing.extraQuota}</strong> requête{billing.extraQuota > 1 ? 's' : ''} bonus disponible{billing.extraQuota > 1 ? 's' : ''}
+                    {billing.extraQuota > 1 ? t('profile.plan.bonusAvailablePlural', { n: billing.extraQuota }) : t('profile.plan.bonusAvailable', { n: billing.extraQuota })}
                   </span>
                 </div>
               )}
@@ -472,7 +475,7 @@ export default function ProfilePage() {
               {/* CTA upgrade */}
               {billing.plan === 'FREE' && (
                 <div className="space-y-2">
-                  <p className="text-xs font-medium mb-2" style={{ color: 'var(--text-muted)' }}>Passer à un plan payant :</p>
+                  <p className="text-xs font-medium mb-2" style={{ color: 'var(--text-muted)' }}>{t('profile.plan.upgrade')}</p>
                   <div className="grid grid-cols-2 gap-2">
                     {[
                       { k: 'premiumMonthly', label: 'Premium',        sub: billing.prices.premiumMonthly + '/mois', color: 'amber', Icon: Star },
@@ -483,7 +486,7 @@ export default function ProfilePage() {
                       billing.priceIds[p.k]
                         ? <CheckoutButton key={p.k} priceId={billing.priceIds[p.k]}
                             label={p.label} sub={p.sub} color={p.color} Icon={p.Icon} />
-                        : <button key={p.k} onClick={() => alert('Paiement bientôt disponible ! Stripe est en cours de configuration.')}
+                        : <button key={p.k} onClick={() => alert(t('profile.paymentSoon'))}
                             className="flex flex-col items-center py-3 px-2 rounded-xl text-center transition-all hover:scale-[1.02]"
                             style={{
                               backgroundColor: p.color === 'amber' ? 'rgba(245,158,11,0.08)' : 'rgba(168,85,247,0.08)',
@@ -502,7 +505,7 @@ export default function ProfilePage() {
               <div className="mt-3 pt-3" style={{ borderTop: '1px solid var(--border-subtle)' }}>
                 <p className="text-[10px] font-medium mb-2" style={{ color: 'var(--text-muted)' }}>
                   <Plus className="w-3 h-3 inline mr-0.5" />
-                  Acheter des requêtes supplémentaires :
+                  {t('profile.plan.buyExtra')}
                 </p>
                 <div className="flex gap-2">
                   {[
@@ -513,7 +516,7 @@ export default function ProfilePage() {
                     billing.priceIds[pack.k]
                       ? <CheckoutButton key={pack.k} priceId={billing.priceIds[pack.k]}
                           label={pack.label} sub={pack.price} color="gray" compact />
-                      : <button key={pack.k} onClick={() => alert('Paiement bientôt disponible !')}
+                      : <button key={pack.k} onClick={() => alert(t('profile.paymentSoon'))}
                           className="flex-1 py-2 rounded-lg text-center transition-all hover:scale-[1.02]"
                           style={{ backgroundColor: 'var(--bg-inset)', border: '1px solid var(--border)' }}>
                           <p className="text-xs font-semibold">{pack.label}</p>
@@ -529,7 +532,7 @@ export default function ProfilePage() {
           <div className="card p-4 mb-5">
             <div className="flex items-center gap-2 mb-3">
               <Tag className="w-4 h-4" style={{ color: 'var(--text-secondary)' }} />
-              <h2 className="text-sm font-semibold">Code promo</h2>
+              <h2 className="text-sm font-semibold">{t('profile.promo')}</h2>
             </div>
 
             {promoState === 'done' ? (
@@ -545,7 +548,7 @@ export default function ProfilePage() {
                     value={promoCode}
                     onChange={e => { setPromoCode(e.target.value.toUpperCase()); setPromoState('idle'); setPromoMsg(''); setPromoPreview(null); }}
                     onKeyDown={e => e.key === 'Enter' && promoState === 'idle' && validatePromo()}
-                    placeholder="Ex: SUMMER25 ou ABCD-EFGH"
+                    placeholder={t('profile.promo.placeholder')}
                     className="flex-1 text-sm px-3 py-2 rounded-xl outline-none font-mono"
                     style={{ backgroundColor: 'var(--bg-inset)', border: `1px solid ${promoState === 'error' ? 'rgba(239,68,68,0.5)' : promoState === 'valid' ? 'rgba(16,185,129,0.5)' : 'var(--border)'}`, color: 'var(--text)' }}
                     disabled={promoState === 'validating' || promoState === 'applying'}
@@ -554,13 +557,13 @@ export default function ProfilePage() {
                     <button onClick={applyPromo} disabled={promoState === 'applying'}
                       className="px-3 py-2 rounded-xl text-sm font-semibold disabled:opacity-50 transition-all active:scale-95"
                       style={{ backgroundColor: 'rgb(16,185,129)', color: '#fff' }}>
-                      {promoState === 'applying' ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Activer'}
+                      {promoState === 'applying' ? <Loader2 className="w-4 h-4 animate-spin" /> : t('profile.promo.activate')}
                     </button>
                   ) : (
                     <button onClick={validatePromo} disabled={!promoCode.trim() || promoState === 'validating'}
                       className="px-3 py-2 rounded-xl text-sm font-medium disabled:opacity-40 transition-all active:scale-95"
                       style={{ backgroundColor: 'var(--accent)', color: 'var(--accent-text)' }}>
-                      {promoState === 'validating' ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Vérifier'}
+                      {promoState === 'validating' ? <Loader2 className="w-4 h-4 animate-spin" /> : t('profile.promo.check')}
                     </button>
                   )}
                 </div>
@@ -583,7 +586,7 @@ export default function ProfilePage() {
 
                 {promoState === 'valid' && promoPreview && (
                   <p className="text-[10px] mt-1.5 px-1" style={{ color: 'var(--text-muted)' }}>
-                    Clique sur "Activer" pour appliquer {promoPreview.durationMonths} mois {promoPreview.planGranted} à ton compte.
+                    {t('profile.promo.activateDesc', { n: promoPreview.durationMonths, plan: promoPreview.planGranted })}
                   </p>
                 )}
               </>
@@ -593,9 +596,9 @@ export default function ProfilePage() {
           {/* Tab switcher */}
           <div className="flex rounded-xl p-0.5 mb-5" style={{ backgroundColor: 'var(--bg-inset)' }}>
             {[
-              { id: 'prefs' as const, label: 'Préférences', icon: Sparkles },
-              { id: 'history' as const, label: 'Historique', icon: History },
-              { id: 'badges' as const, label: 'Badges', icon: Star },
+              { id: 'prefs' as const, label: t('profile.tabs.prefs'), icon: Sparkles },
+              { id: 'history' as const, label: t('profile.tabs.history'), icon: History },
+              { id: 'badges' as const, label: t('profile.tabs.badges'), icon: Star },
             ].map(({ id, label, icon: Icon }) => (
               <button key={id} onClick={() => { setActiveTab(id); if (id === 'history') loadHistory(); if (id === 'badges') loadBadges(); }}
                 className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-sm font-medium transition-all"
@@ -618,21 +621,21 @@ export default function ProfilePage() {
                   <ChefHat className="w-5 h-5" style={{ color: 'var(--text-secondary)' }} />
                 </div>
                 <div className="flex-1">
-                  <p className="text-sm font-semibold">Refaire l&apos;onboarding</p>
-                  <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>Mettre à jour tes goûts, allergies, régime</p>
+                  <p className="text-sm font-semibold">{t('profile.history.redo')}</p>
+                  <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>{t('profile.history.redo.desc')}</p>
                 </div>
                 <span className="text-xs px-2 py-1 rounded-lg" style={{ backgroundColor: 'var(--bg-inset)', color: 'var(--text-muted)' }}>→</span>
               </button>
 
               <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
                 <History className="w-4 h-4" style={{ color: 'var(--text-muted)' }} />
-                Mes cuisines récentes
+                {t('profile.history.recent')}
               </h3>
               {cookLogs.length === 0 ? (
                 <div className="text-center py-10">
                   <ChefHat className="w-10 h-10 mx-auto mb-3" style={{ color: 'var(--text-muted)', opacity: 0.3 }} />
-                  <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Aucune recette cuisinée pour l&apos;instant</p>
-                  <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>Termine le mode cuisine pour que ça apparaisse ici</p>
+                  <p className="text-sm" style={{ color: 'var(--text-muted)' }}>{t('profile.history.empty')}</p>
+                  <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>{t('profile.history.empty.sub')}</p>
                 </div>
               ) : (
                 <div className="space-y-2">
@@ -649,7 +652,7 @@ export default function ProfilePage() {
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium truncate">{log.recipe.name}</p>
                         <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
-                          {new Date(log.cookedAt).toLocaleDateString('fr-FR', { day:'numeric', month:'short', year:'numeric' })}
+                          {new Date(log.cookedAt).toLocaleDateString(lang === 'fr' ? 'fr-FR' : 'en-US', { day:'numeric', month:'short', year:'numeric' })}
                           {cookCounts[log.recipe.id] > 1 && <span className="ml-2 text-emerald-500 font-medium">×{cookCounts[log.recipe.id]}</span>}
                         </p>
                       </div>
@@ -663,11 +666,11 @@ export default function ProfilePage() {
                 <div className="mt-6">
                   <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
                     <Receipt className="w-4 h-4" style={{ color: 'var(--text-muted)' }} />
-                    Dépenses courses estimées
+                    {t('profile.history.spending')}
                   </h3>
                   <div className="card p-4">
                     <div className="flex items-center justify-between mb-3">
-                      <span className="text-xs" style={{ color: 'var(--text-muted)' }}>6 derniers mois</span>
+                      <span className="text-xs" style={{ color: 'var(--text-muted)' }}>{t('profile.history.spending.period')}</span>
                       <span className="text-sm font-bold">{spending.totalSpent} €</span>
                     </div>
                     <div className="space-y-2">
@@ -685,7 +688,7 @@ export default function ProfilePage() {
                       })}
                     </div>
                     <p className="text-[10px] text-center mt-3" style={{ color: 'var(--text-muted)' }}>
-                      Estimation basée sur les ingrédients des recettes cuisinées
+                      {t('profile.history.spending.estimate')}
                     </p>
                   </div>
                 </div>
@@ -698,66 +701,30 @@ export default function ProfilePage() {
             <div className="mb-5">
               <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
                 <Star className="w-4 h-4" style={{ color: '#f59e0b' }} />
-                Tes badges
+                {t('profile.badges.title')}
               </h3>
               <p className="text-xs mb-4" style={{ color: 'var(--text-muted)' }}>
-                {badges.filter(b => b.unlocked).length}/{badges.length} débloqués
+                {t('profile.badges.unlocked', { n: badges.filter(b => b.unlocked).length, total: badges.length })}
               </p>
               <div className="grid grid-cols-3 gap-2">
-                {badges.map(b => {
-                  // Badge exclusif « Pionnier » : rendu premium
-                  if (b.exclusive) {
-                    return (
-                      <div key={b.code}
-                        className="relative flex flex-col items-center p-3 rounded-xl text-center transition-all overflow-hidden"
-                        style={{
-                          background: b.unlocked
-                            ? 'linear-gradient(135deg, rgba(99,102,241,0.18), rgba(168,85,247,0.18))'
-                            : 'var(--bg-inset)',
-                          border: b.unlocked ? '1px solid rgba(168,85,247,0.5)' : '1px dashed var(--border)',
-                          boxShadow: b.unlocked ? '0 0 14px rgba(168,85,247,0.25)' : 'none',
-                          opacity: b.unlocked ? 1 : (b.soldOut ? 0.4 : 0.7),
-                        }}>
-                        <span className="absolute top-1 right-1 text-[7px] font-bold px-1 py-0.5 rounded-full"
-                          style={{ background: 'linear-gradient(135deg, rgb(99,102,241), rgb(168,85,247))', color: 'white' }}>
-                          LIMITÉ
-                        </span>
-                        <span className="text-2xl mb-1">{b.emoji}</span>
-                        <p className="text-[10px] font-semibold leading-tight" style={b.unlocked ? { color: 'rgb(168,85,247)' } : undefined}>{b.label}</p>
-                        <p className="text-[9px] mt-0.5" style={{ color: 'var(--text-muted)' }}>{b.desc}</p>
-                        {b.unlocked ? (
-                          <p className="text-[8px] mt-1 font-semibold" style={{ color: 'rgb(168,85,247)' }}>
-                            Membre fondateur ✨
-                          </p>
-                        ) : b.soldOut ? (
-                          <p className="text-[8px] mt-1" style={{ color: 'var(--text-muted)' }}>Édition épuisée</p>
-                        ) : (
-                          <p className="text-[8px] mt-1 font-semibold text-emerald-500">
-                            {b.remaining} place{(b.remaining ?? 0) > 1 ? 's' : ''} restante{(b.remaining ?? 0) > 1 ? 's' : ''}
-                          </p>
-                        )}
-                      </div>
-                    );
-                  }
-                  return (
-                    <div key={b.code}
-                      className="flex flex-col items-center p-3 rounded-xl text-center transition-all"
-                      style={{
-                        backgroundColor: b.unlocked ? 'rgba(245,158,11,0.06)' : 'var(--bg-inset)',
-                        border: b.unlocked ? '1px solid rgba(245,158,11,0.2)' : '1px solid var(--border-subtle)',
-                        opacity: b.unlocked ? 1 : 0.45,
-                      }}>
-                      <span className="text-2xl mb-1">{b.emoji}</span>
-                      <p className="text-[10px] font-semibold leading-tight">{b.label}</p>
-                      <p className="text-[9px] mt-0.5" style={{ color: 'var(--text-muted)' }}>{b.desc}</p>
-                      {b.unlocked && b.unlockedAt && (
-                        <p className="text-[8px] mt-1 text-amber-500">
-                          {new Date(b.unlockedAt).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}
-                        </p>
-                      )}
-                    </div>
-                  );
-                })}
+                {badges.map(b => (
+                  <div key={b.code}
+                    className="flex flex-col items-center p-3 rounded-xl text-center transition-all"
+                    style={{
+                      backgroundColor: b.unlocked ? 'rgba(245,158,11,0.06)' : 'var(--bg-inset)',
+                      border: b.unlocked ? '1px solid rgba(245,158,11,0.2)' : '1px solid var(--border-subtle)',
+                      opacity: b.unlocked ? 1 : 0.45,
+                    }}>
+                    <span className="text-2xl mb-1">{b.emoji}</span>
+                    <p className="text-[10px] font-semibold leading-tight">{b.label}</p>
+                    <p className="text-[9px] mt-0.5" style={{ color: 'var(--text-muted)' }}>{b.desc}</p>
+                    {b.unlocked && b.unlockedAt && (
+                      <p className="text-[8px] mt-1 text-amber-500">
+                        {new Date(b.unlockedAt).toLocaleDateString(lang === 'fr' ? 'fr-FR' : 'en-US', { day: 'numeric', month: 'short' })}
+                      </p>
+                    )}
+                  </div>
+                ))}
               </div>
             </div>
           )}
@@ -769,15 +736,15 @@ export default function ProfilePage() {
           <div className="card p-5 mb-5">
             <h2 className="font-semibold text-sm mb-4 flex items-center gap-2">
               <AlertTriangle className="w-4 h-4 text-amber-500" />
-              Mes allergènes
+              {t('profile.allergens')}
               <InfoBubble
                 align="left"
-                label="Mes allergènes"
-                text="Coche les aliments que tu ne peux pas manger. Les recettes qui en contiennent seront signalées par un avertissement."
+                label={t('profile.allergens')}
+                text={t('profile.allergens.desc')}
               />
             </h2>
             <p className="text-xs mb-3" style={{ color: 'var(--text-muted)' }}>
-              Les recettes contenant ces allergènes seront signalées
+              {t('profile.allergens.desc')}
             </p>
             <div className="flex flex-wrap gap-1.5">
               {ALLERGENS.map(a => (
@@ -800,7 +767,7 @@ export default function ProfilePage() {
           </div>
 
           <div className="card p-5 mb-5">
-            <h2 className="font-semibold text-sm mb-3">Régime alimentaire</h2>
+            <h2 className="font-semibold text-sm mb-3">{t('profile.diet')}</h2>
             <div className="grid grid-cols-2 gap-1.5">
               {DIET_MODES.map(d => (
                 <button
@@ -822,10 +789,10 @@ export default function ProfilePage() {
           <div className="card p-5 mb-5">
             <h2 className="font-semibold text-sm mb-1 flex items-center gap-2">
               <Baby className="w-4 h-4" style={{ color: 'var(--text-secondary)' }} />
-              Mode famille
+              {t('profile.family')}
             </h2>
             <p className="text-xs mb-3" style={{ color: 'var(--text-muted)' }}>
-              Adapte les recettes et portions pour les enfants et bébés
+              {t('profile.family.desc')}
             </p>
             <div className="space-y-1.5 mb-3">
               {KID_MODES.map(k => (
@@ -851,7 +818,7 @@ export default function ProfilePage() {
             {(kidMode === 'bebe' || kidMode === 'enfant') && (
               <div className="fade-in">
                 <label className="text-xs block mb-1.5" style={{ color: 'var(--text-muted)' }}>
-                  Âge de l&apos;enfant (en mois)
+                  {t('profile.family.ageLabel')}
                 </label>
                 <input
                   type="number"
@@ -859,7 +826,7 @@ export default function ProfilePage() {
                   max={216}
                   value={kidAgeMonths ?? ''}
                   onChange={e => setKidAgeMonths(e.target.value ? parseInt(e.target.value) : null)}
-                  placeholder="Ex: 8 mois"
+                  placeholder={t('profile.family.agePlaceholder')}
                   className="input-field"
                 />
                 {kidMode === 'bebe' && kidAgeMonths !== null && (
@@ -879,7 +846,7 @@ export default function ProfilePage() {
           <div className="card p-5 mb-5">
             <h2 className="font-semibold text-sm mb-3 flex items-center gap-2">
               <Users className="w-4 h-4" style={{ color: 'var(--text-secondary)' }} />
-              Nombre de personnes par défaut
+              {t('profile.servings')}
             </h2>
             <div className="flex items-center gap-3">
               <button
@@ -893,35 +860,57 @@ export default function ProfilePage() {
                 className="w-9 h-9 rounded-lg flex items-center justify-center text-lg font-bold"
                 style={{ backgroundColor: 'var(--bg-inset)', border: '1px solid var(--border)' }}
               >+</button>
-              <span className="text-sm" style={{ color: 'var(--text-muted)' }}>personne{defaultServings > 1 ? 's' : ''}</span>
+              <span className="text-sm" style={{ color: 'var(--text-muted)' }}>{defaultServings > 1 ? t('profile.servings.units') : t('profile.servings.unit')}</span>
             </div>
           </div>
 
           {/* Sauvegarder préférences */}
           <button onClick={savePreferences} disabled={saving} className="btn-primary w-full flex items-center justify-center gap-2 mb-5 disabled:opacity-40">
             {saved ? <Check className="w-4 h-4" /> : <Save className="w-4 h-4" />}
-            {saved ? 'Préférences sauvegardées' : saving ? 'Sauvegarde...' : 'Sauvegarder mes préférences'}
+            {saved ? t('profile.saved') : saving ? t('profile.saving') : t('profile.save')}
           </button>
 
           {/* Actions */}
           <div className="space-y-2">
             <button onClick={toggle} className="btn-secondary w-full flex items-center justify-center gap-2">
               {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
-              {theme === 'dark' ? 'Mode clair' : 'Mode sombre'}
+              {theme === 'dark' ? t('profile.theme.dark') : t('profile.theme.light')}
             </button>
+
+            {/* Language selector */}
+            <div className="card p-4">
+              <p className="text-sm font-semibold mb-3">{t('profile.language')}</p>
+              <div className="flex rounded-xl p-0.5" style={{ backgroundColor: 'var(--bg-inset)' }}>
+                {([
+                  { code: 'fr' as Lang, label: '\u{1F1EB}\u{1F1F7} Français' },
+                  { code: 'en' as Lang, label: '\u{1F1EC}\u{1F1E7} English' },
+                ] as const).map(({ code, label }) => (
+                  <button
+                    key={code}
+                    onClick={() => setLang(code)}
+                    className="flex-1 py-2 rounded-lg text-sm font-medium transition-all text-center"
+                    style={lang === code
+                      ? { backgroundColor: 'var(--accent)', color: 'var(--accent-text)', boxShadow: '0 1px 3px rgba(0,0,0,.12)' }
+                      : { color: 'var(--text-muted)' }}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
 
             {user.role === 'ADMIN' && (
               <button onClick={() => router.push('/admin')} className="btn-secondary w-full flex items-center justify-center gap-2">
-                <Shield className="w-4 h-4" /> Portail Admin
+                <Shield className="w-4 h-4" /> {t('profile.admin')}
               </button>
             )}
 
             <button onClick={logout} className="btn-secondary w-full flex items-center justify-center gap-2">
-              <LogOut className="w-4 h-4" /> Se déconnecter
+              <LogOut className="w-4 h-4" /> {t('profile.logout')}
             </button>
 
             <button onClick={deleteAccount} className="w-full py-3 text-sm text-red-500 hover:text-red-400 transition-colors">
-              Supprimer mon compte
+              {t('profile.delete')}
             </button>
           </div>
 

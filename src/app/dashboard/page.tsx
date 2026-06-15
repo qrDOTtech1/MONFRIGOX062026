@@ -10,6 +10,7 @@ import RecipeCard from '@/components/RecipeCard';
 import CommunityFeed from '@/components/CommunityFeed';
 import InfoBubble from '@/components/InfoBubble';
 import { Search, ChefHat, SlidersHorizontal, Refrigerator, Sparkles, Globe, Users, ChevronDown, X, Dice5, Crown, MessageSquare, Loader2 } from 'lucide-react';
+import { useT } from '@/lib/i18n';
 
 // Nombre de recettes affichées au départ puis par paquet (chargement progressif)
 const PAGE_SIZE = 12;
@@ -126,6 +127,22 @@ function SectionLabel({ icon, label, count, color }: { icon: React.ReactNode; la
 
 export default function ExplorerPage() {
   const router = useRouter();
+  const { t } = useT();
+
+  // Display label maps for filter chips (internal values stay in French for logic)
+  const difficultyLabel: Record<string, string> = {
+    'Tous': t('dashboard.filterAll'), 'Facile': t('dashboard.difficulty.easy'),
+    'Moyen': t('dashboard.difficulty.medium'), 'Difficile': t('dashboard.difficulty.hard'),
+  };
+  const dietaryLabel: Record<string, string> = {
+    'Tous': t('dashboard.filterAll'), 'De saison': t('dashboard.filterSeason'),
+    'Anti-gaspi': t('dashboard.filterAntiWaste'), 'Compatible régime': t('dashboard.filterDietCompat'),
+    'Revisités': t('dashboard.filterRevisited'), 'Communauté': t('dashboard.filterCommunity'),
+  };
+  const budgetLabel: Record<string, string> = {
+    'Tous': t('dashboard.filterAll'), '5': '< 5 €', '10': '< 10 €', '15': '< 15 €',
+    'custom': t('dashboard.filterCustom'),
+  };
   const [recipes, setRecipes]         = useState<Recipe[]>([]);
   const [loading, setLoading]         = useState(true);
   const [search, setSearch]           = useState('');
@@ -299,11 +316,11 @@ export default function ExplorerPage() {
     <AppShell>
       <div className="flex items-center gap-2.5 mb-3">
         <ChefHat className="w-5 h-5" style={{ color: 'var(--text-secondary)' }} />
-        <h1 className="font-semibold text-base">Explorer</h1>
+        <h1 className="font-semibold text-base">{t('dashboard.explorer')}</h1>
         <InfoBubble
           align="left"
-          label="Explorer"
-          text="Tes recettes sont triées selon le contenu de ton frigo : celles que tu peux cuisiner maintenant apparaissent en premier. L'onglet « Communauté » regroupe les partages des autres membres."
+          label={t('dashboard.explorer')}
+          text={t('dashboard.infoBubble')}
         />
         {view === 'recipes' && (
         <div className="ml-auto flex items-center gap-2">
@@ -324,7 +341,7 @@ export default function ExplorerPage() {
             title="Recette surprise"
           >
             <Dice5 className={`w-3.5 h-3.5 ${surprising ? 'animate-spin' : ''}`} />
-            Surprise !
+            {t('dashboard.surprise')}
           </button>
           {!isSearching && (
             <button
@@ -333,11 +350,11 @@ export default function ExplorerPage() {
               style={sectionMode
                 ? { backgroundColor: 'var(--accent)', color: 'var(--accent-text)' }
                 : { backgroundColor: 'var(--bg-inset)', color: 'var(--text-muted)', border: '1px solid var(--border)' }}>
-              Sections
+              {t('dashboard.sections')}
             </button>
           )}
           <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
-            {filtered.length} recette{filtered.length !== 1 ? 's' : ''}
+            {filtered.length !== 1 ? t('dashboard.recipeCountPlural', { n: filtered.length }) : t('dashboard.recipeCount', { n: filtered.length })}
           </span>
         </div>
         )}
@@ -351,7 +368,7 @@ export default function ExplorerPage() {
           style={view === 'recipes'
             ? { backgroundColor: 'var(--bg-raised)', color: 'var(--text)', boxShadow: '0 1px 3px rgba(0,0,0,.12)' }
             : { color: 'var(--text-muted)' }}>
-          <ChefHat className="w-4 h-4" /> Recettes
+          <ChefHat className="w-4 h-4" /> {t('dashboard.recipes')}
         </button>
         <button
           onClick={() => setView('community')}
@@ -359,7 +376,7 @@ export default function ExplorerPage() {
           style={view === 'community'
             ? { backgroundColor: 'var(--bg-raised)', color: 'var(--text)', boxShadow: '0 1px 3px rgba(0,0,0,.12)' }
             : { color: 'var(--text-muted)' }}>
-          <MessageSquare className="w-4 h-4" /> Communauté
+          <MessageSquare className="w-4 h-4" /> {t('dashboard.community')}
         </button>
       </div>
 
@@ -380,9 +397,9 @@ export default function ExplorerPage() {
             <Crown className="w-5 h-5 text-white" />
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-semibold">Passez Premium ou VIP</p>
+            <p className="text-sm font-semibold">{t('dashboard.upgradeBanner')}</p>
             <p className="text-[11px]" style={{ color: 'var(--text-muted)' }}>
-              Toutes les recettes + IA illimitée + planning auto
+              {t('dashboard.upgradeSub')}
             </p>
           </div>
           <div className="text-right shrink-0">
@@ -410,12 +427,12 @@ export default function ExplorerPage() {
               <span className="text-lg">⚡</span>
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold">Vide-frigo express</p>
+              <p className="text-sm font-semibold">{t('dashboard.videFrigo')}</p>
               <p className="text-[11px] truncate" style={{ color: 'var(--text-muted)' }}>
-                « {best.name} » utilise {totalExpiring} ingrédient{totalExpiring > 1 ? 's' : ''} qui périme{totalExpiring > 1 ? 'nt' : ''} bientôt
+                {t('dashboard.videFrigoSub', { name: best.name, n: totalExpiring })}
               </p>
             </div>
-            <span className="text-xs font-bold shrink-0" style={{ color: 'rgb(16,185,129)' }}>GO →</span>
+            <span className="text-xs font-bold shrink-0" style={{ color: 'rgb(16,185,129)' }}>{t('dashboard.go')}</span>
           </button>
         );
       })()}
@@ -426,11 +443,11 @@ export default function ExplorerPage() {
           style={{ backgroundColor: 'rgba(99,102,241,0.08)', border: '1px solid rgba(99,102,241,0.2)' }}>
           <Users className="w-3.5 h-3.5 shrink-0" style={{ color: '#818cf8' }} />
           <span className="text-xs flex-1" style={{ color: '#818cf8' }}>
-            Mode invité actif
+            {t('dashboard.guestMode')}
             {guestDiet && ` · ${GUEST_DIETS.find(d => d.key === guestDiet)?.emoji} ${GUEST_DIETS.find(d => d.key === guestDiet)?.label}`}
-            {guestAllergens.length > 0 && ` · ${guestAllergens.length} allergène${guestAllergens.length > 1 ? 's' : ''} exclus`}
-            {kidMode === 'kid' && ' · Enfants'}
-            {kidMode === 'baby' && ' · Bébé'}
+            {guestAllergens.length > 0 && ` · ${t('dashboard.guestAllergens', { n: guestAllergens.length })}`}
+            {kidMode === 'kid' && ` · ${t('dashboard.guestKid')}`}
+            {kidMode === 'baby' && ` · ${t('dashboard.guestBaby')}`}
           </span>
           <button onClick={resetGuest} className="shrink-0">
             <X className="w-3.5 h-3.5" style={{ color: '#818cf8' }} />
@@ -444,7 +461,7 @@ export default function ExplorerPage() {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: 'var(--text-muted)' }} />
           <input
             type="text"
-            placeholder="Rechercher une recette…"
+            placeholder={t('dashboard.search')}
             value={search}
             onChange={e => setSearch(e.target.value)}
             className="input-field !pl-9"
@@ -469,7 +486,7 @@ export default function ExplorerPage() {
       {showFilters && (
         <div className="card p-3.5 mb-2 space-y-3 fade-in">
           <div>
-            <p className="text-[10px] font-medium uppercase tracking-wide mb-1.5" style={{ color: 'var(--text-muted)' }}>Régime &amp; anti-gaspi</p>
+            <p className="text-[10px] font-medium uppercase tracking-wide mb-1.5" style={{ color: 'var(--text-muted)' }}>{t('dashboard.filterDietAntiGaspi')}</p>
             <div className="flex gap-1.5 flex-wrap">
               {DIETARY.map(d => (
                 <button key={d} onClick={() => setDietary(d)}
@@ -477,13 +494,13 @@ export default function ExplorerPage() {
                   style={dietary === d
                     ? { backgroundColor: 'var(--accent)', color: 'var(--accent-text)' }
                     : { backgroundColor: 'var(--bg-inset)', color: 'var(--text-muted)', border: '1px solid var(--border-subtle)' }}>
-                  {d}
+                  {dietaryLabel[d] ?? d}
                 </button>
               ))}
             </div>
           </div>
           <div>
-            <p className="text-[10px] font-medium uppercase tracking-wide mb-1.5" style={{ color: 'var(--text-muted)' }}>Difficulté</p>
+            <p className="text-[10px] font-medium uppercase tracking-wide mb-1.5" style={{ color: 'var(--text-muted)' }}>{t('dashboard.filterDifficulty')}</p>
             <div className="flex gap-1.5 flex-wrap">
               {DIFFICULTIES.map(d => (
                 <button key={d} onClick={() => setDifficulty(d)}
@@ -491,27 +508,27 @@ export default function ExplorerPage() {
                   style={difficulty === d
                     ? { backgroundColor: 'var(--accent)', color: 'var(--accent-text)' }
                     : { backgroundColor: 'var(--bg-inset)', color: 'var(--text-muted)', border: '1px solid var(--border-subtle)' }}>
-                  {d}
+                  {difficultyLabel[d] ?? d}
                 </button>
               ))}
             </div>
           </div>
           <div>
-            <p className="text-[10px] font-medium uppercase tracking-wide mb-1.5" style={{ color: 'var(--text-muted)' }}>Temps</p>
+            <p className="text-[10px] font-medium uppercase tracking-wide mb-1.5" style={{ color: 'var(--text-muted)' }}>{t('dashboard.filterTime')}</p>
             <div className="flex gap-1.5 flex-wrap">
-              {TIMES.map(t => (
-                <button key={t} onClick={() => setTime(t)}
+              {TIMES.map(tm => (
+                <button key={tm} onClick={() => setTime(tm)}
                   className="px-2.5 py-1 rounded-md text-xs font-medium transition-all"
-                  style={time === t
+                  style={time === tm
                     ? { backgroundColor: 'var(--accent)', color: 'var(--accent-text)' }
                     : { backgroundColor: 'var(--bg-inset)', color: 'var(--text-muted)', border: '1px solid var(--border-subtle)' }}>
-                  {t}
+                  {tm === 'Tous' ? t('dashboard.filterAll') : tm}
                 </button>
               ))}
             </div>
           </div>
           <div>
-            <p className="text-[10px] font-medium uppercase tracking-wide mb-1.5" style={{ color: 'var(--text-muted)' }}>Cuisine</p>
+            <p className="text-[10px] font-medium uppercase tracking-wide mb-1.5" style={{ color: 'var(--text-muted)' }}>{t('dashboard.filterCuisine')}</p>
             <div className="flex gap-1.5 flex-wrap">
               {CUISINES.map(c => (
                 <button key={c} onClick={() => setCuisine(c)}
@@ -519,13 +536,13 @@ export default function ExplorerPage() {
                   style={cuisine === c
                     ? { backgroundColor: 'var(--accent)', color: 'var(--accent-text)' }
                     : { backgroundColor: 'var(--bg-inset)', color: 'var(--text-muted)', border: '1px solid var(--border-subtle)' }}>
-                  {c}
+                  {c === 'Toutes' ? t('dashboard.filterAllFem') : c}
                 </button>
               ))}
             </div>
           </div>
           <div>
-            <p className="text-[10px] font-medium uppercase tracking-wide mb-1.5" style={{ color: 'var(--text-muted)' }}>Budget <span className="normal-case">(coût total estimé)</span></p>
+            <p className="text-[10px] font-medium uppercase tracking-wide mb-1.5" style={{ color: 'var(--text-muted)' }}>{t('dashboard.filterBudget')} <span className="normal-case">({t('dashboard.filterBudgetSub')})</span></p>
             <div className="flex gap-1.5 flex-wrap items-center">
               {BUDGETS.map(b => (
                 <button key={b.key} onClick={() => setBudget(b.key)}

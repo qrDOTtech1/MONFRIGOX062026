@@ -1,14 +1,7 @@
 'use client';
 
 import Mascot, { MascotVariant } from '@/components/Mascot';
-
-const MESSAGES = [
-  'On prépare tout ça…',
-  'Ton frigo se réveille…',
-  'Chargement des recettes…',
-  'On cherche les ingrédients…',
-  'Presque prêt !',
-];
+import { useT } from '@/lib/i18n';
 
 interface Props {
   message?: string;
@@ -17,6 +10,16 @@ interface Props {
 }
 
 export default function MascotLoader({ message, variant = 'thinking', fullPage = false }: Props) {
+  const { t } = useT();
+
+  const MESSAGES = [
+    t('loading.preparing'),
+    t('loading.waking'),
+    t('loading.recipes'),
+    t('loading.ingredients'),
+    t('loading.almost'),
+  ];
+
   const msg = message ?? MESSAGES[Math.floor(Date.now() / 1000) % MESSAGES.length];
 
   return (

@@ -6,6 +6,7 @@ import MascotLoader from '@/components/MascotLoader';
 import Mascot from '@/components/Mascot';
 import RecipeCard from '@/components/RecipeCard';
 import { Heart } from 'lucide-react';
+import { useT } from '@/lib/i18n';
 
 interface FavRecipe {
   id: string;
@@ -19,6 +20,7 @@ interface FavRecipe {
 export default function FavoritesPage() {
   const [recipes, setRecipes] = useState<FavRecipe[]>([]);
   const [loading, setLoading] = useState(true);
+  const { t } = useT();
 
   const load = useCallback(async () => {
     const res = await fetch('/api/recipes?favorites=true');
@@ -45,16 +47,16 @@ export default function FavoritesPage() {
     <AppShell>
       <div className="flex items-center gap-2.5 mb-6">
         <Heart className="w-5 h-5" style={{ color: 'var(--text-secondary)' }} />
-        <h1 className="text-lg font-semibold">Mes favoris</h1>
+        <h1 className="text-lg font-semibold">{t('favorites.title')}</h1>
       </div>
 
       {recipes.length === 0 ? (
         <div className="text-center py-10">
           <div className="flex justify-center mb-2">
-            <Mascot variant="love" size="md" animate="pulse" message="Pas encore de favoris 💛" />
+            <Mascot variant="love" size="md" animate="pulse" message={t('favorites.empty')} />
           </div>
-          <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Aucun favori pour l&apos;instant</p>
-          <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>Ajoute des recettes en favoris</p>
+          <p className="text-sm" style={{ color: 'var(--text-muted)' }}>{t('favorites.empty')}</p>
+          <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>{t('favorites.empty.sub')}</p>
         </div>
       ) : (
         <div className="space-y-2">
