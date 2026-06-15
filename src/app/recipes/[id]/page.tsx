@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import AppShell from '@/components/AppShell';
+import MascotLoader from '@/components/MascotLoader';
 import {
   ArrowLeft, Clock, Users, Heart, ShoppingCart, Check, X, ChefHat,
   Minus, Plus, Flame, Wheat, Droplets, Beef, Sparkles,
@@ -542,9 +543,7 @@ export default function RecipeDetailPage() {
   if (loading) {
     return (
       <AppShell>
-        <div className="flex items-center justify-center h-[60vh]">
-          <div className="w-8 h-8 border-2 border-t-transparent rounded-full animate-spin" style={{ borderColor: 'var(--border)', borderTopColor: 'transparent' }} />
-        </div>
+        <MascotLoader message="Chargement de la recette…" variant="chef" />
       </AppShell>
     );
   }

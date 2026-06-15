@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import AppShell from '@/components/AppShell';
+import MascotLoader from '@/components/MascotLoader';
 import {
   Heart, Dumbbell, Moon, Zap, ChevronRight, ChevronLeft,
   Check, Plus, X, Loader2, Crown, Pill, Target, Clock,
@@ -179,13 +180,7 @@ export default function CoachPage() {
     router.push('/shopping');
   }
 
-  if (loading) return (
-    <AppShell>
-      <div className="flex items-center justify-center py-20">
-        <Loader2 className="w-6 h-6 animate-spin" style={{ color: 'var(--text-muted)' }} />
-      </div>
-    </AppShell>
-  );
+  if (loading) return <AppShell><MascotLoader /></AppShell>;
 
   return (
     <AppShell>

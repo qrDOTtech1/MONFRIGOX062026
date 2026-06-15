@@ -1,4 +1,5 @@
 'use client';
+import MascotLoader from '@/components/MascotLoader';
 
 import { useState, useEffect, useCallback } from 'react';
 import { Users, Trash2, Shield, ShieldOff, Search } from 'lucide-react';
@@ -45,13 +46,7 @@ export default function AdminUsersPage() {
     u.email.toLowerCase().includes(search.toLowerCase())
   );
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-[60vh]">
-        <div className="w-8 h-8 border-2 border-t-transparent rounded-full animate-spin" style={{ borderColor: 'var(--border)', borderTopColor: 'transparent' }} />
-      </div>
-    );
-  }
+  if (loading) return <MascotLoader />;
 
   return (
     <div className="fade-in">

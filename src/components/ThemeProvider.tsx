@@ -15,29 +15,25 @@ export function useTheme() {
 
 export default function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [theme, setTheme] = useState<Theme>('dark');
-  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
     const stored = localStorage.getItem('theme') as Theme | null;
     const preferred = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
     setTheme(stored || preferred);
-    setMounted(true);
   }, []);
 
   useEffect(() => {
-    if (!mounted) return;
     document.documentElement.classList.toggle('dark', theme === 'dark');
+    document.documentElement.style.background = theme === 'dark' ? '#0f0f11' : '#fafafa';
     localStorage.setItem('theme', theme);
-  }, [theme, mounted]);
+  }, [theme]);
 
   function toggle() {
     setTheme(prev => (prev === 'dark' ? 'light' : 'dark'));
   }
 
-  if (!mounted) {
-    return <div className="dark">{children}</div>;
-  }
-
+  // Le script inline dans layout.tsx applique déjà le thème avant le premier paint
+  // → pas besoin de bloquer le rendu sur mounted, zéro flash blanc
   return (
     <ThemeContext.Provider value={{ theme, toggle }}>
       {children}

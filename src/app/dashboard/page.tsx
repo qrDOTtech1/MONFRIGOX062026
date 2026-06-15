@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import AppShell from '@/components/AppShell';
+import MascotLoader from '@/components/MascotLoader';
 import Mascot from '@/components/Mascot';
 import RecipeCard from '@/components/RecipeCard';
 import CommunityFeed from '@/components/CommunityFeed';
@@ -289,10 +290,7 @@ export default function ExplorerPage() {
   if (loading) {
     return (
       <AppShell>
-        <div className="flex items-center justify-center h-[60vh]">
-          <div className="w-8 h-8 border-2 border-t-transparent rounded-full animate-spin"
-            style={{ borderColor: 'var(--border)', borderTopColor: 'transparent' }} />
-        </div>
+        <MascotLoader />
       </AppShell>
     );
   }

@@ -77,6 +77,19 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="fr" suppressHydrationWarning>
+      <head>
+        {/* Inline theme script — applique le thème AVANT le premier paint, évite le flash blanc sur Edge */}
+        <script dangerouslySetInnerHTML={{ __html: `
+          (function(){
+            try {
+              var t = localStorage.getItem('theme');
+              var dark = t ? t === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches;
+              document.documentElement.classList.toggle('dark', dark);
+              document.documentElement.style.background = dark ? '#0f0f11' : '#fafafa';
+            } catch(e){}
+          })();
+        ` }} />
+      </head>
       <body className="antialiased">
         <ThemeProvider>
           <ServiceWorkerRegistrar />

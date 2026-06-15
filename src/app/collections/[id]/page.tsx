@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import AppShell from '@/components/AppShell';
+import MascotLoader from '@/components/MascotLoader';
 import RecipeCard from '@/components/RecipeCard';
 import { ArrowLeft, Loader2, Trash2 } from 'lucide-react';
 

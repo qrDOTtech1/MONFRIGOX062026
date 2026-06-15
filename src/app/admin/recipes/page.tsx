@@ -192,13 +192,7 @@ export default function AdminRecipesPage() {
   const noNutritionCount = recipes.filter(r => r.calories === null).length;
   const diffLabels: Record<string, string> = { FACILE: 'Facile', MOYEN: 'Moyen', DIFFICILE: 'Difficile' };
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-[60vh]">
-        <div className="w-8 h-8 border-2 border-t-transparent rounded-full animate-spin" style={{ borderColor: 'var(--border)', borderTopColor: 'transparent' }} />
-      </div>
-    );
-  }
+  if (loading) return <MascotLoader />;
 
   return (
     <div className="fade-in space-y-4">
