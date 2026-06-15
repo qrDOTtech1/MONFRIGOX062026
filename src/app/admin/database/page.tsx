@@ -46,6 +46,10 @@ export default function AdminDatabasePage() {
   const [enrichResult, setEnrichResult] = useState<{ nutritionAdded: number; failed: number; total: number } | null>(null);
 
   // Logs
+  // Pionniers (100 premiers)
+  const [founders, setFounders] = useState<{ awarded: number; remaining: number; limit: number } | null>(null);
+  const [backfilling, setBackfilling] = useState(false);
+
   const [logs, setLogs] = useState<string[]>([]);
 
   function log(msg: string) {
@@ -72,7 +76,33 @@ export default function AdminDatabasePage() {
     }
   }
 
-  useEffect(() => { loadStatus(); }, []);
+  useEffect(() => { loadStatus(); loadFounders(); }, []);
+
+  async function loadFounders() {
+    try {
+      const res = await fetch('/api/admin/founders');
+      if (res.ok) setFounders(await res.json());
+    } catch { /* ignore */ }
+  }
+
+  async function backfillFounders() {
+    setBackfilling(true);
+    log('Attribution du badge Pionnier aux premiers inscrits...');
+    try {
+      const res = await fetch('/api/admin/founders', { method: 'POST' });
+      const data = await res.json();
+      if (res.ok) {
+        log(`Pionnier : ${data.awarded} attribué(s), ${data.total}/100 au total`);
+        loadFounders();
+      } else {
+        log(`Erreur Pionnier: ${data.error}`);
+      }
+    } catch (e: any) {
+      log(`Erreur Pionnier: ${e.message}`);
+    } finally {
+      setBackfilling(false);
+    }
+  }
 
   async function runMigration() {
     setMigrating(true);
@@ -282,6 +312,34 @@ export default function AdminDatabasePage() {
             <Loader2 className="w-5 h-5 animate-spin" style={{ color: 'var(--text-muted)' }} />
           </div>
         )}
+      </div>
+
+      {/* === PIONNIERS (100 premiers) === */}
+      <div className="card p-5">
+        <div className="flex items-center gap-2.5 mb-1">
+          <span className="text-base">💎</span>
+          <h2 className="font-medium">Badge Pionnier — 100 premiers inscrits</h2>
+        </div>
+        <p className="text-xs mb-3" style={{ color: 'var(--text-muted)' }}>
+          Le badge est attribué automatiquement à l&apos;inscription. Ce bouton l&apos;attribue rétroactivement
+          aux plus anciens membres qui ne l&apos;ont pas encore (utile pour les inscrits avant cette fonctionnalité).
+        </p>
+        {founders && (
+          <div className="flex items-center gap-3 mb-3">
+            <div className="flex-1 h-2 rounded-full overflow-hidden" style={{ backgroundColor: 'var(--bg-inset)' }}>
+              <div className="h-full rounded-full" style={{ width: `${(founders.awarded / founders.limit) * 100}%`, background: 'linear-gradient(135deg, rgb(99,102,241), rgb(168,85,247))' }} />
+            </div>
+            <span className="text-sm font-semibold tabular-nums">{founders.awarded}/{founders.limit}</span>
+          </div>
+        )}
+        <button
+          onClick={backfillFounders}
+          disabled={backfilling || (founders?.remaining === 0)}
+          className="btn-secondary flex items-center gap-2 disabled:opacity-40"
+        >
+          {backfilling ? <Loader2 className="w-4 h-4 animate-spin" /> : <span>💎</span>}
+          {founders?.remaining === 0 ? 'Limite atteinte (100/100)' : 'Attribuer aux premiers inscrits'}
+        </button>
       </div>
 
       {/* === MIGRATION === */}

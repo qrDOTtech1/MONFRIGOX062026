@@ -28,6 +28,14 @@ export async function POST(req: NextRequest) {
       select: { id: true, email: true, name: true, role: true },
     });
 
+    // Badge exclusif « Pionnier » pour les 100 premiers inscrits
+    try {
+      const founders = await prisma.badge.count({ where: { code: 'founder' } });
+      if (founders < 100) {
+        await prisma.badge.create({ data: { userId: user.id, code: 'founder' } }).catch(() => {});
+      }
+    } catch { /* non bloquant pour l'inscription */ }
+
     const token = await createToken({ userId: user.id, email: user.email, role: user.role });
 
     const response = NextResponse.json({ user });

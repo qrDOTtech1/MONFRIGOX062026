@@ -115,7 +115,7 @@ export default function ProfilePage() {
   const [cookLogs, setCookLogs] = useState<CookLogEntry[]>([]);
   const [cookCounts, setCookCounts] = useState<Record<string,number>>({});
   const [historyLoaded, setHistoryLoaded] = useState(false);
-  const [badges, setBadges] = useState<Array<{ code: string; emoji: string; label: string; desc: string; unlocked: boolean; unlockedAt: string | null }>>([]);
+  const [badges, setBadges] = useState<Array<{ code: string; emoji: string; label: string; desc: string; unlocked: boolean; unlockedAt: string | null; exclusive?: boolean; remaining?: number; soldOut?: boolean }>>([]);
   const [badgesLoaded, setBadgesLoaded] = useState(false);
   const [spending, setSpending] = useState<{ monthlyHistory: Array<{ month: string; total: number; sessions: number }>; totalSpent: number } | null>(null);
   const [spendingLoaded, setSpendingLoaded] = useState(false);
@@ -704,24 +704,60 @@ export default function ProfilePage() {
                 {badges.filter(b => b.unlocked).length}/{badges.length} débloqués
               </p>
               <div className="grid grid-cols-3 gap-2">
-                {badges.map(b => (
-                  <div key={b.code}
-                    className="flex flex-col items-center p-3 rounded-xl text-center transition-all"
-                    style={{
-                      backgroundColor: b.unlocked ? 'rgba(245,158,11,0.06)' : 'var(--bg-inset)',
-                      border: b.unlocked ? '1px solid rgba(245,158,11,0.2)' : '1px solid var(--border-subtle)',
-                      opacity: b.unlocked ? 1 : 0.45,
-                    }}>
-                    <span className="text-2xl mb-1">{b.emoji}</span>
-                    <p className="text-[10px] font-semibold leading-tight">{b.label}</p>
-                    <p className="text-[9px] mt-0.5" style={{ color: 'var(--text-muted)' }}>{b.desc}</p>
-                    {b.unlocked && b.unlockedAt && (
-                      <p className="text-[8px] mt-1 text-amber-500">
-                        {new Date(b.unlockedAt).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}
-                      </p>
-                    )}
-                  </div>
-                ))}
+                {badges.map(b => {
+                  // Badge exclusif « Pionnier » : rendu premium
+                  if (b.exclusive) {
+                    return (
+                      <div key={b.code}
+                        className="relative flex flex-col items-center p-3 rounded-xl text-center transition-all overflow-hidden"
+                        style={{
+                          background: b.unlocked
+                            ? 'linear-gradient(135deg, rgba(99,102,241,0.18), rgba(168,85,247,0.18))'
+                            : 'var(--bg-inset)',
+                          border: b.unlocked ? '1px solid rgba(168,85,247,0.5)' : '1px dashed var(--border)',
+                          boxShadow: b.unlocked ? '0 0 14px rgba(168,85,247,0.25)' : 'none',
+                          opacity: b.unlocked ? 1 : (b.soldOut ? 0.4 : 0.7),
+                        }}>
+                        <span className="absolute top-1 right-1 text-[7px] font-bold px-1 py-0.5 rounded-full"
+                          style={{ background: 'linear-gradient(135deg, rgb(99,102,241), rgb(168,85,247))', color: 'white' }}>
+                          LIMITÉ
+                        </span>
+                        <span className="text-2xl mb-1">{b.emoji}</span>
+                        <p className="text-[10px] font-semibold leading-tight" style={b.unlocked ? { color: 'rgb(168,85,247)' } : undefined}>{b.label}</p>
+                        <p className="text-[9px] mt-0.5" style={{ color: 'var(--text-muted)' }}>{b.desc}</p>
+                        {b.unlocked ? (
+                          <p className="text-[8px] mt-1 font-semibold" style={{ color: 'rgb(168,85,247)' }}>
+                            Membre fondateur ✨
+                          </p>
+                        ) : b.soldOut ? (
+                          <p className="text-[8px] mt-1" style={{ color: 'var(--text-muted)' }}>Édition épuisée</p>
+                        ) : (
+                          <p className="text-[8px] mt-1 font-semibold text-emerald-500">
+                            {b.remaining} place{(b.remaining ?? 0) > 1 ? 's' : ''} restante{(b.remaining ?? 0) > 1 ? 's' : ''}
+                          </p>
+                        )}
+                      </div>
+                    );
+                  }
+                  return (
+                    <div key={b.code}
+                      className="flex flex-col items-center p-3 rounded-xl text-center transition-all"
+                      style={{
+                        backgroundColor: b.unlocked ? 'rgba(245,158,11,0.06)' : 'var(--bg-inset)',
+                        border: b.unlocked ? '1px solid rgba(245,158,11,0.2)' : '1px solid var(--border-subtle)',
+                        opacity: b.unlocked ? 1 : 0.45,
+                      }}>
+                      <span className="text-2xl mb-1">{b.emoji}</span>
+                      <p className="text-[10px] font-semibold leading-tight">{b.label}</p>
+                      <p className="text-[9px] mt-0.5" style={{ color: 'var(--text-muted)' }}>{b.desc}</p>
+                      {b.unlocked && b.unlockedAt && (
+                        <p className="text-[8px] mt-1 text-amber-500">
+                          {new Date(b.unlockedAt).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}
+                        </p>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             </div>
           )}
