@@ -77,6 +77,7 @@ model User {
 model Ingredient {
   id          String   @id @default(cuid())
   name        String   @unique
+  nameEn      String   @default("")
   category    String
   emoji       String   @default("")
   imageUrl    String   @default("")
@@ -128,6 +129,10 @@ model Recipe {
   name         String
   description  String
   instructions String
+  // Traductions anglaises (remplies via admin → Traduire EN)
+  nameEn         String  @default("")
+  descriptionEn  String  @default("")
+  instructionsEn String  @default("")
   difficulty   Difficulty
   prepTime     Int
   cuisine      String

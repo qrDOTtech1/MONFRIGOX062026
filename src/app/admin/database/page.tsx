@@ -44,6 +44,8 @@ export default function AdminDatabasePage() {
   const [translateResult, setTranslateResult] = useState<{ translated: number; nutritionAdded: number; failed: number; total: number } | null>(null);
   const [enriching, setEnriching] = useState(false);
   const [enrichResult, setEnrichResult] = useState<{ nutritionAdded: number; failed: number; total: number } | null>(null);
+  const [translatingEn, setTranslatingEn] = useState(false);
+  const [translateEnResult, setTranslateEnResult] = useState<{ translated: number; failed: number; total: number } | null>(null);
 
   // Logs
   // Pionniers (100 premiers)
@@ -170,6 +172,31 @@ export default function AdminDatabasePage() {
       log(`Erreur: ${e.message}`);
     } finally {
       setTranslating(false);
+    }
+  }
+
+  async function translateToEnglish() {
+    setTranslatingEn(true);
+    setTranslateEnResult(null);
+    log('Traduction FR→EN des recettes via IA... (peut prendre plusieurs minutes)');
+    try {
+      const res = await fetch('/api/admin/translate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'translate-en' }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setTranslateEnResult(data);
+        log(`🇬🇧 Anglais: ${data.translated}/${data.total} recettes traduites, ${data.failed} échouées`);
+        loadStatus();
+      } else {
+        log(`Erreur: ${data.error}`);
+      }
+    } catch (e: any) {
+      log(`Erreur: ${e.message}`);
+    } finally {
+      setTranslatingEn(false);
     }
   }
 
@@ -413,6 +440,15 @@ export default function AdminDatabasePage() {
           >
             {enriching ? <Loader2 className="w-4 h-4 animate-spin" /> : <Flame className="w-4 h-4 text-orange-500" />}
             {enriching ? 'Calcul en cours...' : 'Nutrition seule'}
+          </button>
+          <button
+            onClick={translateToEnglish}
+            disabled={translatingEn || translating || enriching}
+            className="btn-secondary flex items-center gap-2 disabled:opacity-40"
+            style={{ borderColor: 'rgba(59,130,246,0.4)' }}
+          >
+            {translatingEn ? <Loader2 className="w-4 h-4 animate-spin" /> : <span>🇬🇧</span>}
+            {translatingEn ? 'Traduction EN...' : 'Traduire recettes → Anglais'}
           </button>
         </div>
 

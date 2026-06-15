@@ -51,8 +51,8 @@ export async function GET() {
     },
     include: {
       recipe: {
-        select: { id: true, name: true, prepTime: true, imageUrl: true, calories: true, protein: true,
-          ingredients: { include: { ingredient: { select: { emoji: true, name: true } } } } },
+        select: { id: true, name: true, nameEn: true, prepTime: true, imageUrl: true, calories: true, protein: true,
+          ingredients: { include: { ingredient: { select: { emoji: true, name: true, nameEn: true } } } } },
       },
     },
     orderBy: { mealType: 'asc' },

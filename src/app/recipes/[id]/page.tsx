@@ -42,6 +42,9 @@ interface Recipe {
   name: string;
   description: string;
   instructions: string;
+  nameEn?: string;
+  descriptionEn?: string;
+  instructionsEn?: string;
   difficulty: string;
   prepTime: number;
   cuisine: string;
@@ -59,7 +62,7 @@ interface Recipe {
   ingredients: Array<{
     quantity: number;
     unit: string;
-    ingredient: { id: string; name: string; emoji: string };
+    ingredient: { id: string; name: string; nameEn?: string; emoji: string };
     inFridge: boolean;
   }>;
   isFavorite: boolean;
@@ -92,7 +95,8 @@ const NUTRISCORE_COLORS: Record<string, string> = {
 export default function RecipeDetailPage() {
   const { id } = useParams();
   const router = useRouter();
-  const { t } = useT();
+  const { t, lang } = useT();
+  const loc = (fr: string, en?: string) => (lang === 'en' && en) ? en : fr;
 
   const MEAL_TYPES = [
     { key: 'BREAKFAST', label: t('recipe.mealType.breakfast') },
@@ -585,13 +589,13 @@ export default function RecipeDetailPage() {
       )}
 
       <div className="mb-5">
-        <h1 className="text-xl font-semibold mb-1.5">{recipe.name}</h1>
+        <h1 className="text-xl font-semibold mb-1.5">{loc(recipe.name, recipe.nameEn)}</h1>
         {recipe.isCommunity && recipe.authorName && (
           <p className="text-xs mb-1.5 inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full" style={{ backgroundColor: 'rgba(59,130,246,0.1)', color: 'rgb(59,130,246)' }}>
             👥 {t('recipe.sharedBy', { name: recipe.authorName })}
           </p>
         )}
-        <p className="text-sm mb-3" style={{ color: 'var(--text-secondary)' }}>{recipe.description}</p>
+        <p className="text-sm mb-3" style={{ color: 'var(--text-secondary)' }}>{loc(recipe.description, recipe.descriptionEn)}</p>
 
         {/* Avertissement allergènes / régime */}
         {(recipe.allergenWarnings?.length ?? 0) > 0 && (
@@ -1086,7 +1090,7 @@ export default function RecipeDetailPage() {
                   )}
                   <span className="text-sm">{ing.ingredient.emoji}</span>
                   <span className="text-sm flex-1" style={{ color: ing.inFridge ? 'var(--text)' : 'var(--text-muted)' }}>
-                    {ing.ingredient.name}
+                    {loc(ing.ingredient.name, ing.ingredient.nameEn)}
                   </span>
                   <span className="text-xs font-mono tabular-nums" style={{ color: 'var(--text-muted)' }}>
                     {adjustQuantity(ing.quantity)} {ing.unit}
@@ -1192,7 +1196,7 @@ export default function RecipeDetailPage() {
           )}
         </div>
         <div className="space-y-3">
-          {parseSteps(recipe.instructions).map((step, i) => (
+          {parseSteps(loc(recipe.instructions, recipe.instructionsEn)).map((step, i) => (
             <div key={i} className="flex gap-3">
               <div className="w-6 h-6 rounded-md flex items-center justify-center shrink-0 text-xs font-semibold" style={{ backgroundColor: 'var(--bg-inset)', color: 'var(--text-secondary)' }}>
                 {i + 1}

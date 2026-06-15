@@ -225,6 +225,37 @@ export async function translateRecipe(recipe: { name: string; description: strin
   return { name, description, instructions };
 }
 
+export async function translateToEnglish(text: string, field: 'name' | 'description' | 'instructions' | 'ingredient'): Promise<string> {
+  if (!text || text.trim().length === 0) return text;
+
+  const prompts: Record<string, string> = {
+    name: 'Translate this recipe name to English. Reply ONLY with the translated name, nothing else.',
+    description: 'Translate this recipe description to English. Reply ONLY with the translated description, nothing else.',
+    instructions: 'Translate these recipe instructions to English. Keep the same format (line breaks, steps). Reply ONLY with the translated instructions, nothing else.',
+    ingredient: 'Translate this ingredient name to English. Reply ONLY with the translated name in lowercase, nothing else.',
+  };
+
+  try {
+    const response = await chatCompletion([
+      { role: 'system', content: prompts[field] },
+      { role: 'user', content: text },
+    ], { temperature: 0.2 });
+    const result = response.message?.content?.trim();
+    return result || text;
+  } catch {
+    return text;
+  }
+}
+
+export async function translateRecipeToEnglish(recipe: { name: string; description: string; instructions: string }): Promise<{ nameEn: string; descriptionEn: string; instructionsEn: string }> {
+  const [nameEn, descriptionEn, instructionsEn] = await Promise.all([
+    translateToEnglish(recipe.name, 'name'),
+    translateToEnglish(recipe.description, 'description'),
+    translateToEnglish(recipe.instructions, 'instructions'),
+  ]);
+  return { nameEn, descriptionEn, instructionsEn };
+}
+
 // Traduction des unités anglaises → françaises
 const UNIT_MAP: Record<string, string> = {
   'cup': 'tasse', 'cups': 'tasses',

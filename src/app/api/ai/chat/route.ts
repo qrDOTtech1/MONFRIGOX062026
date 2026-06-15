@@ -26,7 +26,7 @@ export async function POST(req: NextRequest) {
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: 'Non autorisé' }, { status: 401 });
 
-  const { messages, coachMode } = await req.json() as { messages: Message[]; coachMode?: boolean };
+  const { messages, coachMode, lang } = await req.json() as { messages: Message[]; coachMode?: boolean; lang?: string };
   if (!messages?.length) return NextResponse.json({ error: 'Messages manquants' }, { status: 400 });
 
   // ── Rate limiting ──
@@ -163,7 +163,7 @@ CATALOGUE (${recipes.length} recettes) :
 ${recipeContext}
 
 RÈGLES DE RÉPONSE :
-- Français conversationnel, chaleureux, clair. Pas de jargon.
+- ${lang === 'en' ? 'Respond in English. Warm, clear, conversational tone. No jargon.' : 'Français conversationnel, chaleureux, clair. Pas de jargon.'}
 - N'utilise JAMAIS de markdown (pas de **, *, _, #, - pour les listes). Écris en texte simple et naturel, comme si tu parlais à voix haute.
 - Quand tu cites une recette du catalogue, inclus [ID:xxxx]. Max 4 recettes par réponse.
 - QUAND TU INCLUS DES IDs : ne répète PAS le nom, les ingrédients ni le temps dans le texte. Tout ça s'affiche automatiquement en cartes visuelles. Dis juste 1-2 phrases d'intro. Exemple : "Voilà deux idées qui collent avec ton frigo !" suivi des [ID:xxx].

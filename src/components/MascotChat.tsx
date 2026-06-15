@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
+import { useT } from '@/lib/i18n';
 import Mascot, { MascotVariant } from './Mascot';
 import { Send, Mic, MicOff, Trash2, Clock, Flame, Volume2, VolumeX, ChevronLeft, ChevronRight, Timer, X, Play, Pause, Check, Plus, Crown } from 'lucide-react';
 
@@ -418,6 +419,7 @@ function MinusIcon({ className }: { className?: string }) {
 /* ── Composant principal ── */
 export default function MascotChat({ allRecipes, embedded = false }: { allRecipes: RecipeMini[]; embedded?: boolean }) {
   const router = useRouter();
+  const { lang } = useT();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
@@ -516,7 +518,7 @@ export default function MascotChat({ allRecipes, embedded = false }: { allRecipe
       const res = await fetch('/api/ai/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messages: history.map(m => ({ role: m.role, content: m.content })), coachMode }),
+        body: JSON.stringify({ messages: history.map(m => ({ role: m.role, content: m.content })), coachMode, lang }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Erreur');

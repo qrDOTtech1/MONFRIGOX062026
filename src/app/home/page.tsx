@@ -23,7 +23,7 @@ interface DashData {
   mascotMessage: string;
   todayPlans: Array<{
     id: string; mealType: 'BREAKFAST'|'SNACK'|'LUNCH'|'DINNER';
-    recipe: { id: string; name: string; prepTime: number; imageUrl: string; calories?: number|null; protein?: number|null; ingredients: Array<{ ingredient: { emoji: string; name: string } }> };
+    recipe: { id: string; name: string; nameEn?: string; prepTime: number; imageUrl: string; calories?: number|null; protein?: number|null; ingredients: Array<{ ingredient: { emoji: string; name: string; nameEn?: string } }> };
   }>;
   streak: number;
   expiringCount: number;
@@ -175,7 +175,8 @@ const MEAL_TYPE_TKEYS: Record<string, string> = {
 /* ═══════════════════════════════════════════════════════ */
 export default function HomePage() {
   const router = useRouter();
-  const { t } = useT();
+  const { t, lang } = useT();
+  const loc = (fr: string, en?: string) => (lang === 'en' && en) ? en : fr;
   const MEALS = useMealTypes();
   const { shortcuts, recent } = useRecentPages();
   const [data, setData] = useState<DashData | null>(null);
@@ -309,7 +310,7 @@ export default function HomePage() {
                           : <div className="w-8 h-8 rounded-lg flex items-center justify-center text-base shrink-0" style={{ backgroundColor: 'var(--bg-inset)' }}>{plan.recipe.ingredients[0]?.ingredient.emoji || '🍽️'}</div>
                         }
                         <div className="min-w-0">
-                          <p className="text-xs font-semibold truncate">{plan.recipe.name}</p>
+                          <p className="text-xs font-semibold truncate">{loc(plan.recipe.name, plan.recipe.nameEn)}</p>
                           <div className="flex items-center gap-2">
                             <span className="text-[10px]" style={{ color: 'var(--text-muted)' }}><Clock className="w-2.5 h-2.5 inline mr-0.5" />{plan.recipe.prepTime}min</span>
                             {plan.recipe.calories && <span className="text-[10px] text-orange-400"><Flame className="w-2.5 h-2.5 inline mr-0.5" />{plan.recipe.calories} kcal</span>}

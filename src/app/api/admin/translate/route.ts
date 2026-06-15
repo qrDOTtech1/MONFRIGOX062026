@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { isAdmin } from '@/lib/auth';
-import { translateRecipe, translateToFrench, convertToMetric, estimateNutrition } from '@/lib/ollama';
+import { translateRecipe, translateToFrench, translateRecipeToEnglish, translateToEnglish, convertToMetric, estimateNutrition } from '@/lib/ollama';
 
 /**
  * POST /api/admin/translate
@@ -126,6 +126,49 @@ export async function POST(req: NextRequest) {
           failed++;
         }
       }
+    }
+
+    // ===== TRANSLATE FR → EN =====
+    if (action === 'translate-en') {
+      // Recettes sans traduction anglaise
+      const recipes = await prisma.recipe.findMany({
+        where: { nameEn: '' },
+        include: { ingredients: { include: { ingredient: true } } },
+      });
+      total = recipes.length;
+
+      for (const recipe of recipes) {
+        try {
+          const en = await translateRecipeToEnglish({
+            name: recipe.name,
+            description: recipe.description,
+            instructions: recipe.instructions,
+          });
+
+          await prisma.recipe.update({
+            where: { id: recipe.id },
+            data: { nameEn: en.nameEn, descriptionEn: en.descriptionEn, instructionsEn: en.instructionsEn },
+          });
+
+          // Traduire les noms d'ingrédients FR→EN si nameEn vide
+          for (const ri of recipe.ingredients) {
+            if (!ri.ingredient.nameEn) {
+              const nameEn = await translateToEnglish(ri.ingredient.name, 'ingredient').catch(() => '');
+              if (nameEn && nameEn !== ri.ingredient.name) {
+                await prisma.ingredient.update({
+                  where: { id: ri.ingredient.id },
+                  data: { nameEn },
+                }).catch(() => {});
+              }
+            }
+          }
+
+          translated++;
+        } catch {
+          failed++;
+        }
+      }
+      return NextResponse.json({ translated, nutritionAdded: 0, failed, total });
     }
 
     return NextResponse.json({ translated, nutritionAdded, failed, total });
