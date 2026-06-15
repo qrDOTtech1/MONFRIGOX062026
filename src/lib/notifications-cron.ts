@@ -1,5 +1,6 @@
 import { prisma } from './db';
 import { sendToUser } from './push';
+import { getShelfInfo } from './shelf-life';
 
 /**
  * Logique d'envoi des notifications programmées.
@@ -9,6 +10,7 @@ import { sendToUser } from './push';
 export async function runNotifications(type: 'expiry' | 'meals' | 'all') {
   const now = new Date();
   const todayUTC = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+  const tomorrowUTC = new Date(todayUTC.getTime() + 86400000);
   const in2days = new Date(now.getTime() + 2 * 86400000);
 
   // Utilisateurs ayant au moins un abonnement push
@@ -19,6 +21,7 @@ export async function runNotifications(type: 'expiry' | 'meals' | 'all') {
 
   let expiryNotifs = 0;
   let mealNotifs = 0;
+  let defrostNotifs = 0;
 
   for (const u of users) {
     // ── Aliments qui périment ──
@@ -31,9 +34,11 @@ export async function runNotifications(type: 'expiry' | 'meals' | 'all') {
       if (items.length > 0) {
         const names = items.slice(0, 3).map(i => i.ingredient.name).join(', ');
         const extra = items.length > 3 ? ` +${items.length - 3}` : '';
+        const canFreeze = items.some(i => getShelfInfo(i.ingredient.name)?.freezable);
+        const freezeHint = canFreeze ? ' ❄️ Tu peux en congeler certains.' : '';
         const sent = await sendToUser(u.id, {
           title: `${items.length} aliment${items.length > 1 ? 's' : ''} à consommer 🥕`,
-          body: `${names}${extra} périme${items.length > 1 ? 'nt' : ''} bientôt. Une recette anti-gaspi ?`,
+          body: `${names}${extra} périme${items.length > 1 ? 'nt' : ''} bientôt. Une recette anti-gaspi ?${freezeHint}`,
           url: '/dashboard',
           tag: 'expiry',
         });
@@ -54,9 +59,45 @@ export async function runNotifications(type: 'expiry' | 'meals' | 'all') {
         if (sent > 0) mealNotifs++;
       }
     }
+
+    // ── Rappel de décongélation (recette planifiée demain) ──
+    if ((type === 'meals' || type === 'all') && u.notifyMeals) {
+      const plans = await prisma.mealPlan.findMany({
+        where: { userId: u.id, date: tomorrowUTC },
+        include: {
+          recipe: {
+            select: {
+              name: true,
+              ingredients: { select: { ingredient: { select: { name: true } } } },
+            },
+          },
+        },
+      });
+
+      const toDefrost = new Set<string>();
+      for (const p of plans) {
+        for (const ri of p.recipe.ingredients) {
+          const info = getShelfInfo(ri.ingredient.name);
+          // protéines / aliments qu'on garde habituellement au congélateur
+          if (info?.freezable && (info.freezerDays ?? 0) >= 60) toDefrost.add(ri.ingredient.name);
+        }
+      }
+
+      if (toDefrost.size > 0) {
+        const names = [...toDefrost].slice(0, 3).join(', ');
+        const extra = toDefrost.size > 3 ? ` +${toDefrost.size - 3}` : '';
+        const sent = await sendToUser(u.id, {
+          title: 'À sortir du congélateur ❄️',
+          body: `Pense à décongeler ${names}${extra} pour tes repas de demain.`,
+          url: '/shopping',
+          tag: 'defrost',
+        });
+        if (sent > 0) defrostNotifs++;
+      }
+    }
   }
 
-  return { users: users.length, expiryNotifs, mealNotifs };
+  return { users: users.length, expiryNotifs, mealNotifs, defrostNotifs };
 }
 
 /* ── Scheduler interne ──────────────────────────────────────────────────────
