@@ -381,11 +381,11 @@ async function drawEcoVisual(
 
   ctx.fillStyle = dark;
   ctx.font = `900 ${36 * scale}px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif`;
-  ctx.fillText('GRATUIT À VIE', W / 2, y + 46 * scale);
+  ctx.fillText('Plan Gratuit — 0€', W / 2, y + 46 * scale);
 
   ctx.fillStyle = gray;
   ctx.font = `500 ${20 * scale}px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif`;
-  ctx.fillText('Sans carte bancaire — pour toujours', W / 2, y + 74 * scale);
+  ctx.fillText('Sans carte bancaire · Accessible à vie', W / 2, y + 74 * scale);
 
   const freeFeatures = [
     '✓  Frigo & courses illimités',
@@ -412,7 +412,7 @@ async function drawEcoVisual(
   // ── Pricing tiers ──
   ctx.fillStyle = gray;
   ctx.font = `500 ${22 * scale}px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif`;
-  ctx.fillText('Envie de l\'IA culinaire en plus ?', W / 2, y + 22 * scale);
+  ctx.fillText('Envie d\'aller plus loin ? Passe en Premium ou VIP :', W / 2, y + 22 * scale);
   y += 46 * scale;
 
   const tierW = (W - pad * 2 - 24 * scale) / 2;
@@ -486,41 +486,48 @@ async function drawEcoVisual(
     y += codeBlockH + 15 * scale;
   }
 
-  // ── Bottom: QR + URL side by side ──
-  const bottomY = Math.max(y + 5 * scale, H - 220 * scale);
-  const qrSize = Math.round(150 * scale);
+  // ── Bottom: QR ÉNORME centré + URL + CTA ──
+  y += 20 * scale;
+  const qrSize = Math.round(260 * scale);
   const qrUrl = promoCode ? `${APP_URL}?promo=${promoCode}` : APP_URL;
+  const qrX = (W - qrSize) / 2;
 
-  // QR on left
-  const qrX = W / 2 - qrSize - 30 * scale;
+  // Fond blanc autour du QR pour garantir la lisibilité
+  const qrPad = 12 * scale;
+  roundRect(ctx, qrX - qrPad, y - qrPad, qrSize + qrPad * 2, qrSize + qrPad * 2, 8 * scale);
+  ctx.fillStyle = '#ffffff';
+  ctx.fill();
+  ctx.strokeStyle = '#d4d4d8';
+  ctx.lineWidth = 1.5 * scale;
+  ctx.stroke();
+
   try {
     const qrCanvas = await generateQR(qrUrl, qrSize);
-    ctx.drawImage(qrCanvas, qrX, bottomY, qrSize, qrSize);
+    ctx.drawImage(qrCanvas, qrX, y, qrSize, qrSize);
   } catch {}
 
-  // URL + CTA on right
-  const rightX = W / 2 + 20 * scale;
-  ctx.textAlign = 'left';
+  y += qrSize + qrPad + 20 * scale;
+
+  // URL bien lisible sous le QR
+  ctx.textAlign = 'center';
   ctx.fillStyle = dark;
-  ctx.font = `900 ${38 * scale}px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif`;
-  ctx.fillText('monfrigo.app', rightX, bottomY + 50 * scale);
+  ctx.font = `900 ${42 * scale}px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif`;
+  ctx.fillText('https://monfrigo.app', W / 2, y + 42 * scale);
+  y += 58 * scale;
+
+  // CTA logique : crée ton compte (pas "gratuit à vie" ici — les prix viennent d'être présentés)
+  ctx.fillStyle = dark;
+  ctx.font = `bold ${24 * scale}px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif`;
+  ctx.fillText('Crée ton compte gratuitement', W / 2, y + 24 * scale);
+  y += 36 * scale;
 
   ctx.fillStyle = gray;
-  ctx.font = `500 ${20 * scale}px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif`;
-  ctx.fillText('Scanne & utilise', rightX, bottomY + 85 * scale);
-  ctx.fillText('maintenant !', rightX, bottomY + 110 * scale);
-  ctx.fillStyle = lightGray;
-  ctx.font = `400 ${16 * scale}px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif`;
-  ctx.fillText('Web App — sans téléchargement', rightX, bottomY + 140 * scale);
+  ctx.font = `400 ${18 * scale}px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif`;
+  ctx.fillText('Web App · Sans téléchargement · Accessible maintenant', W / 2, y + 18 * scale);
 
-  ctx.textAlign = 'center';
-
-  // Footer — ligne fine + texte, zéro fond noir
+  // Ligne fine footer
   ctx.fillStyle = '#d4d4d8';
-  ctx.fillRect(pad, H - 36 * scale, W - pad * 2, 1.5 * scale);
-  ctx.fillStyle = lightGray;
-  ctx.font = `400 ${14 * scale}px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif`;
-  ctx.fillText('Web App gratuite · Aucun téléchargement requis · monfrigo.app', W / 2, H - 14 * scale);
+  ctx.fillRect(pad, H - 28 * scale, W - pad * 2, 1.5 * scale);
 
   // Bold border
   ctx.strokeStyle = dark;
