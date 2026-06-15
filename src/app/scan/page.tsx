@@ -42,13 +42,26 @@ function FullscreenCamera({
   onClose,
   captureLabel = 'Capturer',
   children,
+  photos = [],
 }: {
   videoRef: React.RefObject<HTMLVideoElement | null>;
   onCapture?: () => void;
   onClose: () => void;
   captureLabel?: string;
   children?: React.ReactNode; // viseur custom (barcode)
+  photos?: string[]; // photos déjà prises (pour le compteur/miniatures)
 }) {
+  const [flash, setFlash] = useState(false);
+  const count = photos.length;
+  const lastPhotos = photos.slice(-3);
+
+  function handleCapture() {
+    if (!onCapture) return;
+    setFlash(true);
+    setTimeout(() => setFlash(false), 180);
+    onCapture();
+  }
+
   return (
     <div className="fixed inset-0 z-50 bg-black flex flex-col">
       {/* Vidéo remplit tout l'écran */}
@@ -61,10 +74,29 @@ function FullscreenCamera({
         style={{ minHeight: 0 }}
       />
 
+      {/* Flash de capture */}
+      {flash && <div className="absolute inset-0 bg-white pointer-events-none" style={{ animation: 'none', opacity: 0.85 }} />}
+
       {/* Overlay custom (viseur barcode etc.) */}
       {children && (
         <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
           {children}
+        </div>
+      )}
+
+      {/* Compteur de photos (en haut) */}
+      {onCapture && count > 0 && (
+        <div className="absolute top-0 left-0 right-0 flex items-center justify-center gap-2 px-4 py-3"
+          style={{ background: 'linear-gradient(to bottom, rgba(0,0,0,0.6), transparent)', paddingTop: 'max(0.75rem, env(safe-area-inset-top))' }}>
+          <div className="flex items-center gap-1.5">
+            {lastPhotos.map((p, i) => (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img key={i} src={p} alt="" className="w-9 h-9 rounded-md object-cover" style={{ border: '2px solid rgba(255,255,255,0.85)' }} />
+            ))}
+          </div>
+          <span className="text-white text-sm font-semibold px-2.5 py-1 rounded-full" style={{ backgroundColor: 'rgba(0,0,0,0.55)' }}>
+            {count} photo{count > 1 ? 's' : ''}
+          </span>
         </div>
       )}
 
@@ -78,14 +110,14 @@ function FullscreenCamera({
       >
         <button
           onClick={onClose}
-          className="flex-1 max-w-[140px] py-3 rounded-xl text-sm font-semibold text-white"
-          style={{ backgroundColor: 'rgba(255,255,255,0.18)', backdropFilter: 'blur(4px)' }}
+          className="flex-1 max-w-[160px] py-3 rounded-xl text-sm font-semibold text-white flex items-center justify-center gap-2"
+          style={{ backgroundColor: count > 0 ? 'var(--accent)' : 'rgba(255,255,255,0.18)', color: count > 0 ? 'var(--accent-text)' : 'white', backdropFilter: 'blur(4px)' }}
         >
-          Fermer
+          {count > 0 ? <><Check className="w-4 h-4" /> Terminé · {count}</> : 'Fermer'}
         </button>
         {onCapture && (
           <button
-            onClick={onCapture}
+            onClick={handleCapture}
             className="flex-1 max-w-[160px] py-3 rounded-xl text-sm font-semibold flex items-center justify-center gap-2"
             style={{ backgroundColor: 'var(--accent)', color: 'var(--accent-text)' }}
           >
@@ -496,6 +528,7 @@ function ScanPageInner() {
           onCapture={capturePhoto}
           onClose={() => { stopCamera(); }}
           captureLabel="Capturer"
+          photos={images}
         />
       )}
 
