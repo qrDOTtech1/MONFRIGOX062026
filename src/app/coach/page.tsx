@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import AppShell from '@/components/AppShell';
 import MascotLoader from '@/components/MascotLoader';
+import { useT } from '@/lib/i18n';
 import {
   Heart, Dumbbell, Moon, Zap, ChevronRight, ChevronLeft,
   Check, Plus, X, Loader2, Crown, Pill, Target, Clock,
@@ -19,63 +20,74 @@ interface CoachProfile {
 
 interface Supplement { id: string; name: string; dosage: string; timing: string; category: string; active: boolean }
 
-const ACTIVITY_LEVELS = [
-  { key: 'sedentary', label: 'Sédentaire', desc: 'Bureau, peu de mouvement', emoji: '🪑' },
-  { key: 'light', label: 'Légèrement actif', desc: 'Marche quotidienne, debout souvent', emoji: '🚶' },
-  { key: 'moderate', label: 'Modérément actif', desc: 'Sport 2-3x/semaine', emoji: '🏃' },
-  { key: 'active', label: 'Actif', desc: 'Sport 4-5x/semaine ou travail physique', emoji: '💪' },
-  { key: 'very_active', label: 'Très actif', desc: 'Sport intense quotidien ou travail très physique', emoji: '🏋️' },
-];
-
-const GOALS = [
-  { key: 'maintain', label: 'Maintien', desc: 'Garder mon poids actuel', emoji: '⚖️', color: '#6b7280' },
-  { key: 'lose', label: 'Perte de poids', desc: 'Perdre du poids progressivement', emoji: '📉', color: '#10b981' },
-  { key: 'gain', label: 'Prise de masse', desc: 'Gagner du muscle', emoji: '📈', color: '#8b5cf6' },
-  { key: 'energy', label: 'Plus d\'énergie', desc: 'Mieux manger pour mieux vivre', emoji: '⚡', color: '#f59e0b' },
-  { key: 'health', label: 'Santé globale', desc: 'Alimentation équilibrée', emoji: '❤️', color: '#ef4444' },
-];
-
-const SPORT_TYPES = [
-  { key: 'running', label: 'Course', emoji: '🏃' },
-  { key: 'musculation', label: 'Musculation', emoji: '🏋️' },
-  { key: 'cycling', label: 'Vélo', emoji: '🚴' },
-  { key: 'swimming', label: 'Natation', emoji: '🏊' },
-  { key: 'yoga', label: 'Yoga', emoji: '🧘' },
-  { key: 'football', label: 'Football', emoji: '⚽' },
-  { key: 'boxing', label: 'Boxe', emoji: '🥊' },
-  { key: 'hiking', label: 'Randonnée', emoji: '🥾' },
-  { key: 'dance', label: 'Danse', emoji: '💃' },
-  { key: 'other', label: 'Autre', emoji: '🏅' },
-];
-
-const SUPPLEMENT_PRESETS = [
-  { name: 'Vitamine D', dosage: '1000 UI', category: 'vitamin', timing: 'morning' },
-  { name: 'Fer', dosage: '14 mg', category: 'mineral', timing: 'morning' },
-  { name: 'Magnésium', dosage: '300 mg', category: 'mineral', timing: 'evening' },
-  { name: 'Vitamine B12', dosage: '1000 µg', category: 'vitamin', timing: 'morning' },
-  { name: 'Oméga-3', dosage: '1000 mg', category: 'omega', timing: 'morning' },
-  { name: 'Zinc', dosage: '15 mg', category: 'mineral', timing: 'morning' },
-  { name: 'Vitamine C', dosage: '500 mg', category: 'vitamin', timing: 'morning' },
-  { name: 'Calcium', dosage: '500 mg', category: 'mineral', timing: 'evening' },
-  { name: 'Whey Protein', dosage: '30 g', category: 'protein', timing: 'post_workout' },
-  { name: 'Créatine', dosage: '5 g', category: 'amino', timing: 'post_workout' },
-  { name: 'BCAA', dosage: '5 g', category: 'amino', timing: 'pre_workout' },
-  { name: 'Acide folique', dosage: '400 µg', category: 'vitamin', timing: 'morning' },
-  { name: 'Collagène', dosage: '10 g', category: 'protein', timing: 'morning' },
-  { name: 'Probiotiques', dosage: '10 Mds UFC', category: 'other', timing: 'morning' },
-  { name: 'Spiruline', dosage: '3 g', category: 'other', timing: 'morning' },
-  { name: 'Ashwagandha', dosage: '600 mg', category: 'other', timing: 'evening' },
-];
-
-const TIMING_LABELS: Record<string, string> = {
-  morning: '🌅 Matin', noon: '☀️ Midi', evening: '🌙 Soir',
-  pre_workout: '💪 Avant sport', post_workout: '🏋️ Après sport',
-};
-
-const STEPS = ['Physique', 'Activité', 'Objectif', 'Compléments', 'Résumé'];
-
 export default function CoachPage() {
   const router = useRouter();
+  const { t } = useT();
+
+  const ACTIVITY_LEVELS = [
+    { key: 'sedentary', label: t('coach.activity.sedentary'), desc: t('coach.activity.sedentary.desc'), emoji: '🪑' },
+    { key: 'light', label: t('coach.activity.light'), desc: t('coach.activity.light.desc'), emoji: '🚶' },
+    { key: 'moderate', label: t('coach.activity.moderate'), desc: t('coach.activity.moderate.desc'), emoji: '🏃' },
+    { key: 'active', label: t('coach.activity.active'), desc: t('coach.activity.active.desc'), emoji: '💪' },
+    { key: 'very_active', label: t('coach.activity.very_active'), desc: t('coach.activity.very_active.desc'), emoji: '🏋️' },
+  ];
+
+  const GOALS = [
+    { key: 'maintain', label: t('coach.goal.maintain'), desc: t('coach.goal.maintain.desc'), emoji: '⚖️', color: '#6b7280' },
+    { key: 'lose', label: t('coach.goal.lose'), desc: t('coach.goal.lose.desc'), emoji: '📉', color: '#10b981' },
+    { key: 'gain', label: t('coach.goal.gain'), desc: t('coach.goal.gain.desc'), emoji: '📈', color: '#8b5cf6' },
+    { key: 'energy', label: t('coach.goal.energy'), desc: t('coach.goal.energy.desc'), emoji: '⚡', color: '#f59e0b' },
+    { key: 'health', label: t('coach.goal.health'), desc: t('coach.goal.health.desc'), emoji: '❤️', color: '#ef4444' },
+  ];
+
+  const SPORT_TYPES = [
+    { key: 'running', label: t('coach.sport.running'), emoji: '🏃' },
+    { key: 'musculation', label: t('coach.sport.musculation'), emoji: '🏋️' },
+    { key: 'cycling', label: t('coach.sport.cycling'), emoji: '🚴' },
+    { key: 'swimming', label: t('coach.sport.swimming'), emoji: '🏊' },
+    { key: 'yoga', label: t('coach.sport.yoga'), emoji: '🧘' },
+    { key: 'football', label: t('coach.sport.football'), emoji: '⚽' },
+    { key: 'boxing', label: t('coach.sport.boxing'), emoji: '🥊' },
+    { key: 'hiking', label: t('coach.sport.hiking'), emoji: '🥾' },
+    { key: 'dance', label: t('coach.sport.dance'), emoji: '💃' },
+    { key: 'other', label: t('coach.sport.other'), emoji: '🏅' },
+  ];
+
+  const SUPPLEMENT_PRESETS = [
+    { name: 'Vitamine D', dosage: '1000 UI', category: 'vitamin', timing: 'morning' },
+    { name: 'Fer', dosage: '14 mg', category: 'mineral', timing: 'morning' },
+    { name: 'Magnésium', dosage: '300 mg', category: 'mineral', timing: 'evening' },
+    { name: 'Vitamine B12', dosage: '1000 µg', category: 'vitamin', timing: 'morning' },
+    { name: 'Oméga-3', dosage: '1000 mg', category: 'omega', timing: 'morning' },
+    { name: 'Zinc', dosage: '15 mg', category: 'mineral', timing: 'morning' },
+    { name: 'Vitamine C', dosage: '500 mg', category: 'vitamin', timing: 'morning' },
+    { name: 'Calcium', dosage: '500 mg', category: 'mineral', timing: 'evening' },
+    { name: 'Whey Protein', dosage: '30 g', category: 'protein', timing: 'post_workout' },
+    { name: 'Créatine', dosage: '5 g', category: 'amino', timing: 'post_workout' },
+    { name: 'BCAA', dosage: '5 g', category: 'amino', timing: 'pre_workout' },
+    { name: 'Acide folique', dosage: '400 µg', category: 'vitamin', timing: 'morning' },
+    { name: 'Collagène', dosage: '10 g', category: 'protein', timing: 'morning' },
+    { name: 'Probiotiques', dosage: '10 Mds UFC', category: 'other', timing: 'morning' },
+    { name: 'Spiruline', dosage: '3 g', category: 'other', timing: 'morning' },
+    { name: 'Ashwagandha', dosage: '600 mg', category: 'other', timing: 'evening' },
+  ];
+
+  const TIMING_LABELS: Record<string, string> = {
+    morning: t('coach.timing.morning'),
+    noon: t('coach.timing.noon'),
+    evening: t('coach.timing.evening'),
+    pre_workout: t('coach.timing.pre_workout'),
+    post_workout: t('coach.timing.post_workout'),
+  };
+
+  const STEPS = [
+    t('coach.step.physique'),
+    t('coach.step.activite'),
+    t('coach.step.objectif'),
+    t('coach.step.complements'),
+    t('coach.step.resume'),
+  ];
+
   const [step, setStep] = useState(0);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -125,10 +137,10 @@ export default function CoachPage() {
         : Math.round(10 * weight + 6.25 * height - 5 * age - 161);
       setBmr(b);
       const mult: Record<string, number> = { sedentary: 1.2, light: 1.375, moderate: 1.55, active: 1.725, very_active: 1.9 };
-      let t = Math.round(b * (mult[activityLevel] || 1.55));
-      if (goal === 'lose') t = Math.round(t * 0.85);
-      else if (goal === 'gain') t = Math.round(t * 1.15);
-      setTdee(t);
+      let td = Math.round(b * (mult[activityLevel] || 1.55));
+      if (goal === 'lose') td = Math.round(td * 0.85);
+      else if (goal === 'gain') td = Math.round(td * 1.15);
+      setTdee(td);
     }
   }, [weight, height, age, sex, activityLevel, goal]);
 
@@ -191,9 +203,9 @@ export default function CoachPage() {
           <Brain className="w-5 h-5 text-white" />
         </div>
         <div>
-          <h1 className="font-bold text-base">Mon Coach IA</h1>
+          <h1 className="font-bold text-base">{t('coach.header.title')}</h1>
           <p className="text-[11px]" style={{ color: 'var(--text-muted)' }}>
-            Personnalise ton alimentation · Tout est optionnel
+            {t('coach.header.sub')}
           </p>
         </div>
         <Crown className="w-4 h-4 text-purple-500 ml-auto" />
@@ -218,11 +230,11 @@ export default function CoachPage() {
       {step === 0 && (
         <div className="space-y-4">
           <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-            Ces infos permettent de calculer ton métabolisme de base. Tu peux tout passer.
+            {t('coach.physique.hint')}
           </p>
 
           <div className="flex gap-2">
-            {[{ k: 'M', label: 'Homme', emoji: '👨' }, { k: 'F', label: 'Femme', emoji: '👩' }].map(s => (
+            {[{ k: 'M', label: t('coach.physique.homme'), emoji: '👨' }, { k: 'F', label: t('coach.physique.femme'), emoji: '👩' }].map(s => (
               <button key={s.k} onClick={() => setSex(s.k)}
                 className="flex-1 py-3 rounded-xl text-center transition-all"
                 style={sex === s.k
@@ -236,9 +248,9 @@ export default function CoachPage() {
 
           <div className="grid grid-cols-3 gap-3">
             {[
-              { label: 'Taille (cm)', value: height, set: setHeight, placeholder: '175' },
-              { label: 'Poids (kg)', value: weight, set: setWeight, placeholder: '70' },
-              { label: 'Âge', value: age, set: setAge, placeholder: '30' },
+              { label: t('coach.physique.taille'), value: height, set: setHeight, placeholder: '175' },
+              { label: t('coach.physique.poids'), value: weight, set: setWeight, placeholder: '70' },
+              { label: t('coach.physique.age'), value: age, set: setAge, placeholder: '30' },
             ].map(f => (
               <div key={f.label}>
                 <label className="text-[10px] font-medium block mb-1" style={{ color: 'var(--text-muted)' }}>{f.label}</label>
@@ -254,9 +266,9 @@ export default function CoachPage() {
             <div className="card p-3 flex items-center gap-3">
               <Flame className="w-5 h-5 text-orange-500" />
               <div>
-                <p className="text-sm font-semibold">{tdee} kcal/jour estimées</p>
+                <p className="text-sm font-semibold">{t('coach.physique.tdee', { tdee: String(tdee) })}</p>
                 <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>
-                  Métabolisme de base : {bmr} kcal · {ACTIVITY_LEVELS.find(a => a.key === activityLevel)?.label}
+                  {t('coach.physique.bmr', { bmr: String(bmr), level: ACTIVITY_LEVELS.find(a => a.key === activityLevel)?.label ?? '' })}
                 </p>
               </div>
             </div>
@@ -268,7 +280,7 @@ export default function CoachPage() {
       {step === 1 && (
         <div className="space-y-4">
           <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-            Le coach ajuste les calories selon ton niveau d&apos;activité et tes jours de sport.
+            {t('coach.activite.hint')}
           </p>
 
           <div className="space-y-2">
@@ -289,7 +301,7 @@ export default function CoachPage() {
           </div>
 
           <div>
-            <p className="text-xs font-medium mb-2">Sports pratiqués</p>
+            <p className="text-xs font-medium mb-2">{t('coach.activite.sports')}</p>
             <div className="flex flex-wrap gap-2">
               {SPORT_TYPES.map(s => {
                 const active = sportTypes.includes(s.key);
@@ -310,7 +322,7 @@ export default function CoachPage() {
 
           {sportTypes.length > 0 && (
             <div>
-              <label className="text-xs font-medium block mb-1">Sessions par semaine</label>
+              <label className="text-xs font-medium block mb-1">{t('coach.activite.sessions')}</label>
               <div className="flex gap-2">
                 {[1, 2, 3, 4, 5, 6, 7].map(n => (
                   <button key={n} onClick={() => setSportFrequency(n)}
@@ -331,7 +343,7 @@ export default function CoachPage() {
       {step === 2 && (
         <div className="space-y-4">
           <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-            Le coach adapte les recettes et le planning selon ton objectif. Pas de jugement, juste des suggestions.
+            {t('coach.objectif.hint')}
           </p>
 
           <div className="space-y-2">
@@ -354,9 +366,9 @@ export default function CoachPage() {
           {tdee && (
             <div className="card p-3">
               <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-                Objectif calories : <span className="font-bold" style={{ color: 'var(--text)' }}>{tdee} kcal/jour</span>
-                {goal === 'lose' && ' (déficit -15%)'}
-                {goal === 'gain' && ' (surplus +15%)'}
+                {t('coach.objectif.calories')} <span className="font-bold" style={{ color: 'var(--text)' }}>{t('coach.objectif.kcalDay', { n: String(tdee) })}</span>
+                {goal === 'lose' && ` ${t('coach.objectif.deficit')}`}
+                {goal === 'gain' && ` ${t('coach.objectif.surplus')}`}
               </p>
             </div>
           )}
@@ -367,7 +379,7 @@ export default function CoachPage() {
       {step === 3 && (
         <div className="space-y-4">
           <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-            Déclare tes compléments pour que le coach les intègre dans ton suivi nutritionnel. Le coach détectera aussi les carences dans ton alimentation.
+            {t('coach.complements.hint')}
           </p>
 
           {/* Current supplements */}
@@ -394,7 +406,7 @@ export default function CoachPage() {
 
           {/* Quick add presets */}
           <div>
-            <p className="text-xs font-medium mb-2">Ajouter rapidement</p>
+            <p className="text-xs font-medium mb-2">{t('coach.complements.quickAdd')}</p>
             <div className="flex flex-wrap gap-1.5">
               {SUPPLEMENT_PRESETS.filter(p => !supplements.some(s => s.name === p.name)).map(p => (
                 <button key={p.name} onClick={() => addSupplement(p)}
@@ -410,16 +422,16 @@ export default function CoachPage() {
           <button onClick={() => setShowAddSupplement(!showAddSupplement)}
             className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-medium"
             style={{ border: '1.5px dashed var(--border)', color: 'var(--text-muted)' }}>
-            <Plus className="w-3.5 h-3.5" /> Ajouter un complément personnalisé
+            <Plus className="w-3.5 h-3.5" /> {t('coach.complements.custom')}
           </button>
 
           {showAddSupplement && (
             <div className="card p-3 space-y-2">
-              <input type="text" placeholder="Nom (ex: Ashwagandha)" value={customSuppName}
+              <input type="text" placeholder={t('coach.complements.namePlaceholder')} value={customSuppName}
                 onChange={e => setCustomSuppName(e.target.value)}
                 className="w-full px-3 py-2 rounded-lg text-sm bg-transparent outline-none"
                 style={{ backgroundColor: 'var(--bg-inset)', border: '1px solid var(--border)' }} />
-              <input type="text" placeholder="Dosage (ex: 600mg)" value={customSuppDosage}
+              <input type="text" placeholder={t('coach.complements.dosagePlaceholder')} value={customSuppDosage}
                 onChange={e => setCustomSuppDosage(e.target.value)}
                 className="w-full px-3 py-2 rounded-lg text-sm bg-transparent outline-none"
                 style={{ backgroundColor: 'var(--bg-inset)', border: '1px solid var(--border)' }} />
@@ -437,13 +449,13 @@ export default function CoachPage() {
               <button onClick={() => addSupplement()} disabled={!customSuppName.trim()}
                 className="w-full py-2 rounded-lg text-xs font-semibold disabled:opacity-40"
                 style={{ backgroundColor: 'var(--accent)', color: 'var(--accent-text)' }}>
-                Ajouter
+                {t('coach.complements.add')}
               </button>
             </div>
           )}
 
           <p className="text-[9px] leading-relaxed" style={{ color: 'var(--text-muted)' }}>
-            Mon Frigo ne fournit pas de conseils médicaux. Les suggestions du coach sont basées sur tes apports alimentaires estimés. Consulte un professionnel de santé avant de modifier ta supplémentation.
+            {t('coach.complements.disclaimer')}
           </p>
         </div>
       )}
@@ -453,39 +465,39 @@ export default function CoachPage() {
         <div className="space-y-4">
           <div className="card p-4">
             <h3 className="font-semibold text-sm mb-3 flex items-center gap-2">
-              <Sparkles className="w-4 h-4 text-purple-500" /> Ton profil coach
+              <Sparkles className="w-4 h-4 text-purple-500" /> {t('coach.resume.title')}
             </h3>
 
             <div className="space-y-2">
               {sex && (
                 <div className="flex justify-between text-xs">
-                  <span style={{ color: 'var(--text-muted)' }}>Profil</span>
+                  <span style={{ color: 'var(--text-muted)' }}>{t('coach.resume.profil')}</span>
                   <span className="font-medium">
-                    {sex === 'M' ? 'Homme' : 'Femme'}
-                    {age ? `, ${age} ans` : ''}
-                    {height ? `, ${height}cm` : ''}
-                    {weight ? `, ${weight}kg` : ''}
+                    {sex === 'M' ? t('coach.resume.homme') : t('coach.resume.femme')}
+                    {age ? `, ${t('coach.resume.ans', { n: String(age) })}` : ''}
+                    {height ? `, ${t('coach.resume.cm', { n: String(height) })}` : ''}
+                    {weight ? `, ${t('coach.resume.kg', { n: String(weight) })}` : ''}
                   </span>
                 </div>
               )}
               <div className="flex justify-between text-xs">
-                <span style={{ color: 'var(--text-muted)' }}>Activité</span>
+                <span style={{ color: 'var(--text-muted)' }}>{t('coach.resume.activite')}</span>
                 <span className="font-medium">{ACTIVITY_LEVELS.find(a => a.key === activityLevel)?.label}</span>
               </div>
               {sportTypes.length > 0 && (
                 <div className="flex justify-between text-xs">
-                  <span style={{ color: 'var(--text-muted)' }}>Sports</span>
-                  <span className="font-medium">{sportTypes.map(s => SPORT_TYPES.find(t => t.key === s)?.emoji).join(' ')} {sportFrequency}x/sem</span>
+                  <span style={{ color: 'var(--text-muted)' }}>{t('coach.resume.sports')}</span>
+                  <span className="font-medium">{sportTypes.map(s => SPORT_TYPES.find(tp => tp.key === s)?.emoji).join(' ')} {sportFrequency}{t('coach.resume.sportFreq', { n: '' }).replace('{n}', String(sportFrequency ?? ''))}</span>
                 </div>
               )}
               <div className="flex justify-between text-xs">
-                <span style={{ color: 'var(--text-muted)' }}>Objectif</span>
+                <span style={{ color: 'var(--text-muted)' }}>{t('coach.resume.objectif')}</span>
                 <span className="font-medium">{GOALS.find(g => g.key === goal)?.emoji} {GOALS.find(g => g.key === goal)?.label}</span>
               </div>
               {tdee && (
                 <div className="flex justify-between text-xs">
-                  <span style={{ color: 'var(--text-muted)' }}>Calories cible</span>
-                  <span className="font-bold text-orange-500">{tdee} kcal/jour</span>
+                  <span style={{ color: 'var(--text-muted)' }}>{t('coach.resume.caloriesCible')}</span>
+                  <span className="font-bold text-orange-500">{t('coach.resume.kcalDay', { n: String(tdee) })}</span>
                 </div>
               )}
             </div>
@@ -494,7 +506,7 @@ export default function CoachPage() {
           {supplements.length > 0 && (
             <div className="card p-4">
               <h3 className="font-semibold text-sm mb-2 flex items-center gap-2">
-                <Pill className="w-4 h-4 text-purple-500" /> Compléments ({supplements.length})
+                <Pill className="w-4 h-4 text-purple-500" /> {t('coach.resume.complements', { n: String(supplements.length) })}
               </h3>
               <div className="space-y-1">
                 {supplements.map(s => (
@@ -509,7 +521,7 @@ export default function CoachPage() {
 
           <div className="card p-4" style={{ background: 'linear-gradient(135deg, rgba(168,85,247,0.06), rgba(59,130,246,0.06))' }}>
             <p className="text-xs leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
-              Le coach va maintenant adapter tes plannings repas, prioriser les recettes qui comblent tes besoins nutritionnels, et te signaler les micronutriments bas dans ton alimentation.
+              {t('coach.resume.coachWillAdapt')}
             </p>
           </div>
         </div>
@@ -521,13 +533,13 @@ export default function CoachPage() {
           <button onClick={() => setStep(s => s - 1)}
             className="flex items-center gap-1 px-4 py-2.5 rounded-xl text-xs font-medium"
             style={{ backgroundColor: 'var(--bg-inset)', border: '1px solid var(--border)' }}>
-            <ChevronLeft className="w-3.5 h-3.5" /> Retour
+            <ChevronLeft className="w-3.5 h-3.5" /> {t('coach.nav.retour')}
           </button>
         ) : (
           <button onClick={() => router.push('/profile')}
             className="flex items-center gap-1 px-4 py-2.5 rounded-xl text-xs font-medium"
             style={{ backgroundColor: 'var(--bg-inset)', border: '1px solid var(--border)' }}>
-            Passer
+            {t('coach.nav.passer')}
           </button>
         )}
 
@@ -537,14 +549,14 @@ export default function CoachPage() {
           <button onClick={() => { if (step <= 2) saveProfile(); setStep(s => s + 1); }}
             className="flex items-center gap-1 px-5 py-2.5 rounded-xl text-xs font-semibold"
             style={{ backgroundColor: 'var(--accent)', color: 'var(--accent-text)' }}>
-            Suivant <ChevronRight className="w-3.5 h-3.5" />
+            {t('coach.nav.suivant')} <ChevronRight className="w-3.5 h-3.5" />
           </button>
         ) : (
           <button onClick={finish} disabled={saving}
             className="flex items-center gap-1 px-5 py-2.5 rounded-xl text-xs font-semibold disabled:opacity-50"
             style={{ background: 'linear-gradient(135deg, rgb(168,85,247), rgb(59,130,246))', color: 'white' }}>
             {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
-            Terminer
+            {t('coach.nav.terminer')}
           </button>
         )}
       </div>

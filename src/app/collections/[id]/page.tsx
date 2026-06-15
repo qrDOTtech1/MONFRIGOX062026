@@ -6,6 +6,7 @@ import AppShell from '@/components/AppShell';
 import MascotLoader from '@/components/MascotLoader';
 import RecipeCard from '@/components/RecipeCard';
 import { ArrowLeft, Loader2, Trash2 } from 'lucide-react';
+import { useT } from '@/lib/i18n';
 
 interface Col {
   id: string; name: string; emoji: string;
@@ -15,6 +16,7 @@ interface Col {
 export default function CollectionDetailPage() {
   const { id } = useParams();
   const router = useRouter();
+  const { t } = useT();
   const [col, setCol] = useState<Col | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -26,7 +28,7 @@ export default function CollectionDetailPage() {
   useEffect(() => { load(); }, [load]);
 
   async function deleteCollection() {
-    if (!confirm('Supprimer ce carnet ? Les recettes ne sont pas supprimées.')) return;
+    if (!confirm(t('collections.deleteConfirm'))) return;
     await fetch(`/api/collections/${id}`, { method: 'DELETE' });
     router.push('/collections');
   }
@@ -35,13 +37,18 @@ export default function CollectionDetailPage() {
     return <AppShell><div className="flex justify-center py-20"><Loader2 className="w-6 h-6 animate-spin" style={{ color: 'var(--text-muted)' }} /></div></AppShell>;
   }
   if (!col) {
-    return <AppShell><p className="text-center py-20" style={{ color: 'var(--text-muted)' }}>Carnet introuvable</p></AppShell>;
+    return <AppShell><p className="text-center py-20" style={{ color: 'var(--text-muted)' }}>{t('collections.notFound')}</p></AppShell>;
   }
+
+  const recipeCount = col.recipes.length;
+  const countLabel = recipeCount === 1
+    ? t('collections.recipeCount', { n: String(recipeCount) })
+    : t('collections.recipeCountPlural', { n: String(recipeCount) });
 
   return (
     <AppShell>
       <button onClick={() => router.push('/collections')} className="flex items-center gap-1.5 text-sm mb-4" style={{ color: 'var(--text-muted)' }}>
-        <ArrowLeft className="w-4 h-4" /> Mes carnets
+        <ArrowLeft className="w-4 h-4" /> {t('collections.myCollections')}
       </button>
 
       <div className="flex items-center justify-between mb-5">
@@ -49,7 +56,7 @@ export default function CollectionDetailPage() {
           <span className="text-2xl">{col.emoji}</span>
           <div>
             <h1 className="text-lg font-semibold">{col.name}</h1>
-            <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{col.recipes.length} recette{col.recipes.length !== 1 ? 's' : ''}</p>
+            <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{countLabel}</p>
           </div>
         </div>
         <button onClick={deleteCollection} className="w-9 h-9 rounded-lg flex items-center justify-center hover:bg-[var(--bg-inset)]">
@@ -59,7 +66,7 @@ export default function CollectionDetailPage() {
 
       {col.recipes.length === 0 ? (
         <div className="text-center py-16">
-          <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Carnet vide. Ajoute des recettes depuis leur page (bouton « Ajouter à un carnet »).</p>
+          <p className="text-sm" style={{ color: 'var(--text-muted)' }}>{t('collections.emptyState')}</p>
         </div>
       ) : (
         <div className="space-y-2">
