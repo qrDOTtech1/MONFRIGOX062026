@@ -239,20 +239,57 @@ function PromoCarousel({ promos, t }: { promos: PublicPromo[]; t: (k: string, v?
   );
 }
 
-// Chaque équipe = une réduction % + un code Stripe déterministe (à créer dans Stripe).
+// Les 48 équipes de la Coupe du Monde 2026. Chaque équipe = une réduction %
+// + un code promo Stripe déterministe (code = CM26-<code FIFA>).
 const WC_TEAMS = [
-  { flag: '🇫🇷', name: 'France',    code: 'CM26-FRA', percent: 30 },
-  { flag: '🇧🇷', name: 'Brésil',    code: 'CM26-BRA', percent: 30 },
-  { flag: '🇦🇷', name: 'Argentine', code: 'CM26-ARG', percent: 30 },
-  { flag: '🇲🇦', name: 'Maroc',     code: 'CM26-MAR', percent: 35 },
-  { flag: '🇪🇸', name: 'Espagne',   code: 'CM26-ESP', percent: 25 },
-  { flag: '🇵🇹', name: 'Portugal',  code: 'CM26-POR', percent: 25 },
-  { flag: '🇩🇪', name: 'Allemagne', code: 'CM26-GER', percent: 25 },
-  { flag: '🇮🇹', name: 'Italie',    code: 'CM26-ITA', percent: 25 },
-  { flag: '🇧🇪', name: 'Belgique',  code: 'CM26-BEL', percent: 25 },
-  { flag: '🇳🇱', name: 'Pays-Bas',  code: 'CM26-NED', percent: 25 },
-  { flag: '🇺🇸', name: 'USA',       code: 'CM26-USA', percent: 25 },
-  { flag: '🇲🇽', name: 'Mexique',   code: 'CM26-MEX', percent: 25 },
+  { flag: '🇫🇷', name: 'France',          code: 'CM26-FRA', percent: 30 },
+  { flag: '🇧🇷', name: 'Brésil',          code: 'CM26-BRA', percent: 30 },
+  { flag: '🇦🇷', name: 'Argentine',       code: 'CM26-ARG', percent: 30 },
+  { flag: '🏴󠁧󠁢󠁥󠁮󠁧󠁿', name: 'Angleterre',      code: 'CM26-ENG', percent: 28 },
+  { flag: '🇪🇸', name: 'Espagne',         code: 'CM26-ESP', percent: 28 },
+  { flag: '🇩🇪', name: 'Allemagne',       code: 'CM26-GER', percent: 28 },
+  { flag: '🇵🇹', name: 'Portugal',        code: 'CM26-POR', percent: 28 },
+  { flag: '🇳🇱', name: 'Pays-Bas',        code: 'CM26-NED', percent: 26 },
+  { flag: '🇮🇹', name: 'Italie',          code: 'CM26-ITA', percent: 26 },
+  { flag: '🇧🇪', name: 'Belgique',        code: 'CM26-BEL', percent: 26 },
+  { flag: '🇭🇷', name: 'Croatie',         code: 'CM26-CRO', percent: 25 },
+  { flag: '🇺🇾', name: 'Uruguay',         code: 'CM26-URU', percent: 25 },
+  { flag: '🇨🇴', name: 'Colombie',        code: 'CM26-COL', percent: 25 },
+  { flag: '🇲🇦', name: 'Maroc',           code: 'CM26-MAR', percent: 35 },
+  { flag: '🇸🇳', name: 'Sénégal',         code: 'CM26-SEN', percent: 28 },
+  { flag: '🇯🇵', name: 'Japon',           code: 'CM26-JPN', percent: 25 },
+  { flag: '🇰🇷', name: 'Corée du Sud',    code: 'CM26-KOR', percent: 25 },
+  { flag: '🇺🇸', name: 'USA',             code: 'CM26-USA', percent: 25 },
+  { flag: '🇲🇽', name: 'Mexique',         code: 'CM26-MEX', percent: 25 },
+  { flag: '🇨🇦', name: 'Canada',          code: 'CM26-CAN', percent: 25 },
+  { flag: '🇨🇭', name: 'Suisse',          code: 'CM26-SUI', percent: 24 },
+  { flag: '🇩🇰', name: 'Danemark',        code: 'CM26-DEN', percent: 24 },
+  { flag: '🇷🇸', name: 'Serbie',          code: 'CM26-SRB', percent: 24 },
+  { flag: '🇵🇱', name: 'Pologne',         code: 'CM26-POL', percent: 24 },
+  { flag: '🇦🇹', name: 'Autriche',        code: 'CM26-AUT', percent: 24 },
+  { flag: '🇹🇷', name: 'Turquie',         code: 'CM26-TUR', percent: 24 },
+  { flag: '🇺🇦', name: 'Ukraine',         code: 'CM26-UKR', percent: 24 },
+  { flag: '🏴󠁧󠁢󠁳󠁣󠁴󠁿', name: 'Écosse',         code: 'CM26-SCO', percent: 24 },
+  { flag: '🇳🇴', name: 'Norvège',         code: 'CM26-NOR', percent: 24 },
+  { flag: '🇸🇪', name: 'Suède',           code: 'CM26-SWE', percent: 24 },
+  { flag: '🇪🇨', name: 'Équateur',        code: 'CM26-ECU', percent: 24 },
+  { flag: '🇵🇪', name: 'Pérou',           code: 'CM26-PER', percent: 24 },
+  { flag: '🇨🇱', name: 'Chili',           code: 'CM26-CHI', percent: 24 },
+  { flag: '🇵🇾', name: 'Paraguay',        code: 'CM26-PAR', percent: 24 },
+  { flag: '🇳🇬', name: 'Nigeria',         code: 'CM26-NGA', percent: 26 },
+  { flag: '🇪🇬', name: 'Égypte',          code: 'CM26-EGY', percent: 26 },
+  { flag: '🇩🇿', name: 'Algérie',         code: 'CM26-ALG', percent: 28 },
+  { flag: '🇨🇲', name: 'Cameroun',        code: 'CM26-CMR', percent: 25 },
+  { flag: '🇬🇭', name: 'Ghana',           code: 'CM26-GHA', percent: 25 },
+  { flag: '🇨🇮', name: 'Côte d\'Ivoire',  code: 'CM26-CIV', percent: 26 },
+  { flag: '🇹🇳', name: 'Tunisie',         code: 'CM26-TUN', percent: 26 },
+  { flag: '🇮🇷', name: 'Iran',            code: 'CM26-IRN', percent: 24 },
+  { flag: '🇦🇺', name: 'Australie',       code: 'CM26-AUS', percent: 24 },
+  { flag: '🇸🇦', name: 'Arabie saoudite', code: 'CM26-KSA', percent: 24 },
+  { flag: '🇶🇦', name: 'Qatar',           code: 'CM26-QAT', percent: 24 },
+  { flag: '🇨🇷', name: 'Costa Rica',      code: 'CM26-CRC', percent: 24 },
+  { flag: '🇵🇦', name: 'Panama',          code: 'CM26-PAN', percent: 24 },
+  { flag: '🇳🇿', name: 'Nouvelle-Zélande', code: 'CM26-NZL', percent: 24 },
 ];
 
 // Bannière promotionnelle « Coupe du Monde 2026 » — offre limitée, % par équipe
@@ -260,6 +297,7 @@ type WcTeam = { flag: string; name: string; code: string; percent: number };
 function WorldCupOffer({ t }: { t: (k: string, v?: Record<string, string | number>) => string }) {
   const [team, setTeam] = useState<WcTeam | null>(null);
   const [copied, setCopied] = useState(false);
+  const [query, setQuery] = useState('');
 
   function copyCode() {
     if (!team) return;
@@ -284,10 +322,17 @@ function WorldCupOffer({ t }: { t: (k: string, v?: Record<string, string | numbe
 
         {!team ? (
           <>
-            <p className="text-xs font-semibold text-white/70 mb-2 uppercase tracking-wide">{t('landing.wc.pick')}</p>
-            <div className="flex flex-wrap gap-1.5">
-              {WC_TEAMS.map(tm => (
-                <button key={tm.name} onClick={() => setTeam(tm)}
+            <p className="text-xs font-semibold text-white/70 mb-2 uppercase tracking-wide">{t('landing.wc.pick')} · {WC_TEAMS.length}</p>
+            <input
+              value={query}
+              onChange={e => setQuery(e.target.value)}
+              placeholder={t('landing.wc.search')}
+              className="w-full mb-2.5 px-3 py-2 rounded-xl text-sm outline-none"
+              style={{ backgroundColor: 'rgba(255,255,255,0.16)', color: '#fff', border: '1px solid rgba(255,255,255,0.22)' }}
+            />
+            <div className="flex flex-wrap gap-1.5 max-h-44 overflow-y-auto pr-1 scrollbar-hide" style={{ scrollbarWidth: 'none' }}>
+              {WC_TEAMS.filter(tm => tm.name.toLowerCase().includes(query.toLowerCase())).map(tm => (
+                <button key={tm.code} onClick={() => { setTeam(tm); setQuery(''); }}
                   className="px-2.5 py-1.5 rounded-xl text-sm font-medium transition-all hover:scale-105 active:scale-95 flex items-center gap-1.5"
                   style={{ backgroundColor: 'rgba(255,255,255,0.14)', color: '#fff', border: '1px solid rgba(255,255,255,0.22)' }}>
                   <span className="text-base">{tm.flag}</span> {tm.name}

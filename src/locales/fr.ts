@@ -62,6 +62,7 @@ const fr: Record<string, string> = {
   'landing.wc.title': 'Supporte ton équipe. Cuisine comme un champion.',
   'landing.wc.sub': "Choisis la sélection que tu portes dans le cœur et débloque ton avantage exclusif, à ses couleurs. Offre de lancement, le temps de la compétition.",
   'landing.wc.pick': 'Choisis ton équipe',
+  'landing.wc.search': 'Rechercher une équipe…',
   'landing.wc.chosen': 'Tu es dans l’équipe {team} !',
   'landing.wc.change': "changer d'équipe",
   'landing.wc.codeLabel': 'Ton code',
