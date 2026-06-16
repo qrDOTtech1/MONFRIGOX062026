@@ -71,38 +71,53 @@ function detectLang(): string {
   return supported.includes(nav) ? nav : 'en';
 }
 
-async function translateBatch(texts: string[], to: string): Promise<string[]> {
+async function translateOne(text: string, to: string): Promise<string> {
+  if (!text || text.length < 2) return text;
   try {
-    const res = await fetch('/api/translate', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ texts, from: 'fr', to }),
-    });
-    if (!res.ok) return texts;
+    const params = new URLSearchParams({ client: 'gtx', sl: 'fr', tl: to, dt: 't', q: text });
+    const res = await fetch(`https://translate.googleapis.com/translate_a/single?${params}`);
+    if (!res.ok) return text;
     const data = await res.json();
-    return data.translated || texts;
-  } catch { return texts; }
+    return (data[0] as any[])?.map((s: any) => s[0]).join('') || text;
+  } catch { return text; }
+}
+
+async function translateBatch(texts: string[], to: string): Promise<string[]> {
+  const results: string[] = [];
+  for (let i = 0; i < texts.length; i += 20) {
+    const chunk = texts.slice(i, i + 20);
+    const translated = await Promise.all(chunk.map(t => translateOne(t, to)));
+    results.push(...translated);
+  }
+  return results;
 }
 
 export function I18nProvider({ children }: { children: ReactNode }) {
   const [lang, setLangState] = useState<string>('fr');
   const [dynamicStrings, setDynamicStrings] = useState<Record<string, string>>({});
   const [isLoading, setIsLoading] = useState(false);
-  const translatingRef = useRef(false);
+  const abortRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
     const detected = detectLang();
     setLangState(detected);
     if (detected !== 'fr' && detected !== 'en') {
       const cached = loadCache(detected);
-      if (Object.keys(cached).length > 0) {
-        setDynamicStrings(cached);
-      }
+      if (Object.keys(cached).length > 0) setDynamicStrings(cached);
     }
   }, []);
 
   useEffect(() => {
-    if (lang === 'fr' || lang === 'en' || translatingRef.current) return;
+    if (lang === 'fr' || lang === 'en') {
+      setDynamicStrings({});
+      setIsLoading(false);
+      return;
+    }
+
+    // Abort any in-flight translation
+    if (abortRef.current) abortRef.current.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
 
     const cached = loadCache(lang);
     const frKeys = Object.keys(fr);
@@ -110,31 +125,33 @@ export function I18nProvider({ children }: { children: ReactNode }) {
 
     if (missing.length === 0) {
       setDynamicStrings(cached);
+      setIsLoading(false);
       return;
     }
 
-    translatingRef.current = true;
+    setDynamicStrings(cached);
     setIsLoading(true);
 
     const missingValues = missing.map(k => fr[k]);
 
-    // Translate in batches of 100
     (async () => {
       const allTranslated: Record<string, string> = { ...cached };
-      for (let i = 0; i < missing.length; i += 100) {
-        const batchKeys = missing.slice(i, i + 100);
-        const batchValues = missingValues.slice(i, i + 100);
+      for (let i = 0; i < missing.length; i += 50) {
+        if (controller.signal.aborted) return;
+        const batchKeys = missing.slice(i, i + 50);
+        const batchValues = missingValues.slice(i, i + 50);
         const results = await translateBatch(batchValues, lang);
+        if (controller.signal.aborted) return;
         batchKeys.forEach((key, idx) => {
           allTranslated[key] = results[idx] || fr[key];
         });
-        // Update progressively
         setDynamicStrings({ ...allTranslated });
         saveCache(lang, allTranslated);
       }
-      setIsLoading(false);
-      translatingRef.current = false;
+      if (!controller.signal.aborted) setIsLoading(false);
     })();
+
+    return () => controller.abort();
   }, [lang]);
 
   const setLang = useCallback((l: string) => {

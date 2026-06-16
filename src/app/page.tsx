@@ -427,6 +427,65 @@ export default function LandingPage() {
           </div>
         </section>
 
+        {/* ── Comparison table ── */}
+        <section className="mb-14">
+          <h2 className="text-xl font-bold text-center mb-1.5">{t('landing.compare.title')}</h2>
+          <p className="text-sm text-center mb-6" style={{ color: 'var(--text-muted)' }}>{t('landing.compare.sub')}</p>
+
+          <div className="overflow-x-auto -mx-5 px-5">
+            <table className="w-full text-xs" style={{ minWidth: 520, borderCollapse: 'collapse' }}>
+              <thead>
+                <tr>
+                  <th className="text-left py-2 px-2 font-medium" style={{ color: 'var(--text-muted)', fontSize: 10, textTransform: 'uppercase', letterSpacing: 1 }}>{t('landing.compare.features')}</th>
+                  {['Jow', 'Marmiton', 'MealPal'].map(c => (
+                    <th key={c} className="text-center py-2 px-1 font-normal" style={{ color: 'var(--text-muted)', fontSize: 11 }}>{c}</th>
+                  ))}
+                  <th className="text-center py-2 px-1 font-bold text-sm" style={{ color: 'var(--accent)', borderRadius: '12px 12px 0 0', backgroundColor: 'color-mix(in srgb, var(--accent) 8%, transparent)', border: '2px solid var(--accent)', borderBottom: 'none' }}>MonFrigo</th>
+                </tr>
+              </thead>
+              <tbody>
+                {([
+                  ['landing.compare.scan',     false, false, false, true],
+                  ['landing.compare.barcode',  false, false, false, true],
+                  ['landing.compare.aiRecipes','limité', false, false, true],
+                  ['landing.compare.planning', true,  false, true,  true],
+                  ['landing.compare.fridge',   false, false, false, true],
+                  ['landing.compare.shopping', true,  false, 'basique', true],
+                  ['landing.compare.aiChat',   false, false, false, true],
+                  ['landing.compare.coach',    false, false, 'macros', true],
+                  ['landing.compare.waste',    false, false, false, true],
+                  ['landing.compare.voice',    false, false, false, true],
+                  ['landing.compare.i18n',     '2-3', 'FR',  'EN',  true],
+                  ['landing.compare.free',     false, true,  false, true],
+                ] as const).map(([key, ...vals], ri) => (
+                  <tr key={String(key)} style={{ borderBottom: '1px solid var(--border-subtle)' }}>
+                    <td className="py-2.5 px-2 font-medium text-xs">{t(String(key))}</td>
+                    {vals.map((v, ci) => {
+                      const isHero = ci === 3;
+                      const cellStyle: React.CSSProperties = isHero
+                        ? { backgroundColor: 'color-mix(in srgb, var(--accent) 4%, transparent)', borderLeft: '2px solid var(--accent)', borderRight: '2px solid var(--accent)', ...(ri === 11 ? { borderBottom: '2px solid var(--accent)', borderRadius: '0 0 12px 12px' } : {}) }
+                        : {};
+                      return (
+                        <td key={ci} className="text-center py-2.5 px-1" style={cellStyle}>
+                          {v === true ? (
+                            isHero
+                              ? <span className="inline-flex items-center justify-center w-6 h-6 rounded-full text-white" style={{ backgroundColor: 'var(--accent)' }}><Check className="w-3.5 h-3.5" /></span>
+                              : <Check className="w-3.5 h-3.5 inline" style={{ color: 'rgb(16,185,129)' }} />
+                          ) : v === false ? (
+                            <X className="w-3 h-3 inline opacity-30" />
+                          ) : (
+                            <span className="text-[10px] px-1.5 py-0.5 rounded" style={{ backgroundColor: 'var(--bg-inset)', color: 'var(--text-muted)' }}>{v}</span>
+                          )}
+                        </td>
+                      );
+                    })}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+
         {/* ── Promo codes carousel ── */}
         {promos.length > 0 && (
           <div ref={promoRef}>
