@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Plus, Trash2, ToggleLeft, ToggleRight, Copy, Check, Tag, X, Edit2 } from 'lucide-react';
+import { Plus, Trash2, ToggleLeft, ToggleRight, Copy, Check, Tag, X, Edit2, Upload } from 'lucide-react';
 
 interface PromoCode {
   id: string;
@@ -36,6 +36,15 @@ export default function AdminPromoPage() {
   const [error, setError] = useState('');
   const [copied, setCopied] = useState<string | null>(null);
 
+  // Batch import state
+  const [showImport, setShowImport] = useState(false);
+  const [importJson, setImportJson] = useState('');
+  const [importForm, setImportForm] = useState({ planGranted: 'VIP', durationMonths: '1', maxUses: '', expiresAt: '', firstSignupOnly: false, minAccountAgeDays: '', maxAccountAgeDays: '', description: '' });
+  const [importParsed, setImportParsed] = useState<any[] | null>(null);
+  const [importError, setImportError] = useState('');
+  const [importResult, setImportResult] = useState<{ created: number; errors: string[] } | null>(null);
+  const [importing, setImporting] = useState(false);
+
   const load = useCallback(async () => {
     setLoading(true);
     const res = await fetch('/api/admin/promo');
@@ -55,6 +64,49 @@ export default function AdminPromoPage() {
     navigator.clipboard.writeText(code).catch(() => {});
     setCopied(code);
     setTimeout(() => setCopied(null), 2000);
+  }
+
+  function parseImportJson(raw: string) {
+    setImportJson(raw);
+    setImportError('');
+    setImportParsed(null);
+    setImportResult(null);
+    if (!raw.trim()) return;
+    try {
+      const arr = JSON.parse(raw);
+      if (!Array.isArray(arr)) { setImportError('Le JSON doit être un tableau'); return; }
+      if (arr.length === 0) { setImportError('Le tableau est vide'); return; }
+      const bad = arr.filter((item: any) => !item.code?.trim());
+      if (bad.length > 0) { setImportError(`${bad.length} entrée(s) sans champ "code"`); return; }
+      setImportParsed(arr);
+    } catch { setImportError('JSON invalide'); }
+  }
+
+  async function submitImport() {
+    if (!importParsed) return;
+    setImporting(true);
+    setImportError('');
+    setImportResult(null);
+    const defaults: any = {
+      planGranted: importForm.planGranted,
+      durationMonths: Number(importForm.durationMonths),
+      description: importForm.description || '',
+      firstSignupOnly: importForm.firstSignupOnly,
+    };
+    if (importForm.maxUses) defaults.maxUses = Number(importForm.maxUses);
+    if (importForm.expiresAt) defaults.expiresAt = importForm.expiresAt;
+    if (importForm.minAccountAgeDays) defaults.minAccountAgeDays = Number(importForm.minAccountAgeDays);
+    if (importForm.maxAccountAgeDays) defaults.maxAccountAgeDays = Number(importForm.maxAccountAgeDays);
+
+    const res = await fetch('/api/admin/promo', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ batch: importParsed, defaults }),
+    });
+    const data = await res.json();
+    setImportResult(data);
+    setImporting(false);
+    if (data.created > 0) load();
   }
 
   function openEdit(c: PromoCode) {
@@ -140,12 +192,125 @@ export default function AdminPromoPage() {
             {codes.length} code{codes.length !== 1 ? 's' : ''}
           </span>
         </div>
-        <button onClick={() => { setEditId(null); setForm({ ...EMPTY_FORM }); setShowForm(true); }}
-          className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium transition-all active:scale-95"
-          style={{ backgroundColor: 'var(--accent)', color: 'var(--accent-text)' }}>
-          <Plus className="w-4 h-4" /> Créer un code
-        </button>
+        <div className="flex gap-2">
+          <button onClick={() => { setShowImport(true); setImportJson(''); setImportParsed(null); setImportError(''); setImportResult(null); }}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium transition-all active:scale-95"
+            style={{ backgroundColor: 'var(--accent)', color: 'var(--accent-text)' }}>
+            <Upload className="w-4 h-4" /> Import JSON
+          </button>
+          <button onClick={() => { setEditId(null); setForm({ ...EMPTY_FORM }); setShowForm(true); }}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium transition-all active:scale-95"
+            style={{ backgroundColor: 'var(--accent)', color: 'var(--accent-text)' }}>
+            <Plus className="w-4 h-4" /> Créer un code
+          </button>
+        </div>
       </div>
+
+      {/* Import JSON batch */}
+      {showImport && (
+        <div className="card p-5 mb-6">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-sm font-bold">Import JSON en lot</h2>
+            <button onClick={() => setShowImport(false)}><X className="w-4 h-4" style={{ color: 'var(--text-muted)' }} /></button>
+          </div>
+
+          {/* Shared defaults */}
+          <p className="text-xs font-bold mb-3" style={{ color: 'var(--text-secondary)' }}>Paramètres par défaut (appliqués si non spécifié par code)</p>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+            <div>
+              <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-secondary)' }}>Plan *</label>
+              <select value={importForm.planGranted} onChange={e => setImportForm(f => ({ ...f, planGranted: e.target.value }))}
+                className="w-full text-sm px-3 py-2 rounded-xl outline-none"
+                style={{ backgroundColor: 'var(--bg-inset)', border: '1px solid var(--border)', color: 'var(--text)' }}>
+                <option value="PREMIUM">⭐ Premium</option>
+                <option value="VIP">👑 VIP</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-secondary)' }}>Durée (mois) *</label>
+              <input type="number" min="1" max="24" value={importForm.durationMonths}
+                onChange={e => setImportForm(f => ({ ...f, durationMonths: e.target.value }))}
+                className="w-full text-sm px-3 py-2 rounded-xl outline-none"
+                style={{ backgroundColor: 'var(--bg-inset)', border: '1px solid var(--border)', color: 'var(--text)' }} />
+            </div>
+            <div>
+              <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-secondary)' }}>Description</label>
+              <input value={importForm.description} onChange={e => setImportForm(f => ({ ...f, description: e.target.value }))}
+                placeholder="Ex: Campagne été 2026"
+                className="w-full text-sm px-3 py-2 rounded-xl outline-none"
+                style={{ backgroundColor: 'var(--bg-inset)', border: '1px solid var(--border)', color: 'var(--text)' }} />
+            </div>
+            <div>
+              <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-secondary)' }}>Max utilisations</label>
+              <input type="number" min="1" value={importForm.maxUses}
+                onChange={e => setImportForm(f => ({ ...f, maxUses: e.target.value }))}
+                placeholder="Illimité"
+                className="w-full text-sm px-3 py-2 rounded-xl outline-none"
+                style={{ backgroundColor: 'var(--bg-inset)', border: '1px solid var(--border)', color: 'var(--text)' }} />
+            </div>
+            <div>
+              <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-secondary)' }}>Expiration</label>
+              <input type="date" value={importForm.expiresAt}
+                onChange={e => setImportForm(f => ({ ...f, expiresAt: e.target.value }))}
+                className="w-full text-sm px-3 py-2 rounded-xl outline-none"
+                style={{ backgroundColor: 'var(--bg-inset)', border: '1px solid var(--border)', color: 'var(--text)' }} />
+            </div>
+            <label className="flex items-center gap-2 cursor-pointer select-none self-end pb-2">
+              <div className={`relative w-9 h-5 rounded-full transition-colors ${importForm.firstSignupOnly ? 'bg-[var(--accent)]' : 'bg-[var(--border)]'}`}
+                onClick={() => setImportForm(f => ({ ...f, firstSignupOnly: !f.firstSignupOnly }))}>
+                <span className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${importForm.firstSignupOnly ? 'translate-x-4' : 'translate-x-0.5'}`} />
+              </div>
+              <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>1re inscription</span>
+            </label>
+          </div>
+
+          {/* JSON textarea */}
+          <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-secondary)' }}>
+            JSON (tableau d'objets avec au minimum un champ <code className="font-mono">code</code>)
+          </label>
+          <textarea
+            value={importJson}
+            onChange={e => parseImportJson(e.target.value)}
+            rows={6}
+            placeholder={'[\n  {"code": "SUMMER01"},\n  {"code": "SUMMER02", "planGranted": "VIP", "durationMonths": 3}\n]'}
+            className="w-full text-sm px-3 py-2 rounded-xl outline-none font-mono resize-y"
+            style={{ backgroundColor: 'var(--bg-inset)', border: '1px solid var(--border)', color: 'var(--text)' }}
+          />
+
+          {importError && <p className="mt-2 text-xs text-red-500">{importError}</p>}
+
+          {importParsed && (
+            <p className="mt-2 text-xs font-semibold" style={{ color: 'var(--accent)' }}>
+              {importParsed.length} code{importParsed.length > 1 ? 's' : ''} prêt{importParsed.length > 1 ? 's' : ''} à créer
+            </p>
+          )}
+
+          {importResult && (
+            <div className="mt-3 p-3 rounded-xl text-xs" style={{ backgroundColor: 'var(--bg-inset)', border: '1px solid var(--border-subtle)' }}>
+              <p className="font-bold mb-1" style={{ color: importResult.created > 0 ? 'var(--accent)' : 'var(--text-secondary)' }}>
+                {importResult.created} code{importResult.created !== 1 ? 's' : ''} créé{importResult.created !== 1 ? 's' : ''}
+              </p>
+              {importResult.errors.length > 0 && (
+                <ul className="list-disc list-inside text-red-500 space-y-0.5">
+                  {importResult.errors.map((e, i) => <li key={i}>{e}</li>)}
+                </ul>
+              )}
+            </div>
+          )}
+
+          <div className="flex gap-2 mt-4">
+            <button onClick={submitImport} disabled={!importParsed || importing}
+              className="px-4 py-2 rounded-xl text-sm font-semibold disabled:opacity-50 transition-all active:scale-95"
+              style={{ backgroundColor: 'var(--accent)', color: 'var(--accent-text)' }}>
+              {importing ? 'Import en cours…' : 'Importer'}
+            </button>
+            <button onClick={() => setShowImport(false)} className="px-4 py-2 rounded-xl text-sm"
+              style={{ backgroundColor: 'var(--bg-inset)', color: 'var(--text-secondary)' }}>
+              Annuler
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Formulaire création / édition */}
       {showForm && (

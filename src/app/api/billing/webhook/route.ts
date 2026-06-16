@@ -1,31 +1,62 @@
 import { NextRequest, NextResponse } from 'next/server';
-import crypto from 'crypto';
+import { createHmac, timingSafeEqual } from 'crypto';
 import { prisma } from '@/lib/db';
 
-/**
- * Vérifie la signature Stripe (HMAC-SHA256) sans dépendre du package stripe.
- * Header : stripe-signature: t=timestamp,v1=signature
- * Signature = HMAC_SHA256(secret, `${t}.${rawBody}`)
- */
-function verifyStripeSignature(rawBody: string, sigHeader: string | null, secret: string): boolean {
-  if (!sigHeader) return false;
-  const parts: Record<string, string> = {};
-  for (const kv of sigHeader.split(',')) {
-    const [k, v] = kv.split('=');
-    if (k && v) parts[k.trim()] = v.trim();
+// ─── Rate limiting (in-memory, per-IP, 20 req/min) ───
+const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
+const RATE_LIMIT_MAX = 20;
+const RATE_LIMIT_WINDOW_MS = 60_000;
+
+function isRateLimited(ip: string): boolean {
+  const now = Date.now();
+  const entry = rateLimitMap.get(ip);
+  if (!entry || now >= entry.resetAt) {
+    rateLimitMap.set(ip, { count: 1, resetAt: now + RATE_LIMIT_WINDOW_MS });
+    return false;
   }
-  const t = parts['t'];
-  const v1 = parts['v1'];
-  if (!t || !v1) return false;
+  entry.count++;
+  return entry.count > RATE_LIMIT_MAX;
+}
 
-  const expected = crypto.createHmac('sha256', secret).update(`${t}.${rawBody}`).digest('hex');
-  const a = Buffer.from(expected);
-  const b = Buffer.from(v1);
-  if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) return false;
+// ─── Stripe signature verification ───
+function verifyStripeSignature(
+  rawBody: string,
+  signatureHeader: string,
+  secret: string,
+  toleranceSec = 300,
+): boolean {
+  // Parse "t=timestamp,v1=sig1,v1=sig2,..."
+  const parts: Record<string, string[]> = {};
+  for (const item of signatureHeader.split(',')) {
+    const [key, ...rest] = item.split('=');
+    const val = rest.join('=');
+    if (key && val) {
+      (parts[key] ??= []).push(val);
+    }
+  }
 
-  // Tolérance 5 min contre le rejeu
-  const ageSec = Math.abs(Date.now() / 1000 - Number(t));
-  return Number.isFinite(ageSec) && ageSec < 300;
+  const timestamp = parts['t']?.[0];
+  const signatures = parts['v1'];
+  if (!timestamp || !signatures?.length) return false;
+
+  // Reject if timestamp is too old or in the future (replay protection)
+  const ts = parseInt(timestamp, 10);
+  if (isNaN(ts)) return false;
+  const age = Math.abs(Math.floor(Date.now() / 1000) - ts);
+  if (age > toleranceSec) return false;
+
+  // Compute expected signature
+  const expectedSig = createHmac('sha256', secret)
+    .update(`${timestamp}.${rawBody}`)
+    .digest('hex');
+  const expectedBuf = Buffer.from(expectedSig, 'hex');
+
+  // Check if any v1 signature matches (timing-safe)
+  return signatures.some((sig) => {
+    const sigBuf = Buffer.from(sig, 'hex');
+    if (sigBuf.length !== expectedBuf.length) return false;
+    return timingSafeEqual(sigBuf, expectedBuf);
+  });
 }
 
 /**
@@ -45,19 +76,30 @@ function verifyStripeSignature(rawBody: string, sigHeader: string | null, secret
  *   ex: https://buy.stripe.com/xxx?client_reference_id=USER_ID
  */
 export async function POST(req: NextRequest) {
-  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET
-    || (await prisma.appConfig.findUnique({ where: { key: 'stripe_webhook_secret' } }))?.value
-    || '';
+  // ─── Rate limiting ───
+  const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
+    || req.headers.get('x-real-ip')
+    || 'unknown';
+  if (isRateLimited(ip)) {
+    return NextResponse.json({ error: 'Too many requests' }, { status: 429 });
+  }
 
-  // Lire le corps BRUT (indispensable pour vérifier la signature)
+  // Read raw body BEFORE parsing JSON (needed for signature verification)
   const rawBody = await req.text();
 
-  // Si un secret webhook est configuré → on EXIGE une signature valide
-  if (webhookSecret) {
+  // ─── Signature verification ───
+  const webhookSecret = await prisma.appConfig.findUnique({ where: { key: 'stripe_webhook_secret' } });
+
+  if (webhookSecret?.value) {
     const sig = req.headers.get('stripe-signature');
-    if (!verifyStripeSignature(rawBody, sig, webhookSecret)) {
+    if (!sig) {
+      return NextResponse.json({ error: 'Signature manquante' }, { status: 400 });
+    }
+    if (!verifyStripeSignature(rawBody, sig, webhookSecret.value)) {
       return NextResponse.json({ error: 'Signature invalide' }, { status: 400 });
     }
+  } else {
+    console.warn('[Billing] ATTENTION: stripe_webhook_secret non configuré dans AppConfig — les webhooks ne sont pas vérifiés!');
   }
 
   let event: Record<string, unknown>;

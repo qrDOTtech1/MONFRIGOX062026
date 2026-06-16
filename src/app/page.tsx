@@ -1,11 +1,11 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useRef } from 'react';
-import { ScanLine, ChefHat, ShoppingCart, Leaf, Barcode, Sparkles, Check, Brain, X, Calendar, MessageSquare, Trophy, Share2, UtensilsCrossed, Volume2, Timer, Globe } from 'lucide-react';
+import { useEffect, useRef, useState, useCallback } from 'react';
+import { ScanLine, ChefHat, ShoppingCart, Leaf, Barcode, Sparkles, Check, Brain, X, Calendar, MessageSquare, Trophy, Share2, UtensilsCrossed, Volume2, Timer, Globe, Gift, ChevronLeft, ChevronRight, Copy, Star, Users, Clock, Zap } from 'lucide-react';
 import LogoAnim from '@/components/LogoAnim';
 import FloatingEmojis from '@/components/FloatingEmojis';
-import { useT } from '@/lib/i18n';
+import { useT, LANGUAGES } from '@/lib/i18n';
 
 /* ── Landing-specific styles ─────────────────────────────────────────── */
 function LandingStyles() {
@@ -147,12 +147,111 @@ const jsonLdOrg = JSON.stringify({
 });
 
 /* ── Page ────────────────────────────────────────────────────────────── */
+interface PublicPromo {
+  code: string; description: string; planGranted: string;
+  durationMonths: number; expiresAt: string | null;
+  firstSignupOnly: boolean; maxUses: number | null; usedCount: number;
+}
+
+function PromoCarousel({ promos, t }: { promos: PublicPromo[]; t: (k: string, v?: Record<string, string | number>) => string }) {
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const [copiedCode, setCopiedCode] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (promos.length <= 1) return;
+    const interval = setInterval(() => {
+      const el = scrollRef.current;
+      if (!el) return;
+      const cardW = el.firstElementChild?.clientWidth || 280;
+      const maxScroll = el.scrollWidth - el.clientWidth;
+      if (el.scrollLeft >= maxScroll - 10) el.scrollTo({ left: 0, behavior: 'smooth' });
+      else el.scrollBy({ left: cardW + 12, behavior: 'smooth' });
+    }, 4000);
+    return () => clearInterval(interval);
+  }, [promos.length]);
+
+  function copy(code: string) {
+    navigator.clipboard.writeText(code).catch(() => {});
+    setCopiedCode(code);
+    setTimeout(() => setCopiedCode(null), 2000);
+  }
+
+  if (!promos.length) return null;
+
+  return (
+    <section className="mb-10">
+      <div className="flex items-center gap-2 justify-center mb-4">
+        <Gift className="w-5 h-5" style={{ color: 'var(--accent)' }} />
+        <h2 className="text-lg font-bold">{t('landing.promo.title')}</h2>
+      </div>
+      <div ref={scrollRef} className="flex gap-3 overflow-x-auto snap-x snap-mandatory scrollbar-hide pb-2 -mx-2 px-2"
+        style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+        {promos.map(p => {
+          const isVip = p.planGranted === 'VIP';
+          const borderColor = isVip ? 'rgba(168,85,247,0.5)' : 'rgba(245,158,11,0.5)';
+          const bgColor = isVip ? 'rgba(168,85,247,0.06)' : 'rgba(245,158,11,0.06)';
+          const tagColor = isVip ? '#a855f7' : '#f59e0b';
+          const remaining = p.maxUses !== null ? p.maxUses - p.usedCount : null;
+
+          return (
+            <div key={p.code} className="snap-center shrink-0 w-[280px] p-4 rounded-2xl relative overflow-hidden"
+              style={{ backgroundColor: bgColor, border: `1.5px solid ${borderColor}` }}>
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ backgroundColor: `${tagColor}20`, color: tagColor }}>
+                  {isVip ? '👑 VIP' : '⭐ Premium'} · {p.durationMonths} {t('landing.promo.months')}
+                </span>
+                {remaining !== null && remaining <= 20 && (
+                  <span className="text-[10px] px-2 py-0.5 rounded-full font-medium" style={{ backgroundColor: 'rgba(239,68,68,0.1)', color: '#ef4444' }}>
+                    🔥 {remaining} {t('landing.promo.left')}
+                  </span>
+                )}
+              </div>
+
+              <div className="flex items-center gap-2 mb-2">
+                <span className="font-mono font-bold text-lg tracking-wider">{p.code}</span>
+                <button onClick={() => copy(p.code)}
+                  className="p-1 rounded-lg transition-all hover:scale-110 active:scale-90"
+                  style={{ color: 'var(--text-muted)' }}>
+                  {copiedCode === p.code ? <Check className="w-4 h-4 text-emerald-500" /> : <Copy className="w-4 h-4" />}
+                </button>
+              </div>
+
+              {p.description && (
+                <p className="text-xs mb-2" style={{ color: 'var(--text-muted)' }}>{p.description}</p>
+              )}
+
+              {p.expiresAt && (
+                <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>
+                  ⏰ {t('landing.promo.expires')} {new Date(p.expiresAt).toLocaleDateString()}
+                </p>
+              )}
+
+              <Link href={p.firstSignupOnly ? '/register' : '/login'}
+                className="mt-3 block w-full text-center py-2 rounded-xl text-xs font-semibold transition-all hover:scale-[1.02] active:scale-95"
+                style={{ backgroundColor: tagColor, color: '#fff' }}>
+                {p.firstSignupOnly ? t('landing.promo.signup') : t('landing.promo.use')}
+              </Link>
+            </div>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
 export default function LandingPage() {
   const { t, lang, setLang } = useT();
   const statsRef    = useFadeIn();
   const featuresRef = useFadeIn();
   const pricingRef  = useFadeIn();
   const ctaRef      = useFadeIn();
+  const promoRef    = useFadeIn();
+  const [promos, setPromos] = useState<PublicPromo[]>([]);
+  const [showLangPicker, setShowLangPicker] = useState(false);
+
+  useEffect(() => {
+    fetch('/api/promo/public').then(r => r.ok ? r.json() : []).then(setPromos).catch(() => {});
+  }, []);
 
   const features = featureIcons.map(f => ({
     icon: f.icon,
@@ -196,15 +295,32 @@ export default function LandingPage() {
         }}>
         <LogoAnim size={36} withName nameSize="text-base" />
         <div className="flex items-center gap-2">
-          <button
-            onClick={() => setLang(lang === 'fr' ? 'en' : 'fr')}
-            className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all hover:scale-105 active:scale-95"
-            style={{ backgroundColor: 'var(--bg-inset)', border: '1px solid var(--border)', color: 'var(--text-secondary)' }}
-            aria-label="Switch language"
-          >
-            <Globe className="w-3.5 h-3.5" />
-            {lang === 'fr' ? 'FR' : 'EN'}
-          </button>
+          <div className="relative">
+            <button
+              onClick={() => setShowLangPicker(!showLangPicker)}
+              className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all hover:scale-105 active:scale-95"
+              style={{ backgroundColor: 'var(--bg-inset)', border: '1px solid var(--border)', color: 'var(--text-secondary)' }}>
+              <Globe className="w-3.5 h-3.5" />
+              {LANGUAGES.find(l => l.code === lang)?.flag || '🌐'} {lang.toUpperCase()}
+            </button>
+            {showLangPicker && (
+              <>
+                <div className="fixed inset-0 z-30" onClick={() => setShowLangPicker(false)} />
+                <div className="absolute right-0 top-full mt-1 z-40 rounded-xl p-2 grid grid-cols-2 gap-1 w-[280px] shadow-xl"
+                  style={{ backgroundColor: 'var(--bg-card)', border: '1px solid var(--border)' }}>
+                  {LANGUAGES.map(l => (
+                    <button key={l.code} onClick={() => { setLang(l.code); setShowLangPicker(false); }}
+                      className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs transition-all text-left hover:scale-[1.02]"
+                      style={lang === l.code
+                        ? { backgroundColor: 'color-mix(in srgb, var(--accent) 15%, transparent)', fontWeight: 600 }
+                        : { backgroundColor: 'transparent' }}>
+                      <span>{l.flag}</span> {l.label}
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
           <Link href="/login"    className="btn-secondary !px-4 !py-2 text-sm">{t('landing.login')}</Link>
           <Link href="/register" className="btn-primary  !px-4 !py-2 text-sm">{t('landing.register')}</Link>
         </div>
@@ -291,6 +407,32 @@ export default function LandingPage() {
             </div>
           </section>
         </div>
+
+        {/* ── Social proof ── */}
+        <section className="mb-14 text-center">
+          <div className="flex items-center justify-center gap-1 mb-2">
+            {[1,2,3,4,5].map(i => <Star key={i} className="w-4 h-4 fill-yellow-400 text-yellow-400" />)}
+          </div>
+          <p className="text-sm font-medium mb-1">{t('landing.social.rating')}</p>
+          <div className="flex items-center justify-center gap-6 mt-3">
+            <div className="flex items-center gap-1.5 text-xs" style={{ color: 'var(--text-muted)' }}>
+              <Users className="w-3.5 h-3.5" /> {t('landing.social.users')}
+            </div>
+            <div className="flex items-center gap-1.5 text-xs" style={{ color: 'var(--text-muted)' }}>
+              <ChefHat className="w-3.5 h-3.5" /> {t('landing.social.recipes')}
+            </div>
+            <div className="flex items-center gap-1.5 text-xs" style={{ color: 'var(--text-muted)' }}>
+              <Zap className="w-3.5 h-3.5" /> {t('landing.social.scans')}
+            </div>
+          </div>
+        </section>
+
+        {/* ── Promo codes carousel ── */}
+        {promos.length > 0 && (
+          <div ref={promoRef}>
+            <PromoCarousel promos={promos} t={t} />
+          </div>
+        )}
 
         {/* ── Pricing ── */}
         <div ref={pricingRef}>
