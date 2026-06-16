@@ -79,6 +79,35 @@ Dans Stripe → **Products**, crée un prix (Price) pour chacun et **copie son I
 
 ---
 
+## 3 bis. Offre « Coupe du Monde 2026 » — % par équipe
+
+La bannière en haut de la landing propose un **% par équipe** via des **codes promo Stripe**
+(le client saisit le code au paiement — `allow_promotion_codes` est déjà activé).
+
+Pour que les codes fonctionnent, crée dans **Stripe → Coupons / Promotion codes** un coupon
+**en pourcentage** pour chaque équipe, avec **exactement** ce code et ce % :
+
+| Équipe | Code (Promotion code) | Réduction |
+|---|---|---|
+| 🇫🇷 France | `CM26-FRA` | 30 % |
+| 🇧🇷 Brésil | `CM26-BRA` | 30 % |
+| 🇦🇷 Argentine | `CM26-ARG` | 30 % |
+| 🇲🇦 Maroc | `CM26-MAR` | 35 % |
+| 🇪🇸 Espagne | `CM26-ESP` | 25 % |
+| 🇵🇹 Portugal | `CM26-POR` | 25 % |
+| 🇩🇪 Allemagne | `CM26-GER` | 25 % |
+| 🇮🇹 Italie | `CM26-ITA` | 25 % |
+| 🇧🇪 Belgique | `CM26-BEL` | 25 % |
+| 🇳🇱 Pays-Bas | `CM26-NED` | 25 % |
+| 🇺🇸 USA | `CM26-USA` | 25 % |
+| 🇲🇽 Mexique | `CM26-MEX` | 25 % |
+
+> Astuce : crée un **Coupon** (ex. « 30% off ») puis un **Promotion code** avec le code exact ci-dessus.
+> Tu peux limiter la **date d'expiration** (fin de la compétition) et le **nombre d'utilisations**.
+> Les % et codes se modifient dans `src/app/page.tsx` (constante `WC_TEAMS`).
+
+---
+
 ## 4. Notifications push
 
 - Les clés VAPID sont **générées automatiquement** au 1er usage (stockées en base).

@@ -239,23 +239,31 @@ function PromoCarousel({ promos, t }: { promos: PublicPromo[]; t: (k: string, v?
   );
 }
 
+// Chaque équipe = une réduction % + un code Stripe déterministe (à créer dans Stripe).
 const WC_TEAMS = [
-  { flag: '🇫🇷', name: 'France' },   { flag: '🇧🇷', name: 'Brésil' },
-  { flag: '🇦🇷', name: 'Argentine' }, { flag: '🇪🇸', name: 'Espagne' },
-  { flag: '🇵🇹', name: 'Portugal' },  { flag: '🇩🇪', name: 'Allemagne' },
-  { flag: '🇮🇹', name: 'Italie' },    { flag: '🇧🇪', name: 'Belgique' },
-  { flag: '🇳🇱', name: 'Pays-Bas' },  { flag: '🇲🇦', name: 'Maroc' },
-  { flag: '🇺🇸', name: 'USA' },       { flag: '🇲🇽', name: 'Mexique' },
+  { flag: '🇫🇷', name: 'France',    code: 'CM26-FRA', percent: 30 },
+  { flag: '🇧🇷', name: 'Brésil',    code: 'CM26-BRA', percent: 30 },
+  { flag: '🇦🇷', name: 'Argentine', code: 'CM26-ARG', percent: 30 },
+  { flag: '🇲🇦', name: 'Maroc',     code: 'CM26-MAR', percent: 35 },
+  { flag: '🇪🇸', name: 'Espagne',   code: 'CM26-ESP', percent: 25 },
+  { flag: '🇵🇹', name: 'Portugal',  code: 'CM26-POR', percent: 25 },
+  { flag: '🇩🇪', name: 'Allemagne', code: 'CM26-GER', percent: 25 },
+  { flag: '🇮🇹', name: 'Italie',    code: 'CM26-ITA', percent: 25 },
+  { flag: '🇧🇪', name: 'Belgique',  code: 'CM26-BEL', percent: 25 },
+  { flag: '🇳🇱', name: 'Pays-Bas',  code: 'CM26-NED', percent: 25 },
+  { flag: '🇺🇸', name: 'USA',       code: 'CM26-USA', percent: 25 },
+  { flag: '🇲🇽', name: 'Mexique',   code: 'CM26-MEX', percent: 25 },
 ];
 
-// Bannière promotionnelle « Coupe du Monde 2026 » — offre limitée, choix d'équipe
-function WorldCupOffer({ promo, t }: { promo: PublicPromo | null; t: (k: string, v?: Record<string, string | number>) => string }) {
-  const [team, setTeam] = useState<{ flag: string; name: string } | null>(null);
+// Bannière promotionnelle « Coupe du Monde 2026 » — offre limitée, % par équipe
+type WcTeam = { flag: string; name: string; code: string; percent: number };
+function WorldCupOffer({ t }: { t: (k: string, v?: Record<string, string | number>) => string }) {
+  const [team, setTeam] = useState<WcTeam | null>(null);
   const [copied, setCopied] = useState(false);
 
   function copyCode() {
-    if (!promo) return;
-    navigator.clipboard.writeText(promo.code).catch(() => {});
+    if (!team) return;
+    navigator.clipboard.writeText(team.code).catch(() => {});
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   }
@@ -295,20 +303,21 @@ function WorldCupOffer({ promo, t }: { promo: PublicPromo | null; t: (k: string,
               <p className="font-bold text-sm">{t('landing.wc.chosen', { team: team.name })}</p>
               <button onClick={() => setTeam(null)} className="ml-auto text-[11px] underline opacity-60">{t('landing.wc.change')}</button>
             </div>
-            {promo ? (
-              <>
-                {promo.description && <p className="text-sm mb-2.5" style={{ color: '#334155' }}>{promo.description}</p>}
-                <div className="flex items-center gap-2 mb-3">
-                  <span className="text-[10px] font-semibold uppercase tracking-wide" style={{ color: '#64748b' }}>{t('landing.wc.codeLabel')}</span>
-                  <span className="font-mono font-bold text-lg tracking-wider px-2.5 py-1 rounded-lg" style={{ backgroundColor: 'rgba(16,185,129,0.12)', color: '#047857' }}>{promo.code}</span>
-                  <button onClick={copyCode} className="p-1 rounded-lg transition-all hover:scale-110 active:scale-90" style={{ color: '#64748b' }}>
-                    {copied ? <Check className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4" />}
-                  </button>
-                </div>
-              </>
-            ) : (
-              <p className="text-sm mb-3" style={{ color: '#334155' }}>{t('landing.wc.offerFallback')}</p>
-            )}
+            {/* Le % gagné grâce à l'équipe */}
+            <div className="flex items-center gap-3 mb-3 rounded-xl p-3" style={{ background: 'linear-gradient(135deg, rgba(5,150,105,0.10), rgba(180,83,9,0.10))' }}>
+              <span className="text-4xl font-extrabold leading-none" style={{ color: '#047857' }}>-{team.percent}%</span>
+              <p className="text-xs leading-snug" style={{ color: '#334155' }}>{t('landing.wc.discountSub', { team: team.name })}</p>
+            </div>
+
+            <div className="flex items-center gap-2 mb-1">
+              <span className="text-[10px] font-semibold uppercase tracking-wide" style={{ color: '#64748b' }}>{t('landing.wc.codeLabel')}</span>
+              <span className="font-mono font-bold text-lg tracking-wider px-2.5 py-1 rounded-lg" style={{ backgroundColor: 'rgba(16,185,129,0.12)', color: '#047857' }}>{team.code}</span>
+              <button onClick={copyCode} className="p-1 rounded-lg transition-all hover:scale-110 active:scale-90" style={{ color: '#64748b' }}>
+                {copied ? <Check className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4" />}
+              </button>
+            </div>
+            <p className="text-[11px] mb-3" style={{ color: '#64748b' }}>{t('landing.wc.howto')}</p>
+
             <Link href="/register"
               className="block w-full text-center py-2.5 rounded-xl text-sm font-bold text-white transition-all hover:scale-[1.02] active:scale-95"
               style={{ background: 'linear-gradient(135deg, #059669, #b45309)' }}>
@@ -413,7 +422,7 @@ export default function LandingPage() {
 
         {/* ── Offre Coupe du Monde 2026 (tout en haut) ── */}
         <div className="pt-6">
-          <WorldCupOffer promo={promos[0] || null} t={t} />
+          <WorldCupOffer t={t} />
         </div>
 
         {/* ── Hero ── */}
