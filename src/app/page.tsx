@@ -239,6 +239,89 @@ function PromoCarousel({ promos, t }: { promos: PublicPromo[]; t: (k: string, v?
   );
 }
 
+const WC_TEAMS = [
+  { flag: '🇫🇷', name: 'France' },   { flag: '🇧🇷', name: 'Brésil' },
+  { flag: '🇦🇷', name: 'Argentine' }, { flag: '🇪🇸', name: 'Espagne' },
+  { flag: '🇵🇹', name: 'Portugal' },  { flag: '🇩🇪', name: 'Allemagne' },
+  { flag: '🇮🇹', name: 'Italie' },    { flag: '🇧🇪', name: 'Belgique' },
+  { flag: '🇳🇱', name: 'Pays-Bas' },  { flag: '🇲🇦', name: 'Maroc' },
+  { flag: '🇺🇸', name: 'USA' },       { flag: '🇲🇽', name: 'Mexique' },
+];
+
+// Bannière promotionnelle « Coupe du Monde 2026 » — offre limitée, choix d'équipe
+function WorldCupOffer({ promo, t }: { promo: PublicPromo | null; t: (k: string, v?: Record<string, string | number>) => string }) {
+  const [team, setTeam] = useState<{ flag: string; name: string } | null>(null);
+  const [copied, setCopied] = useState(false);
+
+  function copyCode() {
+    if (!promo) return;
+    navigator.clipboard.writeText(promo.code).catch(() => {});
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  }
+
+  return (
+    <section className="mb-9 fade-in">
+      <div className="relative overflow-hidden rounded-3xl p-5 sm:p-6"
+        style={{ background: 'linear-gradient(135deg, #064e3b 0%, #0f766e 45%, #b45309 100%)', boxShadow: '0 14px 44px rgba(6,78,59,0.40)' }}>
+        <div className="absolute -right-5 -top-7 text-[130px] opacity-[0.12] select-none pointer-events-none">⚽</div>
+
+        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold mb-3 tracking-wide"
+          style={{ backgroundColor: 'rgba(255,255,255,0.18)', color: '#fff', backdropFilter: 'blur(4px)' }}>
+          {t('landing.wc.tag')}
+        </span>
+
+        <h2 className="text-2xl sm:text-[28px] font-extrabold text-white leading-tight mb-2">{t('landing.wc.title')}</h2>
+        <p className="text-sm text-white/85 mb-4 max-w-md leading-relaxed">{t('landing.wc.sub')}</p>
+
+        {!team ? (
+          <>
+            <p className="text-xs font-semibold text-white/70 mb-2 uppercase tracking-wide">{t('landing.wc.pick')}</p>
+            <div className="flex flex-wrap gap-1.5">
+              {WC_TEAMS.map(tm => (
+                <button key={tm.name} onClick={() => setTeam(tm)}
+                  className="px-2.5 py-1.5 rounded-xl text-sm font-medium transition-all hover:scale-105 active:scale-95 flex items-center gap-1.5"
+                  style={{ backgroundColor: 'rgba(255,255,255,0.14)', color: '#fff', border: '1px solid rgba(255,255,255,0.22)' }}>
+                  <span className="text-base">{tm.flag}</span> {tm.name}
+                </button>
+              ))}
+            </div>
+            <p className="text-[11px] text-white/60 mt-3">🔥 {t('landing.wc.urgency')}</p>
+          </>
+        ) : (
+          <div className="rounded-2xl p-4 fade-in" style={{ backgroundColor: 'rgba(255,255,255,0.96)', color: '#0f172a' }}>
+            <div className="flex items-center gap-2 mb-2.5">
+              <span className="text-2xl">{team.flag}</span>
+              <p className="font-bold text-sm">{t('landing.wc.chosen', { team: team.name })}</p>
+              <button onClick={() => setTeam(null)} className="ml-auto text-[11px] underline opacity-60">{t('landing.wc.change')}</button>
+            </div>
+            {promo ? (
+              <>
+                {promo.description && <p className="text-sm mb-2.5" style={{ color: '#334155' }}>{promo.description}</p>}
+                <div className="flex items-center gap-2 mb-3">
+                  <span className="text-[10px] font-semibold uppercase tracking-wide" style={{ color: '#64748b' }}>{t('landing.wc.codeLabel')}</span>
+                  <span className="font-mono font-bold text-lg tracking-wider px-2.5 py-1 rounded-lg" style={{ backgroundColor: 'rgba(16,185,129,0.12)', color: '#047857' }}>{promo.code}</span>
+                  <button onClick={copyCode} className="p-1 rounded-lg transition-all hover:scale-110 active:scale-90" style={{ color: '#64748b' }}>
+                    {copied ? <Check className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4" />}
+                  </button>
+                </div>
+              </>
+            ) : (
+              <p className="text-sm mb-3" style={{ color: '#334155' }}>{t('landing.wc.offerFallback')}</p>
+            )}
+            <Link href="/register"
+              className="block w-full text-center py-2.5 rounded-xl text-sm font-bold text-white transition-all hover:scale-[1.02] active:scale-95"
+              style={{ background: 'linear-gradient(135deg, #059669, #b45309)' }}>
+              {t('landing.wc.cta', { team: team.name })}
+            </Link>
+            <p className="text-[11px] text-center mt-2.5" style={{ color: '#94a3b8' }}>🔥 {t('landing.wc.urgency')}</p>
+          </div>
+        )}
+      </div>
+    </section>
+  );
+}
+
 export default function LandingPage() {
   const { t, lang, setLang } = useT();
   const statsRef    = useFadeIn();
@@ -328,8 +411,13 @@ export default function LandingPage() {
 
       <main className="flex-1 max-w-2xl mx-auto w-full px-5 pb-20 relative z-10">
 
+        {/* ── Offre Coupe du Monde 2026 (tout en haut) ── */}
+        <div className="pt-6">
+          <WorldCupOffer promo={promos[0] || null} t={t} />
+        </div>
+
         {/* ── Hero ── */}
-        <section className="text-center pt-14 pb-12">
+        <section className="text-center pt-2 pb-12">
           {/* Mascotte hero */}
           <div className="flex justify-center mb-6">
             <LogoAnim size={96} />
