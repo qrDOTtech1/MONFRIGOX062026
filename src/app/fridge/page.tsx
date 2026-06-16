@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { useT } from '@/lib/i18n';
+import { getShelfInfo } from '@/lib/shelf-life';
 
 interface FridgeItem {
   id: string;
@@ -304,18 +305,31 @@ export default function FridgePage() {
         </div>
       )}
 
-      {expiringSoon.length > 0 && (
-        <div className="rounded-lg p-3 mb-4 flex items-start gap-2.5 fade-in"
-          style={{ backgroundColor: 'rgba(234,179,8,0.06)', border: '1px solid rgba(234,179,8,0.15)' }}>
-          <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
-          <div>
-            <p className="text-sm font-medium text-amber-600 dark:text-amber-400">{t('fridge.expiry.soon')}</p>
-            <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
-              {expiringSoon.map(i => i.ingredient.name).join(', ')}
-            </p>
+      {expiringSoon.length > 0 && (() => {
+        const freezable = expiringSoon.filter(i => getShelfInfo(i.ingredient.name)?.freezable);
+        return (
+          <div className="rounded-lg p-3 mb-4 fade-in"
+            style={{ backgroundColor: 'rgba(234,179,8,0.06)', border: '1px solid rgba(234,179,8,0.15)' }}>
+            <div className="flex items-start gap-2.5">
+              <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
+              <div>
+                <p className="text-sm font-medium text-amber-600 dark:text-amber-400">{t('fridge.expiry.soon')}</p>
+                <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
+                  {expiringSoon.map(i => i.ingredient.name).join(', ')}
+                </p>
+              </div>
+            </div>
+            {freezable.length > 0 && (
+              <div className="mt-2 pt-2 flex items-start gap-2" style={{ borderTop: '1px solid rgba(234,179,8,0.15)' }}>
+                <span className="text-sm shrink-0">❄️</span>
+                <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>
+                  Congèle-les avant qu&apos;il soit trop tard : <strong>{freezable.map(i => i.ingredient.name).join(', ')}</strong> se conserve(nt) très bien au congélateur.
+                </p>
+              </div>
+            )}
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {fridgeItems.length === 0 ? (
         <div className="text-center py-10">

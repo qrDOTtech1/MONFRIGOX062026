@@ -255,6 +255,39 @@ function ScanPageInner() {
   }
 
   // OCR local (Tesseract.js) pour les tickets — zéro consommation IA, gratuit pour tous
+  // Prétraitement : agrandit si petit, niveaux de gris + contraste → meilleur OCR ticket
+  function preprocessForOcr(dataUrl: string): Promise<string> {
+    return new Promise(resolve => {
+      const img = new Image();
+      img.onload = () => {
+        const minW = 1000;
+        const scale = img.width < minW ? minW / img.width : 1;
+        const w = Math.round(img.width * scale);
+        const h = Math.round(img.height * scale);
+        const canvas = document.createElement('canvas');
+        canvas.width = w; canvas.height = h;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) { resolve(dataUrl); return; }
+        ctx.drawImage(img, 0, 0, w, h);
+        const imgData = ctx.getImageData(0, 0, w, h);
+        const d = imgData.data;
+        // Niveaux de gris + renforcement de contraste
+        const contrast = 1.5;
+        const intercept = 128 * (1 - contrast);
+        for (let i = 0; i < d.length; i += 4) {
+          let g = 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
+          g = g * contrast + intercept;
+          g = Math.max(0, Math.min(255, g));
+          d[i] = d[i + 1] = d[i + 2] = g;
+        }
+        ctx.putImageData(imgData, 0, 0);
+        resolve(canvas.toDataURL('image/jpeg', 0.9));
+      };
+      img.onerror = () => resolve(dataUrl);
+      img.src = dataUrl;
+    });
+  }
+
   async function ocrReceiptImages(): Promise<string> {
     setOcrProgress(0);
     const { createWorker } = await import('tesseract.js');
@@ -266,7 +299,8 @@ function ScanPageInner() {
     let fullText = '';
     try {
       for (const img of images) {
-        const { data } = await worker.recognize(img);
+        const prepped = await preprocessForOcr(img);
+        const { data } = await worker.recognize(prepped);
         fullText += data.text + '\n';
       }
     } finally {
