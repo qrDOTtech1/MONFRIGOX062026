@@ -21,23 +21,24 @@ export async function POST(req: NextRequest) {
 
   const origin = req.headers.get('origin') || process.env.NEXT_PUBLIC_APP_URL || 'https://monfrigo.app';
 
-  // Déterminer si c'est un pack quota (pas d'abonnement récurrent)
-  const quotaConfig = await prisma.appConfig.findMany({
-    where: { key: { in: ['stripe_price_id_quota_50', 'stripe_price_id_quota_200', 'stripe_price_id_quota_500'] } },
+  // Reverse-map du priceId → plan/durée/quota, à partir des Price IDs en AppConfig.
+  // Permet au webhook (checkout.session.completed) de créditer le bon plan.
+  const priceConfig = await prisma.appConfig.findMany({
+    where: { key: { startsWith: 'stripe_price_id_' } },
   });
-  const quotaPriceIds = new Set(quotaConfig.map(c => c.value));
-  const isOneTime = quotaPriceIds.has(priceId);
+  const keyForPrice = priceConfig.find(c => c.value === priceId)?.key || '';
 
-  // Lire metadata du price depuis AppConfig pour connaître plan/quota/duration
-  const metaConfig = await prisma.appConfig.findMany({
-    where: { key: { startsWith: 'stripe_meta_' } },
-  });
-  const metaMap: Record<string, Record<string, string>> = {};
-  metaConfig.forEach(c => {
-    // key format: stripe_meta_price_xxx_plan / stripe_meta_price_xxx_quota / etc.
-    // On stocke la meta directement dans AppConfig sous la clé du priceId
-  });
-  void metaMap;
+  const META: Record<string, Record<string, string>> = {
+    stripe_price_id_premium_monthly: { plan: 'PREMIUM', duration: 'MONTHLY' },
+    stripe_price_id_premium_annual:  { plan: 'PREMIUM', duration: 'ANNUAL' },
+    stripe_price_id_vip_monthly:     { plan: 'VIP',     duration: 'MONTHLY' },
+    stripe_price_id_vip_annual:      { plan: 'VIP',     duration: 'ANNUAL' },
+    stripe_price_id_quota_50:        { quota: '50' },
+    stripe_price_id_quota_200:       { quota: '200' },
+    stripe_price_id_quota_500:       { quota: '500' },
+  };
+  const meta = META[keyForPrice] || {};
+  const isOneTime = 'quota' in meta;
 
   // Construire la session Stripe via l'API REST
   const params = new URLSearchParams();
@@ -50,7 +51,9 @@ export async function POST(req: NextRequest) {
   params.append('cancel_url',                          `${origin}${cancelPath}`);
   params.append('allow_promotion_codes',               'true');
   // Metadata transmise au webhook via checkout.session.completed
-  // (à compléter côté Stripe Dashboard sur le Price ou le Product)
+  for (const [k, v] of Object.entries(meta)) {
+    params.append(`metadata[${k}]`, v);
+  }
 
   const res = await fetch('https://api.stripe.com/v1/checkout/sessions', {
     method: 'POST',
