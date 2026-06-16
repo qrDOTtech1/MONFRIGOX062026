@@ -13,11 +13,25 @@ export async function POST(req: NextRequest) {
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: 'Non autorisé' }, { status: 401 });
 
-  const { priceId, successPath = '/profile?upgrade=success', cancelPath = '/profile' } = await req.json();
+  const { priceId, successPath = '/profile?upgrade=success', cancelPath = '/profile', promoCode } = await req.json();
   if (!priceId) return NextResponse.json({ error: 'priceId requis' }, { status: 400 });
 
   const stripeKey = process.env.STRIPE_SECRET_KEY;
   if (!stripeKey) return NextResponse.json({ error: 'Stripe non configuré (STRIPE_SECRET_KEY manquant)' }, { status: 500 });
+
+  // Résout un code promo client (ex: CM26-FRA) → ID de promotion code Stripe (promo_xxx)
+  async function resolvePromotionCodeId(code: string): Promise<string | null> {
+    try {
+      const r = await fetch(
+        `https://api.stripe.com/v1/promotion_codes?code=${encodeURIComponent(code)}&active=true&limit=1`,
+        { headers: { Authorization: `Bearer ${stripeKey}` } },
+      );
+      const d = await r.json() as { data?: Array<{ id: string }> };
+      return d.data?.[0]?.id || null;
+    } catch {
+      return null;
+    }
+  }
 
   const origin = req.headers.get('origin') || process.env.NEXT_PUBLIC_APP_URL || 'https://monfrigo.app';
 
@@ -49,7 +63,20 @@ export async function POST(req: NextRequest) {
   params.append('customer_email',                      user.email);
   params.append('success_url',                         `${origin}${successPath}`);
   params.append('cancel_url',                          `${origin}${cancelPath}`);
-  params.append('allow_promotion_codes',               'true');
+
+  // Code promo pré-appliqué (ex: équipe Coupe du Monde) → on passe l'ID Stripe.
+  // Stripe interdit discounts + allow_promotion_codes ensemble : si le code est
+  // valide on le pré-applique, sinon on laisse le client saisir un code.
+  let promoApplied = false;
+  if (typeof promoCode === 'string' && promoCode.trim()) {
+    const promoId = await resolvePromotionCodeId(promoCode.trim());
+    if (promoId) {
+      params.append('discounts[0][promotion_code]', promoId);
+      promoApplied = true;
+    }
+  }
+  if (!promoApplied) params.append('allow_promotion_codes', 'true');
+
   // Metadata transmise au webhook via checkout.session.completed
   for (const [k, v] of Object.entries(meta)) {
     params.append(`metadata[${k}]`, v);

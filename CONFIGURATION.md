@@ -79,30 +79,22 @@ Dans Stripe → **Products**, crée un prix (Price) pour chacun et **copie son I
 
 ---
 
-## 3 bis. Offre « Coupe du Monde 2026 » — % par équipe
+## 3 bis. Offre « Coupe du Monde 2026 » — 10 % par équipe
 
-La bannière en haut de la landing propose un **% par équipe** via des **codes promo Stripe**
-(le client saisit le code au paiement — `allow_promotion_codes` est déjà activé).
+La bannière en haut de la landing propose **-10 %** quelle que soit l'équipe choisie (48 nations).
+Le code de l'équipe est **pré-appliqué automatiquement** au paiement (le client ne saisit rien).
 
-**48 équipes**, chacune avec son code `CM26-<code FIFA>`. Pour limiter le travail dans Stripe,
-crée **un coupon par tier de %** (6 coupons), puis **un Promotion code par équipe** pointant
-vers le coupon du bon tier.
+**Config Stripe (simple) :**
+1. Crée **un seul Coupon** « 10 % off » (réduction en pourcentage).
+2. Crée **48 Promotion codes** rattachés à ce coupon, un par équipe, avec le code exact
+   `CM26-<code FIFA>` (`CM26-FRA`, `CM26-BRA`, `CM26-MAR`, `CM26-ENG`, …).
+   La liste complète des 48 codes = constante `WC_TEAMS` dans `src/app/page.tsx`.
 
-**Tiers de réduction :**
-
-| Tier | Équipes |
-|---|---|
-| **35 %** | Maroc (`CM26-MAR`) |
-| **30 %** | France `CM26-FRA`, Brésil `CM26-BRA`, Argentine `CM26-ARG` |
-| **28 %** | Angleterre `CM26-ENG`, Espagne `CM26-ESP`, Allemagne `CM26-GER`, Portugal `CM26-POR`, Sénégal `CM26-SEN`, Algérie `CM26-ALG` |
-| **26 %** | Pays-Bas `CM26-NED`, Italie `CM26-ITA`, Belgique `CM26-BEL`, Nigeria `CM26-NGA`, Égypte `CM26-EGY`, Côte d'Ivoire `CM26-CIV`, Tunisie `CM26-TUN` |
-| **25 %** | Croatie `CM26-CRO`, Uruguay `CM26-URU`, Colombie `CM26-COL`, Japon `CM26-JPN`, Corée `CM26-KOR`, USA `CM26-USA`, Mexique `CM26-MEX`, Canada `CM26-CAN`, Cameroun `CM26-CMR`, Ghana `CM26-GHA` |
-| **24 %** | Suisse `CM26-SUI`, Danemark `CM26-DEN`, Serbie `CM26-SRB`, Pologne `CM26-POL`, Autriche `CM26-AUT`, Turquie `CM26-TUR`, Ukraine `CM26-UKR`, Écosse `CM26-SCO`, Norvège `CM26-NOR`, Suède `CM26-SWE`, Équateur `CM26-ECU`, Pérou `CM26-PER`, Chili `CM26-CHI`, Paraguay `CM26-PAR`, Iran `CM26-IRN`, Australie `CM26-AUS`, Arabie saoudite `CM26-KSA`, Qatar `CM26-QAT`, Costa Rica `CM26-CRC`, Panama `CM26-PAN`, Nouvelle-Zélande `CM26-NZL` |
-
-> 💡 Dans Stripe : 1 **Coupon** par pourcentage (35/30/28/26/25/24 %), puis pour chaque équipe
-> un **Promotion code** avec le code exact (rattaché au coupon du bon tier).
-> Limite la **date d'expiration** (fin de la compétition) et/ou le **nombre d'utilisations**.
-> La source de vérité (codes + %) est la constante `WC_TEAMS` dans `src/app/page.tsx`.
+> 💡 Tu peux limiter chaque Promotion code par **date d'expiration** (fin de la compétition)
+> et/ou **nombre d'utilisations**.
+> Pré-application : à la sélection d'une équipe, le code est mémorisé puis passé à la
+> Checkout Session Stripe (`discounts[0][promotion_code]`). Si le code n'existe pas encore
+> dans Stripe, le client peut quand même saisir un code manuellement.
 
 ---
 

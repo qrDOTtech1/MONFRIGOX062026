@@ -15,9 +15,12 @@ function CheckoutButton({ priceId, label, sub, color, Icon, compact = false }:
   const [loading, setLoading] = useState(false);
   async function go() {
     setLoading(true);
+    // Code promo pré-sélectionné (ex: équipe Coupe du Monde) mémorisé sur la landing
+    let promoCode: string | undefined;
+    try { promoCode = localStorage.getItem('wc_promo') || undefined; } catch { /* ignore */ }
     const res = await fetch('/api/billing/checkout', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ priceId }),
+      body: JSON.stringify({ priceId, promoCode }),
     });
     const d = await res.json();
     if (d.url) window.location.href = d.url;
