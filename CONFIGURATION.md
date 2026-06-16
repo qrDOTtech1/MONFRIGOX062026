@@ -84,7 +84,18 @@ Dans Stripe → **Products**, crée un prix (Price) pour chacun et **copie son I
 La bannière en haut de la landing propose **-10 %** quelle que soit l'équipe choisie (48 nations).
 Le code de l'équipe est **pré-appliqué automatiquement** au paiement (le client ne saisit rien).
 
-**Config Stripe (simple) :**
+**Config Stripe — automatique (recommandé) :**
+Un script crée le coupon **et** les 48 codes d'un coup. Lance, en **test** d'abord :
+```
+# PowerShell
+$env:STRIPE_SECRET_KEY="sk_test_xxx"; node scripts/setup-worldcup-promos.mjs
+# bash
+STRIPE_SECRET_KEY=sk_test_xxx node scripts/setup-worldcup-promos.mjs
+```
+Options : `EXPIRES_AT=2026-07-20` (expiration), `MAX_REDEMPTIONS=500`, `COUPON_DURATION=forever`.
+Le script est **idempotent** (relançable). Vérifie en mode test, puis relance avec `sk_live_…`.
+
+**Ou à la main :**
 1. Crée **un seul Coupon** « 10 % off » (réduction en pourcentage).
 2. Crée **48 Promotion codes** rattachés à ce coupon, un par équipe, avec le code exact
    `CM26-<code FIFA>` (`CM26-FRA`, `CM26-BRA`, `CM26-MAR`, `CM26-ENG`, …).
