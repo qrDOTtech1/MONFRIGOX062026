@@ -180,32 +180,70 @@ export function useVoiceCooking({ onNext, onPrev, onRepeat, onConfirm, currentSt
     }
   }, [ttsEngine]);
 
+  // ── Normalize: strip accents, punctuation, parenthetical noise ──
+  function normalize(s: string): string {
+    return s
+      .toLowerCase()
+      .normalize('NFD').replace(/[̀-ͯ]/g, '')  // strip accents
+      .replace(/\(.*?\)/g, '')                            // remove (bruit de fond) etc.
+      .replace(/[^a-z0-9\s']/g, '')                       // keep only letters/numbers
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+
+  function hasWord(text: string, ...words: string[]): boolean {
+    return words.some(w => text.includes(w));
+  }
+
   // ── Command processor ──
   const processCommand = useCallback((transcript: string) => {
-    const t = transcript.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').trim();
-    if (!t) return;
-    setLastCommand(transcript);
+    const raw = transcript.trim();
+    if (!raw) return;
 
-    if (waitingForConfirm && (t.includes('confirmer') || t.includes('confirme') || t.includes('ok') || t.includes('oui') || t.includes('c\'est parti') || t.includes('go') || t.includes('commencer') || t.includes('commence') || t.includes('on y va') || t.includes('pret') || t.includes('allons-y'))) {
+    const t = normalize(raw);
+
+    // Ignore noise: too short, too long (EL Scribe hallucinations), or no real words
+    if (t.length < 2 || t.length > 120) {
+      console.log('[VoiceCooking] Ignored (noise/hallucination):', raw.slice(0, 60));
+      return;
+    }
+
+    setLastCommand(raw);
+
+    // Confirmer (tolerant: confirme, confirmer, confirmé, ok, oui, go, etc.)
+    if (waitingForConfirm && hasWord(t, 'confirm', 'ok', 'oui', 'parti', 'go', 'commenc', 'on y va', 'pret', 'allons', 'allez', 'lance', 'demarre', 'start', 'let')) {
       if (onConfirm) onConfirm();
       return;
     }
 
-    if (t.includes('suivant') || t.includes('next') || t.includes('suite') || t.includes('apres') || t.includes('continuer') || t.includes('continue') || t.includes('prochaine') || t.includes('avance')) {
+    // Suivant
+    if (hasWord(t, 'suivant', 'next', 'suite', 'apres', 'continu', 'prochaine', 'avance', 'etape suivante')) {
       onNext();
-    } else if (t.includes('precedent') || t.includes('retour') || t.includes('avant') || t.includes('revenir') || t.includes('back') || t.includes('recule') || t.includes('reviens')) {
+    }
+    // Précédent
+    else if (hasWord(t, 'precedent', 'retour', 'revenir', 'back', 'recule', 'reviens', 'etape precedente')) {
       onPrev();
-    } else if (t.includes('repete') || t.includes('repeter') || t.includes('encore') || t.includes('relis') || t.includes('repeat') || t.includes('redis')) {
+    }
+    // Répète
+    else if (hasWord(t, 'repete', 'repeter', 'encore', 'relis', 'repeat', 'redis', 'redit')) {
       speak(currentStepText);
-    } else if (t.includes('ingredient') || t.includes('il me faut') || t.includes('il faut quoi') || t.includes('liste')) {
+    }
+    // Ingrédients
+    else if (hasWord(t, 'ingredient', 'il me faut', 'il faut quoi', 'liste')) {
       speak(ingredientsText || currentStepText);
-    } else if (t.includes('arrete') || t.includes('stop') || t.includes('pause') || t.includes('silence') || t.includes('chut')) {
+    }
+    // Stop
+    else if (hasWord(t, 'arrete', 'stop', 'pause', 'silence', 'chut', 'tais')) {
       if (currentAudioRef.current) { currentAudioRef.current.pause(); currentAudioRef.current = null; }
       window.speechSynthesis?.cancel();
       setIsSpeaking(false);
-    } else if (t.includes('lis') || t.includes('lire') || t.includes('dis') || t.includes('quoi') || t.includes('etape') || t.includes('on en est ou')) {
+    }
+    // Lire étape
+    else if (hasWord(t, 'lis', 'lire', 'dis moi', 'on en est ou', 'c\'est quoi')) {
       speak(currentStepText);
-    } else if (t.includes('aide') || t.includes('help') || t.includes('commande')) {
+    }
+    // Aide
+    else if (hasWord(t, 'aide', 'help', 'commande')) {
       speak('Tu peux dire : confirmer, suivant, précédent, répète, ingrédients, ou stop.');
     }
   }, [onNext, onPrev, onRepeat, onConfirm, currentStepText, ingredientsText, waitingForConfirm, speak]);
@@ -213,6 +251,8 @@ export function useVoiceCooking({ onNext, onPrev, onRepeat, onConfirm, currentSt
   // ── ElevenLabs STT chunk ──
   const sendAudioChunk = useCallback(async (blob: Blob) => {
     if (blob.size < 1000) return;
+    // Don't process audio while TTS is speaking (avoids hearing ourselves)
+    if (isSpeaking) return;
     try {
       const form = new FormData();
       form.append('audio', blob, 'audio.webm');
@@ -227,7 +267,7 @@ export function useVoiceCooking({ onNext, onPrev, onRepeat, onConfirm, currentSt
     } catch (err) {
       console.warn('[VoiceCooking] STT fetch failed:', err);
     }
-  }, [processCommand]);
+  }, [processCommand, isSpeaking]);
 
   // ── Native Web Speech API STT ──
   const startNativeSTT = useCallback(() => {
