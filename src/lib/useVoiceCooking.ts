@@ -6,11 +6,14 @@ interface UseVoiceCookingOptions {
   onNext: () => void;
   onPrev: () => void;
   onRepeat: () => void;
+  onConfirm?: () => void;
   currentStepText: string;
   ingredientsText?: string;
+  introText?: string;
+  waitingForConfirm?: boolean;
 }
 
-export function useVoiceCooking({ onNext, onPrev, onRepeat, currentStepText, ingredientsText }: UseVoiceCookingOptions) {
+export function useVoiceCooking({ onNext, onPrev, onRepeat, onConfirm, currentStepText, ingredientsText, introText, waitingForConfirm }: UseVoiceCookingOptions) {
   const [isListening, setIsListening] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [lastCommand, setLastCommand] = useState('');
@@ -39,6 +42,12 @@ export function useVoiceCooking({ onNext, onPrev, onRepeat, currentStepText, ing
   const processCommand = useCallback((transcript: string) => {
     const t = transcript.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').trim();
     setLastCommand(transcript);
+
+    // Confirmer pour commencer
+    if (waitingForConfirm && (t.includes('confirmer') || t.includes('confirme') || t.includes('ok') || t.includes('oui') || t.includes('c\'est parti') || t.includes('go') || t.includes('commencer') || t.includes('commence') || t.includes('on y va') || t.includes('pret') || t.includes('allons-y') || t.includes('let\'s go'))) {
+      if (onConfirm) onConfirm();
+      return;
+    }
 
     // Suivant
     if (t.includes('suivant') || t.includes('next') || t.includes('suite') || t.includes('apres') || t.includes('continuer') || t.includes('continue') || t.includes('etape suivante') || t.includes('prochaine') || t.includes('avance') || t.includes('go')) {
@@ -71,11 +80,11 @@ export function useVoiceCooking({ onNext, onPrev, onRepeat, currentStepText, ing
     }
     // Aide
     else if (t.includes('aide') || t.includes('help') || t.includes('commande') || t.includes('comment')) {
-      speak('Tu peux dire : suivant, précédent, répète, ingrédients, ou stop.');
+      speak('Tu peux dire : confirmer, suivant, précédent, répète, ingrédients, ou stop.');
     }
-  }, [onNext, onPrev, onRepeat, currentStepText, ingredientsText, speak]);
+  }, [onNext, onPrev, onRepeat, onConfirm, currentStepText, ingredientsText, waitingForConfirm, speak]);
 
-  const startListening = useCallback(() => {
+  const startListening = useCallback((greeting?: string) => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const w = window as any;
     const SR = w.SpeechRecognition || w.webkitSpeechRecognition;
@@ -106,7 +115,11 @@ export function useVoiceCooking({ onNext, onPrev, onRepeat, currentStepText, ing
     recognitionRef.current = recognition;
     recognition.start();
     setIsListening(true);
-  }, [processCommand]);
+
+    if (greeting) {
+      speak(greeting);
+    }
+  }, [processCommand, speak]);
 
   const stopListening = useCallback(() => {
     if (recognitionRef.current) {

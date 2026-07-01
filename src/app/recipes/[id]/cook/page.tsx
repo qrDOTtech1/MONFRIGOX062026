@@ -67,6 +67,8 @@ export default function CookModePage() {
   const [sharing, setSharing] = useState(false);
   const [shared, setShared] = useState(false);
   const [showPublicWarning, setShowPublicWarning] = useState(false);
+  const [userName, setUserName] = useState('');
+  const [waitingForConfirm, setWaitingForConfirm] = useState(false);
 
   const totalSteps = steps.length;
 
@@ -90,15 +92,27 @@ export default function CookModePage() {
 
   const currentStepText = step >= 0 && steps[step]
     ? `Étape ${step + 1} sur ${totalSteps}. ${steps[step]}`
-    : step === -1 ? `Prépare tes ingrédients. ${ingredientsText} Dis "suivant" quand tu es prêt.` : '';
+    : step === -1 ? `Prépare tes ingrédients. ${ingredientsText} Dis "confirmer" quand tu es prêt.` : '';
 
   const { isListening, isSpeaking, lastCommand, supported, startListening, stopListening } = useVoiceCooking({
     onNext: next,
     onPrev: prev,
     onRepeat: () => {},
+    onConfirm: () => {
+      setWaitingForConfirm(false);
+      next();
+    },
     currentStepText,
     ingredientsText,
+    waitingForConfirm,
   });
+
+  useEffect(() => {
+    fetch('/api/auth/me')
+      .then(r => r.ok ? r.json() : null)
+      .then(data => { if (data?.name) setUserName(data.name.split(' ')[0]); })
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     fetch(`/api/recipes/${id}`)
@@ -367,7 +381,11 @@ export default function CookModePage() {
           {/* Bouton micro */}
           {supported && (
             <button
-              onClick={isListening ? stopListening : startListening}
+              onClick={isListening ? stopListening : () => {
+                setWaitingForConfirm(true);
+                const greeting = `Bonjour ${userName || 'chef'} ! Aujourd'hui on va préparer : ${recipe.name}. ${ingredientsText} Dis "confirmer" quand tu es prêt pour commencer.`;
+                startListening(greeting);
+              }}
               title={isListening ? 'Couper le micro' : 'Activer les commandes vocales'}
               className="p-2 rounded-lg transition-all"
               style={{
@@ -394,7 +412,7 @@ export default function CookModePage() {
           <div className="flex items-center gap-2">
             <div className="w-2 h-2 rounded-full bg-emerald-500" style={{ animation: 'pulse 1s infinite' }} />
             <span className="text-xs text-emerald-700 dark:text-emerald-400 font-medium">
-              {isSpeaking ? 'Je lis l\'étape…' : 'J\'écoute… dis "suivant", "précédent" ou "répète"'}
+              {isSpeaking ? 'Je parle…' : waitingForConfirm ? 'Dis "confirmer" pour commencer' : 'J\'écoute… dis "suivant", "précédent" ou "répète"'}
             </span>
           </div>
           {lastCommand && (
@@ -445,7 +463,11 @@ export default function CookModePage() {
 
             {/* Hint vocal sur l'écran d'ingrédients */}
             {supported && !isListening && (
-              <button onClick={startListening}
+              <button onClick={() => {
+                  setWaitingForConfirm(true);
+                  const greeting = `Bonjour ${userName || 'chef'} ! Aujourd'hui on va préparer : ${recipe.name}. ${ingredientsText} Dis "confirmer" quand tu es prêt pour commencer.`;
+                  startListening(greeting);
+                }}
                 className="w-full flex items-center justify-center gap-2 mt-6 py-2.5 rounded-xl text-sm transition-all"
                 style={{ backgroundColor: 'rgba(22,163,74,0.06)', border: '1px dashed rgba(22,163,74,0.3)', color: 'rgb(22,163,74)' }}>
                 <Mic className="w-4 h-4" />
