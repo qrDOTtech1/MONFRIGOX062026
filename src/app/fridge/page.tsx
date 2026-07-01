@@ -177,7 +177,7 @@ export default function FridgePage() {
 
   return (
     <AppShell>
-      {household && (
+      {household ? (
         <Link href="/household"
           className="flex items-center gap-2 rounded-xl px-3 py-2 mb-4 transition-colors hover:opacity-80"
           style={{ backgroundColor: 'rgba(22,163,74,0.07)', border: '1px solid rgba(22,163,74,0.2)' }}>
@@ -191,6 +191,18 @@ export default function FridgePage() {
             </p>
           </div>
           <span className="text-[10px] font-medium text-emerald-600">Gérer →</span>
+        </Link>
+      ) : (
+        <Link href="/household"
+          className="flex items-center gap-2 rounded-xl px-3 py-2 mb-4 transition-colors hover:opacity-80"
+          style={{ backgroundColor: 'var(--bg-inset)', border: '1px dashed var(--border)' }}>
+          <Home className="w-4 h-4 shrink-0" style={{ color: 'var(--text-muted)' }} />
+          <div className="flex-1 min-w-0">
+            <p className="text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
+              Partager le frigo avec la famille ou des colocs
+            </p>
+          </div>
+          <span className="text-[10px] font-medium" style={{ color: 'var(--accent)' }}>Créer →</span>
         </Link>
       )}
 

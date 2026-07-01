@@ -7,7 +7,7 @@ import NotificationsToggle from '@/components/NotificationsToggle';
 import { useTheme } from '@/components/ThemeProvider';
 import InfoBubble from '@/components/InfoBubble';
 import { useT, LANGUAGES } from '@/lib/i18n';
-import { UserCircle, LogOut, Shield, Heart, ShoppingCart, Refrigerator, Sun, Moon, Save, Check, AlertTriangle, Baby, Users, History, Sparkles, ChefHat, Zap, Crown, Star, Plus, Loader2, CalendarDays, ChevronRight, PiggyBank, Leaf, Flame, Receipt, Tag } from 'lucide-react';
+import { UserCircle, LogOut, Shield, Heart, ShoppingCart, Refrigerator, Sun, Moon, Save, Check, AlertTriangle, Baby, Users, History, Sparkles, ChefHat, Zap, Crown, Star, Plus, Loader2, CalendarDays, ChevronRight, PiggyBank, Leaf, Flame, Receipt, Tag, Home } from 'lucide-react';
 
 // Bouton qui crée une Checkout Session Stripe et redirige
 function CheckoutButton({ priceId, label, sub, color, Icon, compact = false }:
@@ -397,6 +397,21 @@ export default function ProfilePage() {
             <div className="flex-1 min-w-0">
               <p className="text-sm font-semibold">{t('profile.collections')}</p>
               <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>{t('profile.collections.desc')}</p>
+            </div>
+            <ChevronRight className="w-4 h-4" style={{ color: 'var(--text-muted)' }} />
+          </button>
+
+          {/* ── Mon Foyer ── */}
+          <button onClick={() => router.push('/household')}
+            className="w-full card p-4 mb-3 flex items-center gap-3 text-left hover:scale-[1.01] transition-all"
+            style={{ border: '1px solid rgba(22,163,74,0.2)', backgroundColor: 'rgba(22,163,74,0.04)' }}>
+            <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
+              style={{ backgroundColor: 'rgba(22,163,74,0.12)' }}>
+              <Home className="w-4 h-4 text-emerald-600" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-emerald-700 dark:text-emerald-400">Mon Foyer</p>
+              <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>Partager le frigo avec famille ou colocs</p>
             </div>
             <ChevronRight className="w-4 h-4" style={{ color: 'var(--text-muted)' }} />
           </button>
