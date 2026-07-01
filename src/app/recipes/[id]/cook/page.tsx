@@ -73,16 +73,19 @@ export default function CookModePage() {
   const totalSteps = steps.length;
 
   function next() {
-    if (step < totalSteps - 1) {
-      setStep(step + 1);
-      detectTimer(steps[step + 1]);
-    } else {
-      setDone(true);
-    }
+    setStep(prev => {
+      if (prev < totalSteps - 1) {
+        detectTimer(steps[prev + 1]);
+        return prev + 1;
+      } else {
+        setDone(true);
+        return prev;
+      }
+    });
   }
 
   function prev() {
-    if (step > -1) setStep(step - 1);
+    setStep(prev => prev > -1 ? prev - 1 : prev);
   }
 
   // ── Voice Cooking ───────────────────────────────────────────────────

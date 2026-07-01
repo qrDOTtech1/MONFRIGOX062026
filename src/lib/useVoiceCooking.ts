@@ -57,9 +57,8 @@ export function useVoiceCooking({ onNext, onPrev, onRepeat, onConfirm, currentSt
     else if (t.includes('precedent') || t.includes('retour') || t.includes('avant') || t.includes('revenir') || t.includes('back') || t.includes('recule') || t.includes('etape precedente') || t.includes('reviens')) {
       onPrev();
     }
-    // Répète l'étape en cours
+    // Répète l'étape en cours (juste relire, pas de navigation)
     else if (t.includes('repete') || t.includes('repeter') || t.includes('encore') || t.includes('relis') || t.includes('repeat') || t.includes('redis') || t.includes('redit') || t.includes('re dis') || t.includes('repetes') || t.includes('tu peux repeter')) {
-      onRepeat();
       speak(currentStepText);
     }
     // Lire les ingrédients
