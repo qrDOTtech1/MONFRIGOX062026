@@ -6,6 +6,16 @@ async function getConfig(key: string): Promise<string> {
   return row?.value || '';
 }
 
+export async function GET() {
+  const apiKey = await getConfig('ELEVENLABS_API_KEY');
+  const voiceId = await getConfig('ELEVENLABS_VOICE_ID');
+  return NextResponse.json({
+    configured: !!(apiKey && voiceId),
+    hasKey: !!apiKey,
+    hasVoice: !!voiceId,
+  });
+}
+
 export async function POST(req: NextRequest) {
   const { text, lang } = await req.json();
   if (!text || typeof text !== 'string') {
@@ -38,7 +48,8 @@ export async function POST(req: NextRequest) {
 
   if (!elRes.ok) {
     const err = await elRes.text().catch(() => 'unknown');
-    return NextResponse.json({ error: 'elevenlabs_error', details: err }, { status: 502 });
+    console.error('[TTS] ElevenLabs error:', elRes.status, err);
+    return NextResponse.json({ error: 'elevenlabs_error', status: elRes.status, details: err }, { status: 502 });
   }
 
   return new NextResponse(elRes.body, {
