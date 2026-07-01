@@ -2,6 +2,14 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 
+// Browser Speech API types not included in default TS lib
+declare global {
+  interface Window {
+    SpeechRecognition: typeof SpeechRecognition;
+    webkitSpeechRecognition: typeof SpeechRecognition;
+  }
+}
+
 interface UseVoiceCookingOptions {
   onNext: () => void;
   onPrev: () => void;
