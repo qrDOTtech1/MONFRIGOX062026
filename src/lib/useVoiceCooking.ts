@@ -2,14 +2,6 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 
-// Browser Speech API types not included in default TS lib
-declare global {
-  interface Window {
-    SpeechRecognition: typeof SpeechRecognition;
-    webkitSpeechRecognition: typeof SpeechRecognition;
-  }
-}
-
 interface UseVoiceCookingOptions {
   onNext: () => void;
   onPrev: () => void;
@@ -25,9 +17,9 @@ export function useVoiceCooking({ onNext, onPrev, onRepeat, currentStepText }: U
   const recognitionRef = useRef<SpeechRecognition | null>(null);
 
   useEffect(() => {
-    const SR = (window as Window & { SpeechRecognition?: typeof SpeechRecognition; webkitSpeechRecognition?: typeof SpeechRecognition }).SpeechRecognition
-      || (window as Window & { webkitSpeechRecognition?: typeof SpeechRecognition }).webkitSpeechRecognition;
-    setSupported(!!SR && 'speechSynthesis' in window);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const w = window as any;
+    setSupported(!!(w.SpeechRecognition || w.webkitSpeechRecognition) && 'speechSynthesis' in window);
   }, []);
 
   const speak = useCallback((text: string) => {
@@ -63,16 +55,19 @@ export function useVoiceCooking({ onNext, onPrev, onRepeat, currentStepText }: U
   }, [onNext, onPrev, onRepeat, currentStepText, speak]);
 
   const startListening = useCallback(() => {
-    const SR = (window as Window & { SpeechRecognition?: typeof SpeechRecognition; webkitSpeechRecognition?: typeof SpeechRecognition }).SpeechRecognition
-      || (window as Window & { webkitSpeechRecognition?: typeof SpeechRecognition }).webkitSpeechRecognition;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const w = window as any;
+    const SR = w.SpeechRecognition || w.webkitSpeechRecognition;
     if (!SR) return;
 
-    const recognition = new SR();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const recognition: any = new SR();
     recognition.lang = 'fr-FR';
     recognition.continuous = true;
     recognition.interimResults = false;
 
-    recognition.onresult = (event: SpeechRecognitionEvent) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    recognition.onresult = (event: any) => {
       const transcript = event.results[event.results.length - 1][0].transcript;
       processCommand(transcript);
     };
@@ -82,7 +77,6 @@ export function useVoiceCooking({ onNext, onPrev, onRepeat, currentStepText }: U
     };
 
     recognition.onend = () => {
-      // Redémarre automatiquement si toujours actif
       if (recognitionRef.current) {
         try { recognition.start(); } catch { /* ignore */ }
       }
