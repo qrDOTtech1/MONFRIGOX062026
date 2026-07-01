@@ -79,20 +79,50 @@ export function useVoiceCooking({ onNext, onPrev, onRepeat, onConfirm, currentSt
     return () => { mountedRef.current = false; };
   }, []);
 
-  // Pre-cache all step audio (ElevenLabs)
+  // Pre-cache all step audio (ElevenLabs) — only if first call succeeds
+  const preCacheAttemptedRef = useRef(false);
   useEffect(() => {
-    if (ttsEngine !== 'elevenlabs' || !allStepsTexts?.length) return;
-    allStepsTexts.forEach(text => {
-      if (!text || audioCache.current.has(text)) return;
-      fetch('/api/tts', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text, lang: 'fr' }),
-      })
-        .then(r => r.ok ? r.blob() : null)
-        .then(blob => { if (blob) audioCache.current.set(text, blob); })
-        .catch(() => {});
-    });
+    if (ttsEngine !== 'elevenlabs' || !allStepsTexts?.length || preCacheAttemptedRef.current) return;
+    preCacheAttemptedRef.current = true;
+
+    (async () => {
+      // Test with first step before caching all
+      const firstText = allStepsTexts.find(t => t);
+      if (!firstText) return;
+      try {
+        const testRes = await fetch('/api/tts', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text: firstText, lang: 'fr' }),
+        });
+        if (!testRes.ok) {
+          console.warn('[VoiceCooking] Pre-cache skipped — TTS returned', testRes.status);
+          return;
+        }
+        const firstBlob = await testRes.blob();
+        audioCache.current.set(firstText, firstBlob);
+      } catch {
+        console.warn('[VoiceCooking] Pre-cache skipped — TTS unreachable');
+        return;
+      }
+
+      // First call succeeded — cache the rest
+      for (const text of allStepsTexts) {
+        if (!text || audioCache.current.has(text)) continue;
+        try {
+          const res = await fetch('/api/tts', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ text, lang: 'fr' }),
+          });
+          if (res.ok) {
+            const blob = await res.blob();
+            audioCache.current.set(text, blob);
+          }
+        } catch {}
+      }
+      console.log('[VoiceCooking] Pre-cached', audioCache.current.size, 'steps');
+    })();
   }, [ttsEngine, allStepsTexts]);
 
   // ── TTS ──
@@ -106,7 +136,6 @@ export function useVoiceCooking({ onNext, onPrev, onRepeat, onConfirm, currentSt
     window.speechSynthesis?.cancel();
 
     if (ttsEngine === 'elevenlabs') {
-      setIsSpeaking(true);
       try {
         let blob = audioCache.current.get(text);
         if (!blob) {
@@ -118,9 +147,12 @@ export function useVoiceCooking({ onNext, onPrev, onRepeat, onConfirm, currentSt
           if (res.ok) {
             blob = await res.blob();
             audioCache.current.set(text, blob);
+          } else {
+            console.warn('[VoiceCooking] TTS 502, falling back to native');
           }
         }
         if (blob) {
+          setIsSpeaking(true);
           const url = URL.createObjectURL(blob);
           const audio = new Audio(url);
           currentAudioRef.current = audio;
