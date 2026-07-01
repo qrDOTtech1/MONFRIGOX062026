@@ -1,14 +1,16 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, Suspense } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Mail, Lock, Eye, EyeOff } from 'lucide-react';
 import { useT } from '@/lib/i18n';
 
-export default function LoginPage() {
+function LoginForm() {
   const { t } = useT();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const redirectTo = searchParams.get('redirect');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPw, setShowPw] = useState(false);
@@ -29,7 +31,9 @@ export default function LoginPage() {
       const data = await res.json();
       if (!res.ok) { setError(data.error); return; }
 
-      if (data.user.role === 'ADMIN') {
+      if (redirectTo) {
+        router.push(redirectTo);
+      } else if (data.user.role === 'ADMIN') {
         router.push('/admin');
       } else {
         router.push('/dashboard');
@@ -88,5 +92,13 @@ export default function LoginPage() {
         </p>
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={null}>
+      <LoginForm />
+    </Suspense>
   );
 }

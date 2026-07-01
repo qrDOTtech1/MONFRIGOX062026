@@ -99,7 +99,7 @@ export default function JoinHouseholdPage() {
               {joining ? 'Rejoindre…' : 'Rejoindre le foyer'}
             </button>
             <p className="text-[10px] text-center mt-3" style={{ color: 'var(--text-muted)' }}>
-              Vous devez être connecté pour rejoindre. <Link href="/login" className="underline">Se connecter</Link>
+              Vous devez être connecté pour rejoindre. <Link href={`/login?redirect=/household/join/${token}`} className="underline">Se connecter</Link>
             </p>
           </div>
         ) : (
