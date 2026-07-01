@@ -199,13 +199,15 @@ const en: Record<string, string> = {
   'fridge.orSearchByName': 'or search by name',
   'fridge.addCustom': 'Add " {name} "',
   'fridge.howMany': 'How many suggestions?',
-  'fridge.aiGenerating': 'AI generation in progress…',
-  'fridge.aiGenerate': 'Generate new recipes with AI',
+  'fridge.aiGenerating': 'Searching…',
+  'fridge.aiGenerate': 'Show recipes',
   'fridge.networkError': 'Network error',
   'fridge.topRecipes': 'Top {n} recipe with your fridge',
   'fridge.topRecipesPlural': 'Top {n} recipes with your fridge',
   'fridge.noRecipes': 'No recipes available',
-  'fridge.noRecipes.hint': 'Use "Generate" to have AI create new recipes.',
+  'fridge.noRecipes.hint': "No catalog recipe matches your fridge yet.",
+  'fridge.createWithAI': 'Want a custom recipe? Ask the AI from the home page',
+  'fridge.createWithAI.cta': 'Create a recipe with AI',
 
   // ── Dashboard / Recipes ──
   'dashboard.title': 'Recipes',

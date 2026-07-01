@@ -464,10 +464,7 @@ export default function FridgePage() {
               onClick={async () => {
                 setAiLoading(true); setAiError('');
                 try {
-                  const res = await fetch('/api/ai/suggest', { method: 'POST' });
-                  const data = await res.json();
-                  if (!res.ok) setAiError(data.error);
-                  else loadData();
+                  await loadData();
                 } catch { setAiError(t('fridge.networkError')); }
                 finally { setAiLoading(false); }
               }}
@@ -479,6 +476,9 @@ export default function FridgePage() {
                 : <><Wand2 className="w-4 h-4" /> {t('fridge.aiGenerate')}</>}
             </button>
             {aiError && <p className="text-xs text-red-500 mt-2 text-center">{aiError}</p>}
+            <p className="text-[11px] text-center mt-2.5" style={{ color: 'var(--text-muted)' }}>
+              {t('fridge.createWithAI')} <Link href="/home" className="underline" style={{ color: 'var(--accent)' }}>{t('fridge.createWithAI.cta')}</Link>
+            </p>
           </div>
 
           <div className="flex items-center gap-2 mb-3">
@@ -495,9 +495,14 @@ export default function FridgePage() {
           {suggestedRecipes.length === 0 ? (
             <div className="text-center py-10">
               <ChefHat className="w-10 h-10 mx-auto mb-3" style={{ color: 'var(--text-muted)', opacity: 0.4 }} />
-              <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>
+              <p className="text-xs mt-1 mb-4" style={{ color: 'var(--text-muted)' }}>
                 {t('fridge.noRecipes.hint')}
               </p>
+              <Link href="/home"
+                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all"
+                style={{ backgroundColor: 'var(--accent)', color: 'var(--accent-text)' }}>
+                <Wand2 className="w-4 h-4" /> {t('fridge.createWithAI.cta')}
+              </Link>
             </div>
           ) : (
             <div className="space-y-2">
