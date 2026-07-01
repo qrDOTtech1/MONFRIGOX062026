@@ -1,0 +1,50 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { prisma } from '@/lib/db';
+
+async function getConfig(key: string): Promise<string> {
+  const row = await prisma.appConfig.findUnique({ where: { key } });
+  return row?.value || '';
+}
+
+export async function POST(req: NextRequest) {
+  const { text, lang } = await req.json();
+  if (!text || typeof text !== 'string') {
+    return NextResponse.json({ error: 'text required' }, { status: 400 });
+  }
+
+  const apiKey = await getConfig('ELEVENLABS_API_KEY');
+  const voiceId = await getConfig('ELEVENLABS_VOICE_ID');
+
+  if (!apiKey || !voiceId) {
+    return NextResponse.json({ error: 'elevenlabs_not_configured' }, { status: 501 });
+  }
+
+  const elRes = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}/stream`, {
+    method: 'POST',
+    headers: {
+      'xi-api-key': apiKey,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      text,
+      model_id: 'eleven_multilingual_v2',
+      voice_settings: {
+        stability: 0.5,
+        similarity_boost: 0.75,
+        style: 0.3,
+      },
+    }),
+  });
+
+  if (!elRes.ok) {
+    const err = await elRes.text().catch(() => 'unknown');
+    return NextResponse.json({ error: 'elevenlabs_error', details: err }, { status: 502 });
+  }
+
+  return new NextResponse(elRes.body, {
+    headers: {
+      'Content-Type': 'audio/mpeg',
+      'Cache-Control': 'public, max-age=86400',
+    },
+  });
+}

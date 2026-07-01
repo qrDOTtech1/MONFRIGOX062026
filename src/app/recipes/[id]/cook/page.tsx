@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { ArrowLeft, ArrowRight, ChefHat, Clock, X, Timer, Check, Users, Camera, Refrigerator, Loader2, Globe, Lock, Mic, MicOff } from 'lucide-react';
+import { ArrowLeft, ArrowRight, ChefHat, Clock, X, Timer, Check, Users, Camera, Refrigerator, Loader2, Globe, Lock, Mic, MicOff, Volume2 } from 'lucide-react';
 import { useVoiceCooking } from '@/lib/useVoiceCooking';
 
 interface Recipe {
@@ -97,7 +97,7 @@ export default function CookModePage() {
     ? `Étape ${step + 1} sur ${totalSteps}. ${steps[step]}`
     : step === -1 ? `Prépare tes ingrédients. ${ingredientsText} Dis "confirmer" quand tu es prêt.` : '';
 
-  const { isListening, isSpeaking, lastCommand, supported, startListening, stopListening } = useVoiceCooking({
+  const { isListening, isSpeaking, lastCommand, supported, startListening, stopListening, ttsEngine, sttEngine } = useVoiceCooking({
     onNext: next,
     onPrev: prev,
     onRepeat: () => {},
@@ -108,6 +108,7 @@ export default function CookModePage() {
     currentStepText,
     ingredientsText,
     waitingForConfirm,
+    allStepsTexts: steps,
   });
 
   useEffect(() => {
@@ -417,6 +418,9 @@ export default function CookModePage() {
             <span className="text-xs text-emerald-700 dark:text-emerald-400 font-medium">
               {isSpeaking ? 'Je parle…' : waitingForConfirm ? 'Dis "confirmer" pour commencer' : 'J\'écoute… dis "suivant", "précédent" ou "répète"'}
             </span>
+            {ttsEngine === 'elevenlabs' && (
+              <span className="text-[10px] px-1.5 py-0.5 rounded ml-1 text-emerald-600 dark:text-emerald-400" style={{ backgroundColor: 'rgba(22,163,74,0.1)' }}>EL</span>
+            )}
           </div>
           {lastCommand && (
             <span className="text-[10px] italic" style={{ color: 'var(--text-muted)' }}>

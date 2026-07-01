@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Settings, Save, Check, Key, Globe, Brain, RefreshCw, Wifi, WifiOff, Shield, ChevronDown, Zap, Database, Utensils, Barcode, FlaskConical, ImagePlus, ExternalLink, Loader2 } from 'lucide-react';
+import { Settings, Save, Check, Key, Globe, Brain, RefreshCw, Wifi, WifiOff, Shield, ChevronDown, Zap, Database, Utensils, Barcode, FlaskConical, ImagePlus, ExternalLink, Loader2, Mic } from 'lucide-react';
 
 interface EnrichStats { total: number; withImage: number; withBarcode: number; missingImage: number; }
 interface EnrichResult { ok: boolean; processed: number; enriched: number; skipped: number; remaining: number; }
@@ -31,6 +31,8 @@ export default function AdminConfigPage() {
   // Clés API externes
   const [spoonacularKey, setSpoonacularKey] = useState('');
   const [usdaKey, setUsdaKey] = useState('');
+  const [elevenLabsKey, setElevenLabsKey] = useState('');
+  const [elevenLabsVoice, setElevenLabsVoice] = useState('');
 
   // UI state
   const [saving, setSaving] = useState(false);
@@ -64,6 +66,8 @@ export default function AdminConfigPage() {
         if (map['OLLAMA_BACKUP_API_KEY']) setBackupApiKey(map['OLLAMA_BACKUP_API_KEY']);
         if (map['SPOONACULAR_API_KEY']) setSpoonacularKey(map['SPOONACULAR_API_KEY']);
         if (map['USDA_API_KEY']) setUsdaKey(map['USDA_API_KEY']);
+        if (map['ELEVENLABS_API_KEY']) setElevenLabsKey(map['ELEVENLABS_API_KEY']);
+        if (map['ELEVENLABS_VOICE_ID']) setElevenLabsVoice(map['ELEVENLABS_VOICE_ID']);
       });
     fetch('/api/external/status')
       .then(r => r.ok ? r.json() : {})
@@ -140,6 +144,8 @@ export default function AdminConfigPage() {
       { key: 'OLLAMA_BACKUP_API_KEY', value: backupApiKey },
       { key: 'SPOONACULAR_API_KEY', value: spoonacularKey },
       { key: 'USDA_API_KEY', value: usdaKey },
+      { key: 'ELEVENLABS_API_KEY', value: elevenLabsKey },
+      { key: 'ELEVENLABS_VOICE_ID', value: elevenLabsVoice },
     ].filter(c => c.value.trim());
 
     await fetch('/api/admin/config', {
@@ -453,6 +459,56 @@ export default function AdminConfigPage() {
                 placeholder="Colle ta clé ici"
                 className="input-field font-mono text-sm"
               />
+            </div>
+          </div>
+
+          {/* ── ElevenLabs Voice ── */}
+          <div className="card p-5">
+            <div className="flex items-center gap-2.5 mb-1">
+              <Mic className="w-4 h-4" style={{ color: 'var(--text-secondary)' }} />
+              <h2 className="font-medium">ElevenLabs — Voix cuisine</h2>
+              <span className="text-[10px] px-1.5 py-0.5 rounded font-medium text-amber-600 dark:text-amber-400" style={{ backgroundColor: 'rgba(245,158,11,0.1)' }}>
+                PAYANT
+              </span>
+            </div>
+            <p className="text-xs mb-3" style={{ color: 'var(--text-muted)' }}>
+              Voix naturelle + reconnaissance vocale pour le mode cuisine mains libres.
+              Fonctionne sur tous les appareils (iOS, Android, desktop).
+              <br />
+              Sans clé, le mode vocal utilise la synthèse vocale du navigateur (moins fiable).
+              <br />
+              <a href="https://elevenlabs.io/app/settings/api-keys" target="_blank" rel="noopener noreferrer" className="underline">Obtenir une clé API</a>
+              {' · '}
+              <a href="https://elevenlabs.io/app/voice-library" target="_blank" rel="noopener noreferrer" className="underline">Choisir une voix</a>
+            </p>
+            <div className="space-y-3">
+              <div>
+                <label className="flex items-center gap-1.5 text-xs mb-1.5" style={{ color: 'var(--text-muted)' }}>
+                  <Key className="w-3.5 h-3.5" /> Clé API ElevenLabs
+                </label>
+                <input
+                  type="password"
+                  value={elevenLabsKey}
+                  onChange={e => setElevenLabsKey(e.target.value)}
+                  placeholder="xi_..."
+                  className="input-field font-mono text-sm"
+                />
+              </div>
+              <div>
+                <label className="flex items-center gap-1.5 text-xs mb-1.5" style={{ color: 'var(--text-muted)' }}>
+                  <Mic className="w-3.5 h-3.5" /> Voice ID
+                </label>
+                <input
+                  type="text"
+                  value={elevenLabsVoice}
+                  onChange={e => setElevenLabsVoice(e.target.value)}
+                  placeholder="ID de la voix (ex: EXAVITQu4vr4xnSDxMaL)"
+                  className="input-field font-mono text-sm"
+                />
+                <p className="text-[10px] mt-1" style={{ color: 'var(--text-muted)' }}>
+                  Recommandé: voix féminine chaleureuse (ex: &quot;Sarah&quot;, &quot;Rachel&quot;)
+                </p>
+              </div>
             </div>
           </div>
 
