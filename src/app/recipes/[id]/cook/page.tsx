@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { ArrowLeft, ArrowRight, ChefHat, Clock, X, Timer, Check, Users, Camera, Refrigerator, Loader2, Globe, Lock } from 'lucide-react';
+import { ArrowLeft, ArrowRight, ChefHat, Clock, X, Timer, Check, Users, Camera, Refrigerator, Loader2, Globe, Lock, Mic, MicOff } from 'lucide-react';
+import { useVoiceCooking } from '@/lib/useVoiceCooking';
 
 interface Recipe {
   id: string;
@@ -19,24 +20,19 @@ interface Recipe {
   instructions: string;
 }
 
-// Découpe les instructions en étapes, peu importe le format reçu
-// (sauts de ligne, listes numérotées "1.", puces, ou un seul paragraphe).
 function parseSteps(raw: string): string[] {
   if (!raw) return [];
   let text = raw.trim();
 
-  // 1) Sauts de ligne réels OU littéraux ("\n" stocké en texte)
   let parts = text.split(/\r?\n|\\n/).map(s => s.trim()).filter(Boolean);
   if (parts.length > 1) return cleanSteps(parts);
 
-  // 2) Listes numérotées : "1. ...", "2) ...", "Étape 3 :"
   parts = text
     .split(/(?=(?:\d+[\.\)]\s)|(?:étape\s*\d+\s*[:.\-]?\s))/i)
     .map(s => s.trim())
     .filter(Boolean);
   if (parts.length > 1) return cleanSteps(parts);
 
-  // 3) Dernier recours : découpe par phrases
   parts = text
     .split(/(?<=[.!?])\s+(?=[A-ZÀ-ÖÀ-Ý])/)
     .map(s => s.trim())
@@ -46,7 +42,6 @@ function parseSteps(raw: string): string[] {
   return [text];
 }
 
-// Retire les préfixes de numérotation ("1.", "2)", "Étape 1 :", "- ")
 function cleanSteps(steps: string[]): string[] {
   return steps
     .map(s => s.replace(/^\s*(?:étape\s*\d+\s*[:.\-]?\s*|\d+[\.\)]\s*|[-•*]\s*)/i, '').trim())
@@ -67,12 +62,38 @@ export default function CookModePage() {
   const [resultPhoto, setResultPhoto] = useState<string | null>(null);
   const [deducting, setDeducting] = useState(false);
   const [deducted, setDeducted] = useState(false);
-  // Community share
   const [shareNote, setShareNote] = useState('');
   const [sharePublic, setSharePublic] = useState(false);
   const [sharing, setSharing] = useState(false);
   const [shared, setShared] = useState(false);
   const [showPublicWarning, setShowPublicWarning] = useState(false);
+
+  const totalSteps = steps.length;
+
+  function next() {
+    if (step < totalSteps - 1) {
+      setStep(step + 1);
+      detectTimer(steps[step + 1]);
+    } else {
+      setDone(true);
+    }
+  }
+
+  function prev() {
+    if (step > -1) setStep(step - 1);
+  }
+
+  // ── Voice Cooking ───────────────────────────────────────────────────
+  const currentStepText = step >= 0 && steps[step]
+    ? `Étape ${step + 1} sur ${totalSteps}. ${steps[step]}`
+    : step === -1 ? 'Prépare tes ingrédients, puis dis "suivant" pour commencer.' : '';
+
+  const { isListening, isSpeaking, lastCommand, supported, startListening, stopListening } = useVoiceCooking({
+    onNext: next,
+    onPrev: prev,
+    onRepeat: () => {},
+    currentStepText,
+  });
 
   useEffect(() => {
     fetch(`/api/recipes/${id}`)
@@ -85,7 +106,6 @@ export default function CookModePage() {
       });
   }, [id]);
 
-  // Auto-log quand done
   useEffect(() => {
     if (!done || !recipe) return;
     fetch('/api/cook-log', {
@@ -93,9 +113,10 @@ export default function CookModePage() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ recipeId: recipe.id, servings: recipe.servings }),
     }).catch(() => {});
-  }, [done, recipe]);
+    // Arrêter le micro quand c'est terminé
+    stopListening();
+  }, [done, recipe, stopListening]);
 
-  // Compression image client-side
   async function compressImage(file: File): Promise<string> {
     return new Promise(resolve => {
       const canvas = document.createElement('canvas');
@@ -147,21 +168,7 @@ export default function CookModePage() {
     return () => clearInterval(interval);
   }, [timerRunning, timerSeconds]);
 
-  const totalSteps = steps.length;
   const progress = step === -1 ? 0 : ((step + 1) / totalSteps) * 100;
-
-  function next() {
-    if (step < totalSteps - 1) {
-      setStep(step + 1);
-      detectTimer(steps[step + 1]);
-    } else {
-      setDone(true);
-    }
-  }
-
-  function prev() {
-    if (step > -1) setStep(step - 1);
-  }
 
   function detectTimer(text: string) {
     const match = text.match(/(\d+)\s*min/i);
@@ -193,7 +200,7 @@ export default function CookModePage() {
     if (e.key === 'ArrowRight' || e.key === ' ') { e.preventDefault(); next(); }
     if (e.key === 'ArrowLeft') { e.preventDefault(); prev(); }
     if (e.key === 'Escape') router.back();
-  }, [step, totalSteps]);
+  }, [step, totalSteps]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     window.addEventListener('keydown', handleKeyDown);
@@ -217,20 +224,16 @@ export default function CookModePage() {
           <p className="text-sm mb-1" style={{ color: 'var(--text-secondary)' }}>{recipe.name} est prêt</p>
           <p className="text-xs mb-6" style={{ color: 'var(--text-muted)' }}>Pour {recipe.servings} personne{recipe.servings > 1 ? 's' : ''}</p>
 
-          {/* Photo + Community share */}
           {!shared ? (
             <div className="w-full mb-5">
-              {/* Community banner */}
               <div className="rounded-xl p-4 mb-4 text-left"
                 style={{ background: 'linear-gradient(135deg,#f59e0b15,#ec489915)', border: '1px solid rgba(245,158,11,0.2)' }}>
                 <p className="text-sm font-semibold mb-0.5">✨ Partagez votre création à notre communauté !</p>
                 <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Inspirez les autres cuisiniers avec votre photo et votre avis</p>
               </div>
 
-              {/* Photo */}
               {resultPhoto ? (
                 <div className="mb-3">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={resultPhoto} alt="Ton plat" className="w-full rounded-xl mb-2 aspect-video object-cover" style={{ border: '1px solid var(--border)' }} />
                   <button onClick={() => setResultPhoto(null)} className="text-xs" style={{ color: 'var(--text-muted)' }}>Changer la photo</button>
                 </div>
@@ -249,7 +252,6 @@ export default function CookModePage() {
                 </label>
               )}
 
-              {/* Note */}
               <textarea
                 placeholder="Ajoute une note… astuces, variantes, ce que tu as modifié ✍️"
                 value={shareNote}
@@ -258,7 +260,6 @@ export default function CookModePage() {
                 className="input-field mb-3 resize-none text-sm"
               />
 
-              {/* Public toggle */}
               <button onClick={() => {
                   if (!sharePublic) setShowPublicWarning(true);
                   setSharePublic(p => !p);
@@ -270,14 +271,13 @@ export default function CookModePage() {
                   <p className="text-sm font-medium">{sharePublic ? 'Visible par la communauté' : 'Note privée'}</p>
                   {sharePublic && <p className="text-[10px] text-blue-500">Ta photo et ta note seront publiques</p>}
                 </div>
-                <div className={`w-10 h-5.5 rounded-full transition-all ${sharePublic ? 'bg-blue-500' : ''}`}
-                  style={{ backgroundColor: sharePublic ? '#3b82f6' : 'var(--border)', display: 'flex', alignItems: 'center', padding: '2px' }}>
+                <div className="w-10 rounded-full transition-all"
+                  style={{ height: '22px', backgroundColor: sharePublic ? '#3b82f6' : 'var(--border)', display: 'flex', alignItems: 'center', padding: '2px' }}>
                   <div className="w-4 h-4 rounded-full bg-white shadow transition-all"
                     style={{ transform: sharePublic ? 'translateX(18px)' : 'translateX(0)' }} />
                 </div>
               </button>
 
-              {/* Public warning */}
               {showPublicWarning && sharePublic && (
                 <div className="rounded-lg px-3 py-2.5 mb-3 fade-in"
                   style={{ backgroundColor: 'rgba(59,130,246,0.06)', border: '1px solid rgba(59,130,246,0.2)' }}>
@@ -306,7 +306,6 @@ export default function CookModePage() {
             ) : null
           )}
 
-          {/* Déduction frigo */}
           {!deducted ? (
             <button
               onClick={async () => {
@@ -346,6 +345,7 @@ export default function CookModePage() {
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col select-none" style={{ backgroundColor: 'var(--bg)' }}>
+      {/* Header */}
       <header className="flex items-center justify-between px-4 py-3" style={{ backgroundColor: 'var(--bg-raised)', borderBottom: '1px solid var(--border)' }}>
         <button onClick={() => router.back()} className="p-2 rounded-lg transition-colors hover:bg-[var(--bg-inset)]">
           <X className="w-5 h-5" style={{ color: 'var(--text-muted)' }} />
@@ -354,16 +354,53 @@ export default function CookModePage() {
           <p className="text-[10px] font-medium uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>Mode cuisine</p>
           <p className="text-sm font-medium truncate px-4">{recipe.name}</p>
         </div>
-        <div className="flex items-center gap-1 text-xs" style={{ color: 'var(--text-muted)' }}>
-          <Clock className="w-3.5 h-3.5" />
-          {recipe.prepTime}min
+        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1 text-xs" style={{ color: 'var(--text-muted)' }}>
+            <Clock className="w-3.5 h-3.5" />
+            {recipe.prepTime}min
+          </div>
+          {/* Bouton micro */}
+          {supported && (
+            <button
+              onClick={isListening ? stopListening : startListening}
+              title={isListening ? 'Couper le micro' : 'Activer les commandes vocales'}
+              className="p-2 rounded-lg transition-all"
+              style={{
+                backgroundColor: isListening ? 'rgba(22,163,74,0.12)' : 'var(--bg-inset)',
+                border: isListening ? '1px solid rgba(22,163,74,0.3)' : '1px solid var(--border-subtle)',
+              }}>
+              {isListening
+                ? <Mic className="w-4 h-4 text-emerald-500" style={{ animation: 'pulse 1.5s infinite' }} />
+                : <MicOff className="w-4 h-4" style={{ color: 'var(--text-muted)' }} />}
+            </button>
+          )}
         </div>
       </header>
 
+      {/* Barre de progression */}
       <div className="h-0.5" style={{ backgroundColor: 'var(--bg-inset)' }}>
         <div className="h-full transition-all duration-500 ease-out" style={{ width: `${progress}%`, backgroundColor: 'var(--accent)' }} />
       </div>
 
+      {/* Bandeau vocal actif */}
+      {isListening && (
+        <div className="flex items-center justify-between px-4 py-2 fade-in"
+          style={{ backgroundColor: 'rgba(22,163,74,0.07)', borderBottom: '1px solid rgba(22,163,74,0.15)' }}>
+          <div className="flex items-center gap-2">
+            <div className="w-2 h-2 rounded-full bg-emerald-500" style={{ animation: 'pulse 1s infinite' }} />
+            <span className="text-xs text-emerald-700 dark:text-emerald-400 font-medium">
+              {isSpeaking ? 'Je lis l\'étape…' : 'J\'écoute… dis "suivant", "précédent" ou "répète"'}
+            </span>
+          </div>
+          {lastCommand && (
+            <span className="text-[10px] italic" style={{ color: 'var(--text-muted)' }}>
+              « {lastCommand} »
+            </span>
+          )}
+        </div>
+      )}
+
+      {/* Contenu */}
       <div className="flex-1 overflow-y-auto">
         {step === -1 ? (
           <div className="max-w-lg mx-auto px-6 py-8 fade-in">
@@ -400,6 +437,16 @@ export default function CookModePage() {
             <p className="text-center text-xs mt-6" style={{ color: 'var(--text-muted)' }}>
               {checkedIngredients.size}/{recipe.ingredients.length} prêts
             </p>
+
+            {/* Hint vocal sur l'écran d'ingrédients */}
+            {supported && !isListening && (
+              <button onClick={startListening}
+                className="w-full flex items-center justify-center gap-2 mt-6 py-2.5 rounded-xl text-sm transition-all"
+                style={{ backgroundColor: 'rgba(22,163,74,0.06)', border: '1px dashed rgba(22,163,74,0.3)', color: 'rgb(22,163,74)' }}>
+                <Mic className="w-4 h-4" />
+                Activer les commandes vocales (mains libres)
+              </button>
+            )}
           </div>
         ) : (
           <div className="max-w-lg mx-auto px-6 py-8 fade-in" key={step}>
@@ -454,6 +501,7 @@ export default function CookModePage() {
         )}
       </div>
 
+      {/* Navigation */}
       <div className="px-4 py-4" style={{ backgroundColor: 'var(--bg-raised)', borderTop: '1px solid var(--border)' }}>
         <div className="max-w-lg mx-auto flex items-center gap-2">
           <button
