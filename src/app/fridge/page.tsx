@@ -7,7 +7,7 @@ import Mascot from '@/components/Mascot';
 import RecipeCard from '@/components/RecipeCard';
 import {
   Refrigerator, Plus, X, AlertTriangle, ChefHat,
-  Wand2, Loader2, Minus, SlidersHorizontal, Calendar, Check, Barcode,
+  Wand2, Loader2, Minus, SlidersHorizontal, Calendar, Check, Barcode, Home,
 } from 'lucide-react';
 import Link from 'next/link';
 import { useT } from '@/lib/i18n';
@@ -15,10 +15,12 @@ import { getShelfInfo } from '@/lib/shelf-life';
 
 interface FridgeItem {
   id: string;
+  userId: string;
   quantity: number;
   unit: string;
   expiresAt: string | null;
   ingredient: { id: string; name: string; emoji: string; category: string };
+  user?: { id: string; name: string };
 }
 
 interface Recipe {
@@ -39,9 +41,13 @@ function daysUntil(date: string) {
   return Math.ceil((new Date(date).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
 }
 
+interface HouseholdInfo { id: string; name: string; role: string; members: { id: string; name: string }[] }
+
 export default function FridgePage() {
   const [fridgeItems, setFridgeItems] = useState<FridgeItem[]>([]);
   const [allRecipes, setAllRecipes] = useState<Recipe[]>([]);
+  const [household, setHousehold] = useState<HouseholdInfo | null>(null);
+  const [currentUserId, setCurrentUserId] = useState<string>('');
   const [loading, setLoading] = useState(true);
   const [showAdd, setShowAdd] = useState(false);
   const [searchIngredient, setSearchIngredient] = useState('');
@@ -69,12 +75,16 @@ export default function FridgePage() {
 
   const loadData = useCallback(async () => {
     try {
-      const [fridgeRes, recipesRes] = await Promise.all([
+      const [fridgeRes, recipesRes, householdRes, meRes] = await Promise.all([
         fetch('/api/fridge'),
         fetch('/api/recipes'),
+        fetch('/api/household'),
+        fetch('/api/auth/me'),
       ]);
       if (fridgeRes.ok) setFridgeItems(await fridgeRes.json());
       if (recipesRes.ok) setAllRecipes(await recipesRes.json());
+      if (householdRes.ok) setHousehold(await householdRes.json());
+      if (meRes.ok) { const me = await meRes.json(); setCurrentUserId(me.id); }
     } finally {
       setLoading(false);
     }
@@ -167,6 +177,23 @@ export default function FridgePage() {
 
   return (
     <AppShell>
+      {household && (
+        <Link href="/household"
+          className="flex items-center gap-2 rounded-xl px-3 py-2 mb-4 transition-colors hover:opacity-80"
+          style={{ backgroundColor: 'rgba(22,163,74,0.07)', border: '1px solid rgba(22,163,74,0.2)' }}>
+          <Home className="w-4 h-4 text-emerald-600 shrink-0" />
+          <div className="flex-1 min-w-0">
+            <p className="text-xs font-semibold text-emerald-700 dark:text-emerald-400 truncate">
+              🏠 {household.name}
+            </p>
+            <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>
+              Frigo partagé · {household.members.length} membre{household.members.length > 1 ? 's' : ''}
+            </p>
+          </div>
+          <span className="text-[10px] font-medium text-emerald-600">Gérer →</span>
+        </Link>
+      )}
+
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2.5">
           <Refrigerator className="w-5 h-5" style={{ color: 'var(--text-secondary)' }} />
@@ -281,22 +308,34 @@ export default function FridgePage() {
                     <span className="text-xs">{item.ingredient.emoji}</span>
                     <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>{item.ingredient.name}</span>
 
+                    {household && item.user && item.userId !== currentUserId && (
+                      <span className="text-[9px] font-medium px-1 rounded"
+                        style={{ backgroundColor: 'rgba(99,102,241,0.1)', color: 'rgb(99,102,241)' }}>
+                        {item.user.name.split(' ')[0]}
+                      </span>
+                    )}
+
                     {expiry && (
                       <span className={`text-[9px] font-semibold ${expiry.color}`}>{expiry.text}</span>
                     )}
 
-                    <button
-                      onClick={() => openExpiryEdit(item)}
-                      title={t('fridge.expiry.setDate')}
-                      className="w-5 h-5 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                    >
-                      <Calendar className="w-3 h-3" style={{ color: 'var(--text-muted)' }} />
-                    </button>
-
-                    <button onClick={() => removeFromFridge(item.id)}
-                      className="w-5 h-5 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                      <X className="w-3 h-3" style={{ color: 'var(--text-muted)' }} />
-                    </button>
+                    {item.userId === currentUserId || !household ? (
+                      <>
+                        <button
+                          onClick={() => openExpiryEdit(item)}
+                          title={t('fridge.expiry.setDate')}
+                          className="w-5 h-5 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                        >
+                          <Calendar className="w-3 h-3" style={{ color: 'var(--text-muted)' }} />
+                        </button>
+                        <button onClick={() => removeFromFridge(item.id)}
+                          className="w-5 h-5 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                          <X className="w-3 h-3" style={{ color: 'var(--text-muted)' }} />
+                        </button>
+                      </>
+                    ) : (
+                      <div className="w-1" />
+                    )}
                   </div>
                 )}
               </div>

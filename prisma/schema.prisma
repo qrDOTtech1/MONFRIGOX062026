@@ -72,6 +72,7 @@ model User {
   collections     Collection[]
   pushSubs        PushSubscription[]
   promoUses       PromoUse[]
+  householdMember HouseholdMember?
 }
 
 model Ingredient {
@@ -368,6 +369,35 @@ model PromoCode {
   maxAccountAgeDays Int?      // compte doit avoir au plus X jours (nouveau compte)
   createdAt         DateTime  @default(now())
   uses              PromoUse[]
+}
+
+// ── Mode Foyer (frigo partagé famille / colocs) ───────────────────────
+model Household {
+  id        String            @id @default(cuid())
+  name      String
+  createdAt DateTime          @default(now())
+  members   HouseholdMember[]
+  invites   HouseholdInvite[]
+}
+
+model HouseholdMember {
+  id          String    @id @default(cuid())
+  householdId String
+  userId      String    @unique
+  role        String    @default("MEMBER")  // ADMIN | MEMBER
+  joinedAt    DateTime  @default(now())
+  household   Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model HouseholdInvite {
+  id          String    @id @default(cuid())
+  householdId String
+  token       String    @unique @default(cuid())
+  expiresAt   DateTime
+  accepted    Boolean   @default(false)
+  createdAt   DateTime  @default(now())
+  household   Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
 }
 
 model PromoUse {

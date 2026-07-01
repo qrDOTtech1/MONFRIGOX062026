@@ -6,9 +6,22 @@ export async function GET() {
   const user = await getCurrentUser();
   if (!user) return NextResponse.json([], { status: 401 });
 
-  const items = await prisma.fridgeItem.findMany({
+  // Si l'utilisateur est dans un foyer, agréger le frigo de tous les membres
+  const membership = await prisma.householdMember.findUnique({
     where: { userId: user.id },
-    include: { ingredient: true },
+    include: { household: { include: { members: { select: { userId: true } } } } },
+  });
+
+  const userIds = membership
+    ? membership.household.members.map(m => m.userId)
+    : [user.id];
+
+  const items = await prisma.fridgeItem.findMany({
+    where: { userId: { in: userIds } },
+    include: {
+      ingredient: true,
+      user: { select: { id: true, name: true } },
+    },
     orderBy: { addedAt: 'desc' },
   });
 
