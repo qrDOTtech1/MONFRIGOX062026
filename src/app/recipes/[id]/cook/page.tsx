@@ -84,15 +84,20 @@ export default function CookModePage() {
   }
 
   // ── Voice Cooking ───────────────────────────────────────────────────
+  const ingredientsText = recipe
+    ? `Il te faut ${recipe.ingredients.length} ingrédients. ${recipe.ingredients.map(ing => `${ing.quantity} ${ing.unit} de ${ing.ingredient.name}`).join('. ')}.`
+    : '';
+
   const currentStepText = step >= 0 && steps[step]
     ? `Étape ${step + 1} sur ${totalSteps}. ${steps[step]}`
-    : step === -1 ? 'Prépare tes ingrédients, puis dis "suivant" pour commencer.' : '';
+    : step === -1 ? `Prépare tes ingrédients. ${ingredientsText} Dis "suivant" quand tu es prêt.` : '';
 
   const { isListening, isSpeaking, lastCommand, supported, startListening, stopListening } = useVoiceCooking({
     onNext: next,
     onPrev: prev,
     onRepeat: () => {},
     currentStepText,
+    ingredientsText,
   });
 
   useEffect(() => {

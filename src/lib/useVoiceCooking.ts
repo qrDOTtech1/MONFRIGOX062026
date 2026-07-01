@@ -7,9 +7,10 @@ interface UseVoiceCookingOptions {
   onPrev: () => void;
   onRepeat: () => void;
   currentStepText: string;
+  ingredientsText?: string;
 }
 
-export function useVoiceCooking({ onNext, onPrev, onRepeat, currentStepText }: UseVoiceCookingOptions) {
+export function useVoiceCooking({ onNext, onPrev, onRepeat, currentStepText, ingredientsText }: UseVoiceCookingOptions) {
   const [isListening, setIsListening] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [lastCommand, setLastCommand] = useState('');
@@ -28,7 +29,7 @@ export function useVoiceCooking({ onNext, onPrev, onRepeat, currentStepText }: U
     window.speechSynthesis.cancel();
     const utterance = new SpeechSynthesisUtterance(text);
     utterance.lang = 'fr-FR';
-    utterance.rate = 0.95;
+    utterance.rate = 0.9;
     utterance.pitch = 1;
     utterance.onstart = () => setIsSpeaking(true);
     utterance.onend = () => setIsSpeaking(false);
@@ -36,24 +37,43 @@ export function useVoiceCooking({ onNext, onPrev, onRepeat, currentStepText }: U
   }, []);
 
   const processCommand = useCallback((transcript: string) => {
-    const t = transcript.toLowerCase().trim();
+    const t = transcript.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').trim();
     setLastCommand(transcript);
 
-    if (t.includes('suivant') || t.includes('next') || t.includes('suite') || t.includes('après') || t.includes('continuer')) {
-      speak('Étape suivante');
+    // Suivant
+    if (t.includes('suivant') || t.includes('next') || t.includes('suite') || t.includes('apres') || t.includes('continuer') || t.includes('continue') || t.includes('etape suivante') || t.includes('prochaine') || t.includes('avance') || t.includes('go')) {
       onNext();
-    } else if (t.includes('précédent') || t.includes('retour') || t.includes('avant') || t.includes('revenir') || t.includes('back')) {
-      speak('Étape précédente');
+    }
+    // Précédent
+    else if (t.includes('precedent') || t.includes('retour') || t.includes('avant') || t.includes('revenir') || t.includes('back') || t.includes('recule') || t.includes('etape precedente') || t.includes('reviens')) {
       onPrev();
-    } else if (t.includes('répète') || t.includes('répéter') || t.includes('encore') || t.includes('relis') || t.includes('repeat')) {
+    }
+    // Répète l'étape en cours
+    else if (t.includes('repete') || t.includes('repeter') || t.includes('encore') || t.includes('relis') || t.includes('repeat') || t.includes('redis') || t.includes('redit') || t.includes('re dis') || t.includes('repetes') || t.includes('tu peux repeter')) {
       onRepeat();
       speak(currentStepText);
-    } else if (t.includes('arrête') || t.includes('stop') || t.includes('pause') || t.includes('silence')) {
+    }
+    // Lire les ingrédients
+    else if (t.includes('ingredient') || t.includes('ingredients') || t.includes('il me faut') || t.includes('il faut quoi') || t.includes('quels ingredients') || t.includes('liste')) {
+      if (ingredientsText) {
+        speak(ingredientsText);
+      } else {
+        speak(currentStepText);
+      }
+    }
+    // Stop / pause
+    else if (t.includes('arrete') || t.includes('stop') || t.includes('pause') || t.includes('silence') || t.includes('tais-toi') || t.includes('tais toi') || t.includes('chut')) {
       window.speechSynthesis.cancel();
-    } else if (t.includes('lis') || t.includes('lire') || t.includes('dis') || t.includes('quoi') || t.includes('étape')) {
+    }
+    // Lire l'étape actuelle
+    else if (t.includes('lis') || t.includes('lire') || t.includes('dis') || t.includes('quoi') || t.includes('etape') || t.includes('on en est ou') || t.includes('c\'est quoi') || t.includes('qu\'est-ce')) {
       speak(currentStepText);
     }
-  }, [onNext, onPrev, onRepeat, currentStepText, speak]);
+    // Aide
+    else if (t.includes('aide') || t.includes('help') || t.includes('commande') || t.includes('comment')) {
+      speak('Tu peux dire : suivant, précédent, répète, ingrédients, ou stop.');
+    }
+  }, [onNext, onPrev, onRepeat, currentStepText, ingredientsText, speak]);
 
   const startListening = useCallback(() => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -86,8 +106,7 @@ export function useVoiceCooking({ onNext, onPrev, onRepeat, currentStepText }: U
     recognitionRef.current = recognition;
     recognition.start();
     setIsListening(true);
-    speak('Mode cuisine vocal activé. Dis "suivant", "précédent" ou "répète".');
-  }, [processCommand, speak]);
+  }, [processCommand]);
 
   const stopListening = useCallback(() => {
     if (recognitionRef.current) {
@@ -100,7 +119,6 @@ export function useVoiceCooking({ onNext, onPrev, onRepeat, currentStepText }: U
     setLastCommand('');
   }, []);
 
-  // Arrêter proprement au démontage
   useEffect(() => {
     return () => {
       if (recognitionRef.current) {
@@ -112,7 +130,6 @@ export function useVoiceCooking({ onNext, onPrev, onRepeat, currentStepText }: U
     };
   }, []);
 
-  // Lire l'étape automatiquement quand elle change et que le micro est actif
   useEffect(() => {
     if (isListening && currentStepText) {
       speak(currentStepText);
