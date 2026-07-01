@@ -154,21 +154,23 @@ interface PublicPromo {
 }
 
 function PromoCarousel({ promos, t }: { promos: PublicPromo[]; t: (k: string, v?: Record<string, string | number>) => string }) {
-  const scrollRef = useRef<HTMLDivElement>(null);
+  const [current, setCurrent] = useState(0);
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const reset = () => {
+    if (timerRef.current) clearInterval(timerRef.current);
+    timerRef.current = setInterval(() => setCurrent(c => (c + 1) % promos.length), 5000);
+  };
 
   useEffect(() => {
     if (promos.length <= 1) return;
-    const interval = setInterval(() => {
-      const el = scrollRef.current;
-      if (!el) return;
-      const cardW = el.firstElementChild?.clientWidth || 280;
-      const maxScroll = el.scrollWidth - el.clientWidth;
-      if (el.scrollLeft >= maxScroll - 10) el.scrollTo({ left: 0, behavior: 'smooth' });
-      else el.scrollBy({ left: cardW + 12, behavior: 'smooth' });
-    }, 4000);
-    return () => clearInterval(interval);
+    reset();
+    return () => { if (timerRef.current) clearInterval(timerRef.current); };
   }, [promos.length]);
+
+  function prev() { setCurrent(c => (c - 1 + promos.length) % promos.length); reset(); }
+  function next() { setCurrent(c => (c + 1) % promos.length); reset(); }
 
   function copy(code: string) {
     navigator.clipboard.writeText(code).catch(() => {});
@@ -177,65 +179,54 @@ function PromoCarousel({ promos, t }: { promos: PublicPromo[]; t: (k: string, v?
   }
 
   if (!promos.length) return null;
+  const p = promos[current];
+  const remaining = p.maxUses !== null ? p.maxUses - p.usedCount : null;
 
   return (
-    <section className="mb-10">
-      <div className="flex items-center gap-2 justify-center mb-4">
-        <Gift className="w-5 h-5" style={{ color: 'var(--accent)' }} />
-        <h2 className="text-lg font-bold">{t('landing.promo.title')}</h2>
-      </div>
-      <div ref={scrollRef} className="flex gap-3 overflow-x-auto snap-x snap-mandatory scrollbar-hide pb-2 -mx-2 px-2"
-        style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
-        {promos.map(p => {
-          const isVip = p.planGranted === 'VIP';
-          const borderColor = isVip ? 'rgba(168,85,247,0.5)' : 'rgba(245,158,11,0.5)';
-          const bgColor = isVip ? 'rgba(168,85,247,0.06)' : 'rgba(245,158,11,0.06)';
-          const tagColor = isVip ? '#a855f7' : '#f59e0b';
-          const remaining = p.maxUses !== null ? p.maxUses - p.usedCount : null;
-
-          return (
-            <div key={p.code} className="snap-center shrink-0 w-[280px] p-4 rounded-2xl relative overflow-hidden"
-              style={{ backgroundColor: bgColor, border: `1.5px solid ${borderColor}` }}>
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ backgroundColor: `${tagColor}20`, color: tagColor }}>
-                  {isVip ? '👑 VIP' : '⭐ Premium'} · {p.durationMonths} {t('landing.promo.months')}
-                </span>
-                {remaining !== null && remaining <= 20 && (
-                  <span className="text-[10px] px-2 py-0.5 rounded-full font-medium" style={{ backgroundColor: 'rgba(239,68,68,0.1)', color: '#ef4444' }}>
-                    🔥 {remaining} {t('landing.promo.left')}
-                  </span>
-                )}
-              </div>
-
-              <div className="flex items-center gap-2 mb-2">
-                <span className="font-mono font-bold text-lg tracking-wider">{p.code}</span>
-                <button onClick={() => copy(p.code)}
-                  className="p-1 rounded-lg transition-all hover:scale-110 active:scale-90"
-                  style={{ color: 'var(--text-muted)' }}>
-                  {copiedCode === p.code ? <Check className="w-4 h-4 text-emerald-500" /> : <Copy className="w-4 h-4" />}
-                </button>
-              </div>
-
-              {p.description && (
-                <p className="text-xs mb-2" style={{ color: 'var(--text-muted)' }}>{p.description}</p>
+    <div className="mt-5 rounded-2xl px-5 py-4" style={{ backgroundColor: 'var(--bg-inset)', border: '1px solid var(--border)' }}>
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2 min-w-0">
+          <Gift className="w-4 h-4 shrink-0" style={{ color: 'var(--text-muted)' }} />
+          <div className="min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="font-mono font-bold text-sm tracking-wider">{p.code}</span>
+              <button onClick={() => copy(p.code)} className="transition-all hover:scale-110 active:scale-90" style={{ color: 'var(--text-muted)' }}>
+                {copiedCode === p.code ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
+              </button>
+              <span className="text-[10px] px-1.5 py-0.5 rounded font-medium" style={{ backgroundColor: 'var(--bg-raised)', color: 'var(--text-secondary)', border: '1px solid var(--border)' }}>
+                {p.planGranted} · {p.durationMonths} {t('landing.promo.months')}
+              </span>
+              {remaining !== null && remaining <= 20 && (
+                <span className="text-[10px]" style={{ color: 'rgb(239,68,68)' }}>· {remaining} {t('landing.promo.left')}</span>
               )}
-
-              {p.expiresAt && (
-                <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>
-                  ⏰ {t('landing.promo.expires')} {new Date(p.expiresAt).toLocaleDateString()}
-                </p>
-              )}
-
-              <Link href={p.firstSignupOnly ? '/register' : '/login'}
-                className="mt-3 block w-full text-center py-2 rounded-xl text-xs font-semibold transition-all hover:scale-[1.02] active:scale-95"
-                style={{ backgroundColor: tagColor, color: '#fff' }}>
-                {p.firstSignupOnly ? t('landing.promo.signup') : t('landing.promo.use')}
-              </Link>
             </div>
-          );
-        })}
+            {p.description && <p className="text-[11px] truncate mt-0.5" style={{ color: 'var(--text-muted)' }}>{p.description}</p>}
+          </div>
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          <Link href={p.firstSignupOnly ? '/register' : '/login'}
+            className="text-xs font-semibold px-3 py-1.5 rounded-lg transition-all hover:scale-[1.02] active:scale-95 whitespace-nowrap"
+            style={{ backgroundColor: 'var(--accent)', color: 'var(--accent-text)' }}>
+            {p.firstSignupOnly ? t('landing.promo.signup') : t('landing.promo.use')}
+          </Link>
+          {promos.length > 1 && (
+            <div className="flex gap-1">
+              <button onClick={prev} className="p-1 rounded-lg transition-colors hover:opacity-70" style={{ color: 'var(--text-muted)' }}><ChevronLeft className="w-4 h-4" /></button>
+              <button onClick={next} className="p-1 rounded-lg transition-colors hover:opacity-70" style={{ color: 'var(--text-muted)' }}><ChevronRight className="w-4 h-4" /></button>
+            </div>
+          )}
+        </div>
       </div>
-    </section>
+      {promos.length > 1 && (
+        <div className="flex gap-1 justify-center mt-3">
+          {promos.map((_, i) => (
+            <button key={i} onClick={() => { setCurrent(i); reset(); }}
+              className="rounded-full transition-all"
+              style={{ width: i === current ? 16 : 5, height: 5, backgroundColor: i === current ? 'var(--accent)' : 'var(--border)' }} />
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -383,7 +374,6 @@ export default function LandingPage() {
   const featuresRef = useFadeIn();
   const pricingRef  = useFadeIn();
   const ctaRef      = useFadeIn();
-  const promoRef    = useFadeIn();
   const [promos, setPromos] = useState<PublicPromo[]>([]);
   const [showLangPicker, setShowLangPicker] = useState(false);
 
@@ -629,13 +619,6 @@ export default function LandingPage() {
           </div>
         </section>
 
-        {/* ── Promo codes carousel ── */}
-        {promos.length > 0 && (
-          <div ref={promoRef}>
-            <PromoCarousel promos={promos} t={t} />
-          </div>
-        )}
-
         {/* ── Pricing ── */}
         <div ref={pricingRef}>
           <section className="mb-14">
@@ -703,6 +686,8 @@ export default function LandingPage() {
                 </div>
               ))}
             </div>
+
+            {promos.length > 0 && <PromoCarousel promos={promos} t={t} />}
 
             <p className="text-center text-xs mt-4" style={{ color: 'var(--text-muted)' }}>
               {t('landing.pricing.extra')}
