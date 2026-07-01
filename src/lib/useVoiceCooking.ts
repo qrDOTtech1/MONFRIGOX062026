@@ -12,7 +12,14 @@ interface UseVoiceCookingOptions {
   onPrev: () => void;
   onRepeat: () => void;
   onConfirm?: () => void;
+  onAskAI?: (question: string) => void;
+  onTimerStart?: () => void;
+  onTimerStop?: () => void;
+  onTimerReset?: () => void;
+  onFinish?: () => void;
   currentStepText: string;
+  currentStep?: number;
+  totalSteps?: number;
   ingredientsText?: string;
   introText?: string;
   waitingForConfirm?: boolean;
@@ -22,7 +29,7 @@ interface UseVoiceCookingOptions {
 type TTSEngine = 'elevenlabs' | 'native' | 'none';
 type STTEngine = 'elevenlabs' | 'native' | 'none';
 
-export function useVoiceCooking({ onNext, onPrev, onRepeat, onConfirm, currentStepText, ingredientsText, waitingForConfirm, allStepsTexts }: UseVoiceCookingOptions) {
+export function useVoiceCooking({ onNext, onPrev, onRepeat, onConfirm, onAskAI, onTimerStart, onTimerStop, onTimerReset, onFinish, currentStepText, currentStep, totalSteps, ingredientsText, waitingForConfirm, allStepsTexts }: UseVoiceCookingOptions) {
   const [isListening, setIsListening] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [lastCommand, setLastCommand] = useState('');
@@ -195,58 +202,108 @@ export function useVoiceCooking({ onNext, onPrev, onRepeat, onConfirm, currentSt
     return words.some(w => text.includes(w));
   }
 
-  // ── Command processor ──
+  // ── Command processor — returns label shown to user ──
   const processCommand = useCallback((transcript: string) => {
     const raw = transcript.trim();
     if (!raw) return;
 
     const t = normalize(raw);
 
-    // Ignore noise: too short, too long (EL Scribe hallucinations), or no real words
-    if (t.length < 2 || t.length > 120) {
-      console.log('[VoiceCooking] Ignored (noise/hallucination):', raw.slice(0, 60));
+    // Ignore noise: too short, too long (EL Scribe hallucinations)
+    if (t.length < 2 || t.length > 150) {
+      console.log('[VoiceCooking] Ignored:', raw.slice(0, 50));
       return;
     }
 
-    setLastCommand(raw);
+    let label = '';
 
-    // Confirmer (tolerant: confirme, confirmer, confirmé, ok, oui, go, etc.)
-    if (waitingForConfirm && hasWord(t, 'confirm', 'ok', 'oui', 'parti', 'go', 'commenc', 'on y va', 'pret', 'allons', 'allez', 'lance', 'demarre', 'start', 'let')) {
+    // ── Confirmer ──
+    if (waitingForConfirm && hasWord(t, 'confirm', 'ok', 'oui', 'parti', 'go', 'commenc', 'on y va', 'pret', 'allons', 'allez', 'lance', 'demarre', 'start', 'let', 'd\'accord', 'daccord', 'top', 'ready', 'envoie', 'envoi')) {
+      label = '✅ Confirmer';
       if (onConfirm) onConfirm();
-      return;
     }
-
-    // Suivant
-    if (hasWord(t, 'suivant', 'next', 'suite', 'apres', 'continu', 'prochaine', 'avance', 'etape suivante')) {
+    // ── Suivant ──
+    else if (hasWord(t, 'suivant', 'next', 'suite', 'apres', 'continu', 'prochaine', 'avance', 'etape suivante', 'passe', 'hop')) {
+      label = '⏭ Suivant';
       onNext();
     }
-    // Précédent
-    else if (hasWord(t, 'precedent', 'retour', 'revenir', 'back', 'recule', 'reviens', 'etape precedente')) {
+    // ── Précédent ──
+    else if (hasWord(t, 'precedent', 'retour', 'revenir', 'back', 'recule', 'reviens', 'etape precedente', 'avant', 'arriere')) {
+      label = '⏮ Précédent';
       onPrev();
     }
-    // Répète
-    else if (hasWord(t, 'repete', 'repeter', 'encore', 'relis', 'repeat', 'redis', 'redit')) {
+    // ── Répète ──
+    else if (hasWord(t, 'repete', 'repeter', 'encore', 'relis', 'repeat', 'redis', 'redit', 're dis', 'relire', 'reexpliqu')) {
+      label = '🔁 Répète';
       speak(currentStepText);
     }
-    // Ingrédients
-    else if (hasWord(t, 'ingredient', 'il me faut', 'il faut quoi', 'liste')) {
+    // ── Ingrédients ──
+    else if (hasWord(t, 'ingredient', 'il me faut', 'il faut quoi', 'liste', 'qu\'est ce qu\'il faut', 'besoin de quoi')) {
+      label = '🥕 Ingrédients';
       speak(ingredientsText || currentStepText);
     }
-    // Stop
+    // ── Combien d'étapes / où j'en suis ──
+    else if (hasWord(t, 'combien', 'ou j\'en suis', 'on en est ou', 'progression', 'il reste', 'encore combien')) {
+      label = '📊 Progression';
+      if (currentStep !== undefined && totalSteps) {
+        speak(`Tu es à l'étape ${currentStep + 1} sur ${totalSteps}. Il reste ${totalSteps - currentStep - 1} étapes.`);
+      } else {
+        speak(currentStepText);
+      }
+    }
+    // ── Timer ──
+    else if (hasWord(t, 'minuteur', 'timer', 'chrono', 'temps', 'lance le timer', 'demarre le minuteur', 'top chrono')) {
+      if (hasWord(t, 'arret', 'stop', 'pause', 'coupe')) {
+        label = '⏸ Timer pause';
+        if (onTimerStop) onTimerStop();
+      } else if (hasWord(t, 'reset', 'reinitial', 'remet', 'recommenc')) {
+        label = '🔄 Timer reset';
+        if (onTimerReset) onTimerReset();
+      } else {
+        label = '⏱ Timer start';
+        if (onTimerStart) onTimerStart();
+      }
+    }
+    // ── Terminer ──
+    else if (hasWord(t, 'termin', 'fini', 'j\'ai fini', 'c\'est bon', 'c\'est pret', 'bon appetit', 'termine')) {
+      label = '🏁 Terminé';
+      if (onFinish) onFinish();
+    }
+    // ── Stop voix ──
     else if (hasWord(t, 'arrete', 'stop', 'pause', 'silence', 'chut', 'tais')) {
+      label = '🔇 Silence';
       if (currentAudioRef.current) { currentAudioRef.current.pause(); currentAudioRef.current = null; }
       window.speechSynthesis?.cancel();
       setIsSpeaking(false);
     }
-    // Lire étape
-    else if (hasWord(t, 'lis', 'lire', 'dis moi', 'on en est ou', 'c\'est quoi')) {
+    // ── Lire étape ──
+    else if (hasWord(t, 'lis', 'lire', 'dis moi', 'c\'est quoi', 'quelle etape', 'qu\'est ce que je dois', 'explique')) {
+      label = '📖 Lire étape';
       speak(currentStepText);
     }
-    // Aide
-    else if (hasWord(t, 'aide', 'help', 'commande')) {
-      speak('Tu peux dire : confirmer, suivant, précédent, répète, ingrédients, ou stop.');
+    // ── Aide ──
+    else if (hasWord(t, 'aide', 'help', 'commande', 'qu\'est ce que tu comprend', 'que dire', 'option')) {
+      label = '❓ Aide';
+      speak('Tu peux dire : confirmer, suivant, précédent, répète, ingrédients, minuteur, progression, terminer, ou parle à l\'IA en disant "chef" suivi de ta question.');
     }
-  }, [onNext, onPrev, onRepeat, onConfirm, currentStepText, ingredientsText, waitingForConfirm, speak]);
+    // ── Parler à l'IA (question libre) ──
+    else if (hasWord(t, 'chef', 'ia', 'question', 'demande', 'comment on fait', 'c\'est quoi', 'pourquoi', 'astuce', 'conseil', 'alternative', 'remplacer', 'substitut')) {
+      label = '🤖 Question IA';
+      if (onAskAI) {
+        onAskAI(raw);
+      } else {
+        speak('L\'assistant IA n\'est pas disponible en mode cuisine pour le moment.');
+      }
+    }
+
+    // Only show label for recognized commands
+    if (label) {
+      setLastCommand(label);
+      console.log('[VoiceCooking] Command:', label);
+    } else {
+      console.log('[VoiceCooking] No command matched:', t.slice(0, 50));
+    }
+  }, [onNext, onPrev, onRepeat, onConfirm, onAskAI, onTimerStart, onTimerStop, onTimerReset, onFinish, currentStepText, currentStep, totalSteps, ingredientsText, waitingForConfirm, speak]);
 
   // ── ElevenLabs STT chunk ──
   const sendAudioChunk = useCallback(async (blob: Blob) => {

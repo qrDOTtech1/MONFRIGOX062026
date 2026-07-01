@@ -97,7 +97,10 @@ export default function CookModePage() {
     ? `Étape ${step + 1} sur ${totalSteps}. ${steps[step]}`
     : step === -1 ? `Prépare tes ingrédients. ${ingredientsText} Dis "confirmer" quand tu es prêt.` : '';
 
-  const { isListening, isSpeaking, lastCommand, supported, startListening, stopListening, ttsEngine, sttEngine } = useVoiceCooking({
+  const [aiAnswer, setAiAnswer] = useState('');
+  const [aiLoading, setAiLoading] = useState(false);
+
+  const { isListening, isSpeaking, lastCommand, supported, startListening, stopListening, speak, ttsEngine, sttEngine } = useVoiceCooking({
     onNext: next,
     onPrev: prev,
     onRepeat: () => {},
@@ -105,7 +108,38 @@ export default function CookModePage() {
       setWaitingForConfirm(false);
       next();
     },
+    onAskAI: async (question: string) => {
+      setAiLoading(true);
+      setAiAnswer('');
+      try {
+        const res = await fetch('/api/ai/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            messages: [{ role: 'user', content: `Je suis en train de cuisiner "${recipe?.name}". Étape ${step + 1}: "${steps[step] || ''}". Ma question: ${question}` }],
+            lang: 'fr',
+          }),
+        });
+        const data = await res.json();
+        const reply = data.reply || 'Désolé, je n\'ai pas compris.';
+        setAiAnswer(reply);
+        speak(reply);
+      } catch {
+        speak('Désolé, l\'IA n\'est pas disponible.');
+      }
+      setAiLoading(false);
+    },
+    onTimerStart: () => {
+      if (timer && timerSeconds > 0) setTimerRunning(true);
+    },
+    onTimerStop: () => setTimerRunning(false),
+    onTimerReset: () => {
+      if (timer) { setTimerSeconds(timer * 60); setTimerRunning(false); }
+    },
+    onFinish: () => setDone(true),
     currentStepText,
+    currentStep: step,
+    totalSteps,
     ingredientsText,
     waitingForConfirm,
     allStepsTexts: steps,
@@ -423,8 +457,8 @@ export default function CookModePage() {
             )}
           </div>
           {lastCommand && (
-            <span className="text-[10px] italic" style={{ color: 'var(--text-muted)' }}>
-              « {lastCommand} »
+            <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400">
+              {lastCommand}
             </span>
           )}
         </div>
@@ -528,6 +562,23 @@ export default function CookModePage() {
                 </div>
                 {timerSeconds === 0 && (
                   <p className="text-emerald-500 text-sm mt-3 font-medium animate-pulse">C&apos;est prêt!</p>
+                )}
+              </div>
+            )}
+
+            {/* AI Answer zone */}
+            {(aiLoading || aiAnswer) && (
+              <div className="card p-4 mb-6 fade-in" style={{ border: '1px solid rgba(59,130,246,0.2)', backgroundColor: 'rgba(59,130,246,0.04)' }}>
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-sm">🤖</span>
+                  <span className="text-xs font-medium text-blue-600 dark:text-blue-400">Assistant IA</span>
+                  {aiLoading && <Loader2 className="w-3 h-3 animate-spin text-blue-500 ml-auto" />}
+                </div>
+                {aiAnswer && (
+                  <p className="text-sm leading-relaxed" style={{ color: 'var(--text-secondary)' }}>{aiAnswer}</p>
+                )}
+                {aiAnswer && (
+                  <button onClick={() => setAiAnswer('')} className="text-[10px] mt-2" style={{ color: 'var(--text-muted)' }}>Fermer</button>
                 )}
               </div>
             )}

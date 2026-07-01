@@ -74,14 +74,55 @@ function stripMarkdown(text: string): string {
     .trim();
 }
 
-function speak(text: string) {
-  if (typeof window === 'undefined' || !window.speechSynthesis) return;
-  window.speechSynthesis.cancel();
+let _elConfigured: boolean | null = null;
+let _currentMascotAudio: HTMLAudioElement | null = null;
+
+async function speak(text: string) {
+  if (typeof window === 'undefined') return;
+  // Stop any playing audio
+  if (_currentMascotAudio) { _currentMascotAudio.pause(); _currentMascotAudio = null; }
+  window.speechSynthesis?.cancel();
+
   const clean = stripMarkdown(text)
     .replace(/[🍽️🇧🇫🇵🇹🔥⚡♻️💶👨‍🍳🏆💪🥦🌿⭐👑🔒✨😄😢🤔👋💬🆕📅⚠️🎉✅🛒]/gu, '')
     .replace(/\s{2,}/g, ' ')
     .trim();
   if (!clean) return;
+
+  // Check ElevenLabs once
+  if (_elConfigured === null) {
+    try {
+      const res = await fetch('/api/tts');
+      if (res.ok) {
+        const data = await res.json();
+        _elConfigured = data.configured === true;
+      } else { _elConfigured = false; }
+    } catch { _elConfigured = false; }
+  }
+
+  // Try ElevenLabs
+  if (_elConfigured) {
+    try {
+      const res = await fetch('/api/tts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: clean, lang: 'fr' }),
+      });
+      if (res.ok) {
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        const audio = new Audio(url);
+        _currentMascotAudio = audio;
+        audio.onended = () => { URL.revokeObjectURL(url); _currentMascotAudio = null; };
+        audio.onerror = () => { URL.revokeObjectURL(url); _currentMascotAudio = null; };
+        await audio.play();
+        return;
+      }
+    } catch {}
+  }
+
+  // Fallback native
+  if (!window.speechSynthesis) return;
   const utt = new SpeechSynthesisUtterance(clean);
   utt.lang = 'fr-FR';
   utt.rate = 1.05;
