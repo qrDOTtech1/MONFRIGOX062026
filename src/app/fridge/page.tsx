@@ -10,6 +10,7 @@ import {
   Wand2, Loader2, Minus, SlidersHorizontal, Calendar, Check, Barcode, Home, ShieldAlert, Camera,
 } from 'lucide-react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useT } from '@/lib/i18n';
 import { getShelfInfo } from '@/lib/shelf-life';
 import ScanDLC from '@/components/ScanDLC';
@@ -45,6 +46,7 @@ function daysUntil(date: string) {
 interface HouseholdInfo { id: string; name: string; role: string; members: { id: string; name: string }[] }
 
 export default function FridgePage() {
+  const router = useRouter();
   const [fridgeItems, setFridgeItems] = useState<FridgeItem[]>([]);
   const [allRecipes, setAllRecipes] = useState<Recipe[]>([]);
   const [household, setHousehold] = useState<HouseholdInfo | null>(null);
@@ -240,11 +242,19 @@ export default function FridgePage() {
             </p>
           </div>
         </div>
-        <button onClick={() => setShowAdd(!showAdd)}
-          className="w-9 h-9 rounded-lg flex items-center justify-center transition-colors"
-          style={{ backgroundColor: 'var(--accent)', color: 'var(--accent-text)' }}>
-          <Plus className="w-4 h-4" />
-        </button>
+        <div className="flex items-center gap-2">
+          <button onClick={() => router.push('/photo-scan')}
+            className="w-9 h-9 rounded-lg flex items-center justify-center transition-colors"
+            style={{ background: 'linear-gradient(135deg, rgba(168,85,247,0.15), rgba(59,130,246,0.15))', border: '1px solid rgba(168,85,247,0.2)' }}
+            title="Photo → Frigo">
+            <Camera className="w-4 h-4 text-purple-500" />
+          </button>
+          <button onClick={() => setShowAdd(!showAdd)}
+            className="w-9 h-9 rounded-lg flex items-center justify-center transition-colors"
+            style={{ backgroundColor: 'var(--accent)', color: 'var(--accent-text)' }}>
+            <Plus className="w-4 h-4" />
+          </button>
+        </div>
       </div>
 
       {showAdd && (
