@@ -15,6 +15,7 @@ interface UseVoiceCookingOptions {
   onAskAI?: (question: string) => void;
   onRepeatStep?: (stepIndex: number) => void;
   onSelectOption?: (optionIndex: number) => void;
+  onHelp?: () => void;
   onTimerStart?: () => void;
   onTimerStop?: () => void;
   onTimerReset?: () => void;
@@ -31,7 +32,7 @@ interface UseVoiceCookingOptions {
 type TTSEngine = 'elevenlabs' | 'native' | 'none';
 type STTEngine = 'elevenlabs' | 'native' | 'none';
 
-export function useVoiceCooking({ onNext, onPrev, onRepeat, onConfirm, onAskAI, onRepeatStep, onSelectOption, onTimerStart, onTimerStop, onTimerReset, onFinish, currentStepText, currentStep, totalSteps, ingredientsText, waitingForConfirm, allStepsTexts }: UseVoiceCookingOptions) {
+export function useVoiceCooking({ onNext, onPrev, onRepeat, onConfirm, onAskAI, onRepeatStep, onSelectOption, onHelp, onTimerStart, onTimerStop, onTimerReset, onFinish, currentStepText, currentStep, totalSteps, ingredientsText, waitingForConfirm, allStepsTexts }: UseVoiceCookingOptions) {
   const [isListening, setIsListening] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [lastCommand, setLastCommand] = useState('');
@@ -317,6 +318,38 @@ export function useVoiceCooking({ onNext, onPrev, onRepeat, onConfirm, onAskAI, 
     return words.some(w => text.includes(w));
   }
 
+  // ── Extract a small number (1-9) from text, digit or spelled-out French word ──
+  const NUMBER_WORDS: Record<string, number> = {
+    un: 1, une: 1, premier: 1, premiere: 1,
+    deux: 2, deuxieme: 2, second: 2, seconde: 2,
+    trois: 3, troisieme: 3,
+    quatre: 4, quatrieme: 4,
+    cinq: 5, cinquieme: 5,
+    six: 6, sixieme: 6,
+    sept: 7, septieme: 7,
+    huit: 8, huitieme: 8,
+    neuf: 9, neuvieme: 9,
+  };
+
+  function findNumberNear(text: string, ...anchors: string[]): number | null {
+    // 1) digit form directly after an anchor word
+    const digitRe = new RegExp(`(?:${anchors.join('|')})[^0-9]{0,20}?(\\d+)`);
+    const digitMatch = text.match(digitRe);
+    if (digitMatch) return parseInt(digitMatch[1]);
+
+    // 2) spelled-out number word after an anchor
+    const wordsPattern = Object.keys(NUMBER_WORDS).join('|');
+    const wordRe = new RegExp(`(?:${anchors.join('|')})\\s+(?:l[ae]\\s+|numero\\s+|n\\s+)*(${wordsPattern})\\b`);
+    const wordMatch = text.match(wordRe);
+    if (wordMatch) return NUMBER_WORDS[wordMatch[1]];
+
+    // 3) bare digit anywhere near an anchor (fallback)
+    const anyDigit = text.match(/\d+/);
+    if (anyDigit && anchors.some(a => text.includes(a))) return parseInt(anyDigit[0]);
+
+    return null;
+  }
+
   // ── Command processor — returns label shown to user ──
   const processCommand = useCallback((transcript: string) => {
     const raw = transcript.trim();
@@ -332,17 +365,27 @@ export function useVoiceCooking({ onNext, onPrev, onRepeat, onConfirm, onAskAI, 
 
     let label = '';
 
-    // ── Sélection option IA ("option 1", "go pour option 2", "choix 3") ──
-    const optionMatch = t.match(/(?:option|choix|go\s+(?:pour\s+)?(?:l[ea]?\s+)?(?:option|choix)?)\s*(\d+)/);
-    if (optionMatch) {
-      const idx = parseInt(optionMatch[1]);
-      if (idx >= 1) {
-        label = `👆 Option ${idx}`;
-        if (onSelectOption) onSelectOption(idx - 1);
-      }
+    // Apostrophes create merged tokens ("l'étape" → "l'etape") that break anchor matching — strip them for these checks
+    const tNoApos = t.replace(/'/g, ' ');
+
+    // ── Sélection option IA ("option 1", "go pour option 2", "choix numéro trois") ──
+    const optionNum = hasWord(t, 'option', 'choix') ? findNumberNear(tNoApos, 'option', 'choix', 'go') : null;
+    if (optionNum !== null && optionNum >= 1) {
+      label = `👆 Option ${optionNum}`;
+      if (onSelectOption) onSelectOption(optionNum - 1);
     }
     // ── Répète étape N ──
-    else if ((() => { const m = t.match(/(?:repete|repeter|relis|redis)\s+(?:l[ea]?\s+)?etape\s+(\d+)/); if (m) { const n = parseInt(m[1]); if (n >= 1 && allStepsTexts && n <= allStepsTexts.length) { label = `🔁 Répète étape ${n}`; if (onRepeatStep) onRepeatStep(n - 1); else speak(`Étape ${n}. ${allStepsTexts[n - 1]}`); return true; } } return false; })()) {
+    else if ((() => {
+      if (!hasWord(t, 'repete', 'repeter', 'relis', 'redis') || !tNoApos.includes('etape')) return false;
+      const n = findNumberNear(tNoApos, 'etape');
+      if (n !== null && n >= 1 && allStepsTexts && n <= allStepsTexts.length) {
+        label = `🔁 Répète étape ${n}`;
+        if (onRepeatStep) onRepeatStep(n - 1);
+        else speak(`Étape ${n}. ${allStepsTexts[n - 1]}`);
+        return true;
+      }
+      return false;
+    })()) {
       // handled above
     }
     // ── Confirmer ──
@@ -413,6 +456,7 @@ export function useVoiceCooking({ onNext, onPrev, onRepeat, onConfirm, onAskAI, 
     else if (hasWord(t, 'aide', 'help', 'commande', 'qu\'est ce que tu comprend', 'que dire')) {
       label = '❓ Aide';
       speak('Tu peux dire : confirmer, suivant, précédent, répète, ingrédients, minuteur, progression, terminer, ou dis "cheffe" suivi de ta question.');
+      if (onHelp) onHelp();
     }
     // ── Wake word IA ("cheffe", "chef", "hey cheffe"…) ──
     else {
@@ -436,7 +480,7 @@ export function useVoiceCooking({ onNext, onPrev, onRepeat, onConfirm, onAskAI, 
     } else {
       console.log('[VoiceCooking] No command matched:', t.slice(0, 50));
     }
-  }, [onNext, onPrev, onRepeat, onConfirm, onAskAI, onRepeatStep, onSelectOption, onTimerStart, onTimerStop, onTimerReset, onFinish, currentStepText, currentStep, totalSteps, ingredientsText, waitingForConfirm, allStepsTexts, speak]);
+  }, [onNext, onPrev, onRepeat, onConfirm, onAskAI, onRepeatStep, onSelectOption, onHelp, onTimerStart, onTimerStop, onTimerReset, onFinish, currentStepText, currentStep, totalSteps, ingredientsText, waitingForConfirm, allStepsTexts, speak]);
 
   // ── ElevenLabs STT chunk (ref-based to avoid stale closures) ──
   const sendAudioChunkRef = useRef(async (blob: Blob) => {});

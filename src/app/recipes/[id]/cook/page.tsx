@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { ArrowLeft, ArrowRight, ChefHat, Clock, X, Timer, Check, Users, Camera, Refrigerator, Loader2, Globe, Lock, Mic, MicOff, Volume2 } from 'lucide-react';
+import { ArrowLeft, ArrowRight, ChefHat, Clock, X, Timer, Check, Users, Camera, Refrigerator, Loader2, Globe, Lock, Mic, MicOff, Volume2, HelpCircle } from 'lucide-react';
 import { useVoiceCooking } from '@/lib/useVoiceCooking';
 
 interface Recipe {
@@ -101,14 +101,26 @@ export default function CookModePage() {
   const [aiLoading, setAiLoading] = useState(false);
   const [aiCards, setAiCards] = useState<Array<{ title: string; description: string }>>([]);
   const [selectedCard, setSelectedCard] = useState<number | null>(null);
+  const [showHelp, setShowHelp] = useState(false);
+
+  function closeAiCards() {
+    setAiAnswer('');
+    setAiCards([]);
+    setSelectedCard(null);
+  }
 
   function handleSelectOption(idx: number) {
     if (idx >= 0 && idx < aiCards.length) {
       setSelectedCard(idx);
       const card = aiCards[idx];
       speak(`Option ${idx + 1} sélectionnée : ${card.title}. ${card.description}`);
+      // La liste se referme après la sélection, comme lors d'un changement d'étape
+      setTimeout(() => closeAiCards(), 3500);
     }
   }
+
+  // Referme les cartes IA quand on change d'étape pour ne pas garder d'anciennes suggestions à l'écran
+  useEffect(() => { closeAiCards(); }, [step]);
 
   function handleTimerStart() {
     if (timer && timerSeconds > 0) setTimerRunning(true);
@@ -188,6 +200,7 @@ export default function CookModePage() {
       }
     },
     onSelectOption: handleSelectOption,
+    onHelp: () => setShowHelp(true),
     onTimerStart: () => {
       if (timer && timerSeconds > 0) setTimerRunning(true);
     },
@@ -494,8 +507,66 @@ export default function CookModePage() {
                 : <MicOff className="w-4 h-4" style={{ color: 'var(--text-muted)' }} />}
             </button>
           )}
+          {/* Bouton aide commandes vocales */}
+          {supported && (
+            <button
+              onClick={() => setShowHelp(true)}
+              title="Commandes vocales"
+              className="w-7 h-7 rounded-full flex items-center justify-center transition-all"
+              style={{ border: '1.5px solid var(--border)', color: 'var(--text-muted)' }}>
+              <span className="text-xs font-bold">?</span>
+            </button>
+          )}
         </div>
       </header>
+
+      {/* Overlay aide — grille complète des commandes vocales */}
+      {showHelp && (
+        <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center px-4 pb-4 sm:pb-4 fade-in"
+          style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}
+          onClick={() => setShowHelp(false)}>
+          <div className="w-full max-w-sm rounded-2xl p-5 max-h-[80vh] overflow-y-auto"
+            style={{ backgroundColor: 'var(--bg-raised)', border: '1px solid var(--border)' }}
+            onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <div className="w-7 h-7 rounded-full flex items-center justify-center" style={{ border: '1.5px solid var(--accent)', color: 'var(--accent)' }}>
+                  <HelpCircle className="w-4 h-4" />
+                </div>
+                <h3 className="text-sm font-semibold">Commandes vocales</h3>
+              </div>
+              <button onClick={() => setShowHelp(false)} className="p-1 rounded-lg hover:bg-[var(--bg-inset)]">
+                <X className="w-4 h-4" style={{ color: 'var(--text-muted)' }} />
+              </button>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              {[
+                { icon: '⏭', label: 'Suivant', ex: '"suivant"' },
+                { icon: '⏮', label: 'Précédent', ex: '"précédent"' },
+                { icon: '🔁', label: 'Répète', ex: '"répète"' },
+                { icon: '🔁', label: 'Répète étape N', ex: '"répète étape 3"' },
+                { icon: '✅', label: 'Confirmer', ex: '"confirmer"' },
+                { icon: '🥕', label: 'Ingrédients', ex: '"ingrédients"' },
+                { icon: '📊', label: 'Progression', ex: '"où j\'en suis"' },
+                { icon: '⏱', label: 'Minuteur', ex: '"minuteur"' },
+                { icon: '🏁', label: 'Terminé', ex: '"terminé"' },
+                { icon: '🔇', label: 'Silence', ex: '"stop"' },
+                { icon: '👆', label: 'Choisir option', ex: '"option 1"' },
+                { icon: '🤖', label: 'Question IA', ex: '"cheffe, …"' },
+              ].map((c, i) => (
+                <div key={i} className="rounded-xl p-3 flex flex-col gap-1" style={{ backgroundColor: 'var(--bg-inset)', border: '1px solid var(--border-subtle)' }}>
+                  <span className="text-lg">{c.icon}</span>
+                  <span className="text-xs font-medium">{c.label}</span>
+                  <span className="text-[10px]" style={{ color: 'var(--text-muted)' }}>{c.ex}</span>
+                </div>
+              ))}
+            </div>
+            <p className="text-[10px] text-center mt-4" style={{ color: 'var(--text-muted)' }}>
+              Dis &quot;cheffe&quot; suivi de ta question pour parler à l&apos;assistant IA.
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Barre de progression */}
       <div className="h-0.5" style={{ backgroundColor: 'var(--bg-inset)' }}>
