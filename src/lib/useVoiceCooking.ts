@@ -13,6 +13,8 @@ interface UseVoiceCookingOptions {
   onRepeat: () => void;
   onConfirm?: () => void;
   onAskAI?: (question: string) => void;
+  onRepeatStep?: (stepIndex: number) => void;
+  onSelectOption?: (optionIndex: number) => void;
   onTimerStart?: () => void;
   onTimerStop?: () => void;
   onTimerReset?: () => void;
@@ -29,7 +31,7 @@ interface UseVoiceCookingOptions {
 type TTSEngine = 'elevenlabs' | 'native' | 'none';
 type STTEngine = 'elevenlabs' | 'native' | 'none';
 
-export function useVoiceCooking({ onNext, onPrev, onRepeat, onConfirm, onAskAI, onTimerStart, onTimerStop, onTimerReset, onFinish, currentStepText, currentStep, totalSteps, ingredientsText, waitingForConfirm, allStepsTexts }: UseVoiceCookingOptions) {
+export function useVoiceCooking({ onNext, onPrev, onRepeat, onConfirm, onAskAI, onRepeatStep, onSelectOption, onTimerStart, onTimerStop, onTimerReset, onFinish, currentStepText, currentStep, totalSteps, ingredientsText, waitingForConfirm, allStepsTexts }: UseVoiceCookingOptions) {
   const [isListening, setIsListening] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [lastCommand, setLastCommand] = useState('');
@@ -46,6 +48,11 @@ export function useVoiceCooking({ onNext, onPrev, onRepeat, onConfirm, onAskAI, 
   const currentAudioRef = useRef<HTMLAudioElement | null>(null);
   const mountedRef = useRef(true);
   const speakingRef = useRef(false);
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const analyserRef = useRef<AnalyserNode | null>(null);
+  const volumeSampleRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const maxVolumeRef = useRef(0);
+  const lastAIIntentAtRef = useRef(0);
 
   // Detect engines on mount
   useEffect(() => {
@@ -72,15 +79,16 @@ export function useVoiceCooking({ onNext, onPrev, onRepeat, onConfirm, onAskAI, 
         setTtsEngine('native');
       }
 
-      if (elAvailable && navigator.mediaDevices && typeof navigator.mediaDevices.getUserMedia === 'function') {
+      // Prefer native Web Speech STT when available (free, faster, no hallucinations) — fall back to ElevenLabs otherwise
+      const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (SR) {
+        setSttEngine('native');
+      } else if (elAvailable && navigator.mediaDevices && typeof navigator.mediaDevices.getUserMedia === 'function') {
         setSttEngine('elevenlabs');
-      } else {
-        const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-        if (SR) setSttEngine('native');
       }
 
       console.log('[VoiceCooking] TTS:', elAvailable ? 'elevenlabs' : ('speechSynthesis' in window ? 'native' : 'none'));
-      console.log('[VoiceCooking] STT:', elAvailable && navigator.mediaDevices ? 'elevenlabs' : (window.SpeechRecognition || window.webkitSpeechRecognition ? 'native' : 'none'));
+      console.log('[VoiceCooking] STT:', SR ? 'native' : (elAvailable && navigator.mediaDevices ? 'elevenlabs' : 'none'));
       setSupported(true);
     })();
 
@@ -134,7 +142,56 @@ export function useVoiceCooking({ onNext, onPrev, onRepeat, onConfirm, onAskAI, 
   }, [ttsEngine, allStepsTexts]);
 
   // ── Pause/resume mic around TTS ──
+  const resumeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const justResumedRef = useRef(false);
+
+  function stopVolumeSampling() {
+    if (volumeSampleRef.current) { clearInterval(volumeSampleRef.current); volumeSampleRef.current = null; }
+  }
+
+  // ── RMS volume gate — skip sending near-silent chunks to STT (avoids hallucinations + saves cost) ──
+  function ensureAnalyser() {
+    if (analyserRef.current || !mediaStreamRef.current) return;
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const AC = window.AudioContext || (window as any).webkitAudioContext;
+      const ctx = new AC();
+      const source = ctx.createMediaStreamSource(mediaStreamRef.current);
+      const analyser = ctx.createAnalyser();
+      analyser.fftSize = 512;
+      analyser.smoothingTimeConstant = 0.4;
+      source.connect(analyser);
+      audioContextRef.current = ctx;
+      analyserRef.current = analyser;
+    } catch {}
+  }
+
+  function startVolumeSampling() {
+    ensureAnalyser();
+    stopVolumeSampling();
+    maxVolumeRef.current = 0;
+    if (!analyserRef.current) return;
+    const data = new Uint8Array(analyserRef.current.fftSize);
+    volumeSampleRef.current = setInterval(() => {
+      if (!analyserRef.current) return;
+      analyserRef.current.getByteTimeDomainData(data);
+      let sumSquares = 0;
+      for (let i = 0; i < data.length; i++) {
+        const norm = (data[i] - 128) / 128;
+        sumSquares += norm * norm;
+      }
+      const rms = Math.sqrt(sumSquares / data.length);
+      if (rms > maxVolumeRef.current) maxVolumeRef.current = rms;
+    }, 100);
+  }
+
+  const SILENCE_RMS_THRESHOLD = 0.02;
+
   function pauseMic() {
+    if (resumeTimeoutRef.current) { clearTimeout(resumeTimeoutRef.current); resumeTimeoutRef.current = null; }
+    stopVolumeSampling();
+    // Physically mute the input so no audio can be captured while the app talks
+    mediaStreamRef.current?.getAudioTracks().forEach(t => { t.enabled = false; });
     if (mediaRecorderRef.current?.state === 'recording') {
       mediaRecorderRef.current.onstop = null;
       mediaRecorderRef.current.stop();
@@ -146,9 +203,12 @@ export function useVoiceCooking({ onNext, onPrev, onRepeat, onConfirm, onAskAI, 
   }
 
   function resumeMic() {
-    if (!mediaStreamRef.current || !speakingRef.current === false) return;
-    // Only resume if we're still supposed to be listening
-    if (!mediaStreamRef.current) return;
+    if (!mediaStreamRef.current || speakingRef.current) return;
+
+    // Re-enable the muted input track
+    mediaStreamRef.current.getAudioTracks().forEach(t => { t.enabled = true; });
+    justResumedRef.current = true;
+    setTimeout(() => { justResumedRef.current = false; }, 350);
 
     const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
       ? 'audio/webm;codecs=opus'
@@ -156,9 +216,14 @@ export function useVoiceCooking({ onNext, onPrev, onRepeat, onConfirm, onAskAI, 
     const recorder = new MediaRecorder(mediaStreamRef.current, { mimeType });
     const chunks: Blob[] = [];
     recorder.ondataavailable = (e) => { if (e.data.size > 0) chunks.push(e.data); };
+    startVolumeSampling();
     recorder.onstop = () => {
-      if (chunks.length > 0 && !speakingRef.current) {
+      stopVolumeSampling();
+      const hadSpeech = maxVolumeRef.current > SILENCE_RMS_THRESHOLD;
+      if (chunks.length > 0 && !speakingRef.current && !justResumedRef.current && hadSpeech) {
         sendAudioChunkRef.current(new Blob(chunks, { type: mimeType }));
+      } else if (chunks.length > 0 && !hadSpeech) {
+        console.log('[VoiceCooking] Skipped silent chunk (rms=', maxVolumeRef.current.toFixed(4), ')');
       }
       if (mediaStreamRef.current && !speakingRef.current) resumeMic();
     };
@@ -172,12 +237,15 @@ export function useVoiceCooking({ onNext, onPrev, onRepeat, onConfirm, onAskAI, 
   function markSpeaking(val: boolean) {
     speakingRef.current = val;
     setIsSpeaking(val);
-    if (val) pauseMic();
-    else if (mediaStreamRef.current) {
-      // Small delay before resuming mic to avoid catching tail of TTS
-      setTimeout(() => {
+    if (val) {
+      pauseMic();
+    } else if (mediaStreamRef.current) {
+      // Delay before resuming mic to avoid catching the acoustic tail of TTS through the speaker
+      if (resumeTimeoutRef.current) clearTimeout(resumeTimeoutRef.current);
+      resumeTimeoutRef.current = setTimeout(() => {
+        resumeTimeoutRef.current = null;
         if (!speakingRef.current && mediaStreamRef.current) resumeMic();
-      }, 500);
+      }, 900);
     }
   }
 
@@ -264,8 +332,21 @@ export function useVoiceCooking({ onNext, onPrev, onRepeat, onConfirm, onAskAI, 
 
     let label = '';
 
+    // ── Sélection option IA ("option 1", "go pour option 2", "choix 3") ──
+    const optionMatch = t.match(/(?:option|choix|go\s+(?:pour\s+)?(?:l[ea]?\s+)?(?:option|choix)?)\s*(\d+)/);
+    if (optionMatch) {
+      const idx = parseInt(optionMatch[1]);
+      if (idx >= 1) {
+        label = `👆 Option ${idx}`;
+        if (onSelectOption) onSelectOption(idx - 1);
+      }
+    }
+    // ── Répète étape N ──
+    else if ((() => { const m = t.match(/(?:repete|repeter|relis|redis)\s+(?:l[ea]?\s+)?etape\s+(\d+)/); if (m) { const n = parseInt(m[1]); if (n >= 1 && allStepsTexts && n <= allStepsTexts.length) { label = `🔁 Répète étape ${n}`; if (onRepeatStep) onRepeatStep(n - 1); else speak(`Étape ${n}. ${allStepsTexts[n - 1]}`); return true; } } return false; })()) {
+      // handled above
+    }
     // ── Confirmer ──
-    if (waitingForConfirm && hasWord(t, 'confirm', 'ok', 'oui', 'parti', 'go', 'commenc', 'on y va', 'pret', 'allons', 'allez', 'lance', 'demarre', 'start', 'let', 'd\'accord', 'daccord', 'top', 'ready', 'envoie', 'envoi')) {
+    else if (waitingForConfirm && hasWord(t, 'confirm', 'confirme', 'confirmez', 'confirmer', 'ok', 'oui', 'parti', 'go', 'commenc', 'on y va', 'pret', 'allons', 'allez', 'lance', 'demarre', 'start', 'let', 'd\'accord', 'daccord', 'top', 'ready', 'envoie', 'envoi', 'valide', 'valider', 'c\'est bon', 'je suis pret')) {
       label = '✅ Confirmer';
       if (onConfirm) onConfirm();
     }
@@ -329,17 +410,22 @@ export function useVoiceCooking({ onNext, onPrev, onRepeat, onConfirm, onAskAI, 
       speak(currentStepText);
     }
     // ── Aide ──
-    else if (hasWord(t, 'aide', 'help', 'commande', 'qu\'est ce que tu comprend', 'que dire', 'option')) {
+    else if (hasWord(t, 'aide', 'help', 'commande', 'qu\'est ce que tu comprend', 'que dire')) {
       label = '❓ Aide';
-      speak('Tu peux dire : confirmer, suivant, précédent, répète, ingrédients, minuteur, progression, terminer, ou parle à l\'IA en disant "chef" suivi de ta question.');
+      speak('Tu peux dire : confirmer, suivant, précédent, répète, ingrédients, minuteur, progression, terminer, ou dis "cheffe" suivi de ta question.');
     }
-    // ── Parler à l'IA (question libre) ──
-    else if (hasWord(t, 'chef', 'ia', 'question', 'demande', 'comment on fait', 'c\'est quoi', 'pourquoi', 'astuce', 'conseil', 'alternative', 'remplacer', 'substitut')) {
-      label = '🤖 Question IA';
-      if (onAskAI) {
-        onAskAI(raw);
-      } else {
-        speak('L\'assistant IA n\'est pas disponible en mode cuisine pour le moment.');
+    // ── Wake word IA ("cheffe", "chef", "hey cheffe"…) ──
+    else {
+      const wakeMatch = t.match(/\b(?:hey\s+)?(cheffe|chef|hey\s*ia|dis\s*moi\s*cheffe)\b\s*(.*)/);
+      if (wakeMatch) {
+        const question = (wakeMatch[2] || '').trim();
+        const now = Date.now();
+        const minGapMs = 2500;
+        if (onAskAI && now - lastAIIntentAtRef.current > minGapMs) {
+          lastAIIntentAtRef.current = now;
+          label = '🤖 Réflexion…';
+          onAskAI(question || raw);
+        }
       }
     }
 
@@ -350,7 +436,7 @@ export function useVoiceCooking({ onNext, onPrev, onRepeat, onConfirm, onAskAI, 
     } else {
       console.log('[VoiceCooking] No command matched:', t.slice(0, 50));
     }
-  }, [onNext, onPrev, onRepeat, onConfirm, onAskAI, onTimerStart, onTimerStop, onTimerReset, onFinish, currentStepText, currentStep, totalSteps, ingredientsText, waitingForConfirm, speak]);
+  }, [onNext, onPrev, onRepeat, onConfirm, onAskAI, onRepeatStep, onSelectOption, onTimerStart, onTimerStop, onTimerReset, onFinish, currentStepText, currentStep, totalSteps, ingredientsText, waitingForConfirm, allStepsTexts, speak]);
 
   // ── ElevenLabs STT chunk (ref-based to avoid stale closures) ──
   const sendAudioChunkRef = useRef(async (blob: Blob) => {});
@@ -402,7 +488,9 @@ export function useVoiceCooking({ onNext, onPrev, onRepeat, onConfirm, onAskAI, 
   // ── ElevenLabs STT (MediaRecorder) ──
   const startElevenLabsSTT = useCallback(async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
+      });
       mediaStreamRef.current = stream;
       console.log('[VoiceCooking] Mic stream acquired');
       resumeMic();
@@ -427,6 +515,8 @@ export function useVoiceCooking({ onNext, onPrev, onRepeat, onConfirm, onAskAI, 
 
   const stopListening = useCallback(() => {
     if (recordingTimeoutRef.current) { clearTimeout(recordingTimeoutRef.current); recordingTimeoutRef.current = null; }
+    if (resumeTimeoutRef.current) { clearTimeout(resumeTimeoutRef.current); resumeTimeoutRef.current = null; }
+    stopVolumeSampling();
     if (mediaRecorderRef.current?.state === 'recording') {
       mediaRecorderRef.current.onstop = null;
       mediaRecorderRef.current.stop();
@@ -434,6 +524,8 @@ export function useVoiceCooking({ onNext, onPrev, onRepeat, onConfirm, onAskAI, 
     mediaRecorderRef.current = null;
     mediaStreamRef.current?.getTracks().forEach(t => t.stop());
     mediaStreamRef.current = null;
+    if (audioContextRef.current) { audioContextRef.current.close().catch(() => {}); audioContextRef.current = null; }
+    analyserRef.current = null;
 
     if (recognitionRef.current) {
       recognitionRef.current.onend = null;
@@ -458,6 +550,8 @@ export function useVoiceCooking({ onNext, onPrev, onRepeat, onConfirm, onAskAI, 
         mediaRecorderRef.current.stop();
       }
       mediaStreamRef.current?.getTracks().forEach(t => t.stop());
+      if (audioContextRef.current) audioContextRef.current.close().catch(() => {});
+      stopVolumeSampling();
       if (recognitionRef.current) { recognitionRef.current.onend = null; recognitionRef.current.stop(); }
       if (currentAudioRef.current) currentAudioRef.current.pause();
       window.speechSynthesis?.cancel();

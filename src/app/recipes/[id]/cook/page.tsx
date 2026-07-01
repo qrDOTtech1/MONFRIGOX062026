@@ -99,6 +99,24 @@ export default function CookModePage() {
 
   const [aiAnswer, setAiAnswer] = useState('');
   const [aiLoading, setAiLoading] = useState(false);
+  const [aiCards, setAiCards] = useState<Array<{ title: string; description: string }>>([]);
+  const [selectedCard, setSelectedCard] = useState<number | null>(null);
+
+  function handleSelectOption(idx: number) {
+    if (idx >= 0 && idx < aiCards.length) {
+      setSelectedCard(idx);
+      const card = aiCards[idx];
+      speak(`Option ${idx + 1} sélectionnée : ${card.title}. ${card.description}`);
+    }
+  }
+
+  function handleTimerStart() {
+    if (timer && timerSeconds > 0) setTimerRunning(true);
+  }
+  function handleTimerStop() { setTimerRunning(false); }
+  function handleTimerReset() {
+    if (timer) { setTimerSeconds(timer * 60); setTimerRunning(false); }
+  }
 
   const { isListening, isSpeaking, lastCommand, supported, startListening, stopListening, speak, ttsEngine, sttEngine } = useVoiceCooking({
     onNext: next,
@@ -108,27 +126,68 @@ export default function CookModePage() {
       setWaitingForConfirm(false);
       next();
     },
+    // Fallback IA — pilote l'interface via des actions structurées, jamais du texte libre
     onAskAI: async (question: string) => {
       setAiLoading(true);
       setAiAnswer('');
+      setAiCards([]);
+      setSelectedCard(null);
       try {
-        const res = await fetch('/api/ai/chat', {
+        const allIngredientsContext = recipe ? recipe.ingredients.map(ing => `${ing.quantity} ${ing.unit} ${ing.ingredient.name}`).join(', ') : '';
+        const res = await fetch('/api/ai/cook-intent', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            messages: [{ role: 'user', content: `Je suis en train de cuisiner "${recipe?.name}". Étape ${step + 1}: "${steps[step] || ''}". Ma question: ${question}` }],
-            lang: 'fr',
+            transcript: question,
+            recipeName: recipe?.name || '',
+            stepIndex: step,
+            totalSteps,
+            stepText: steps[step] || '',
+            allSteps: steps,
+            ingredientsText: allIngredientsContext,
+            waitingForConfirm,
           }),
         });
         const data = await res.json();
-        const reply = data.reply || 'Désolé, je n\'ai pas compris.';
-        setAiAnswer(reply);
-        speak(reply);
+
+        if (data.type === 'action') {
+          if (data.voiceReply) speak(data.voiceReply);
+          switch (data.action) {
+            case 'next': next(); break;
+            case 'prev': prev(); break;
+            case 'repeat_current': if (!data.voiceReply) speak(currentStepText); break;
+            case 'repeat_step': {
+              const n = data.stepNumber;
+              if (typeof n === 'number' && steps[n - 1] && !data.voiceReply) speak(`Étape ${n}. ${steps[n - 1]}`);
+              break;
+            }
+            case 'confirm': setWaitingForConfirm(false); next(); break;
+            case 'timer_start': handleTimerStart(); break;
+            case 'timer_stop': handleTimerStop(); break;
+            case 'timer_reset': handleTimerReset(); break;
+            case 'finish': setDone(true); break;
+            case 'show_ingredients': if (!data.voiceReply) speak(ingredientsText); break;
+            case 'show_progress': if (!data.voiceReply) speak(`Tu es à l'étape ${step + 1} sur ${totalSteps}.`); break;
+            default: break; // ignore
+          }
+        } else if (data.type === 'cards' && Array.isArray(data.cards) && data.cards.length > 0) {
+          const intro = data.intro || 'Voici mes suggestions :';
+          setAiAnswer(intro);
+          setAiCards(data.cards);
+          const voiceText = `${intro} ${data.cards.map((c: { title: string }, i: number) => `Option ${i + 1} : ${c.title}`).join('. ')}. Dis "option 1" ou "option 2" pour choisir.`;
+          speak(voiceText);
+        }
       } catch {
         speak('Désolé, l\'IA n\'est pas disponible.');
       }
       setAiLoading(false);
     },
+    onRepeatStep: (stepIndex: number) => {
+      if (steps[stepIndex]) {
+        speak(`Étape ${stepIndex + 1}. ${steps[stepIndex]}`);
+      }
+    },
+    onSelectOption: handleSelectOption,
     onTimerStart: () => {
       if (timer && timerSeconds > 0) setTimerRunning(true);
     },
@@ -575,10 +634,43 @@ export default function CookModePage() {
                   {aiLoading && <Loader2 className="w-3 h-3 animate-spin text-blue-500 ml-auto" />}
                 </div>
                 {aiAnswer && (
-                  <p className="text-sm leading-relaxed" style={{ color: 'var(--text-secondary)' }}>{aiAnswer}</p>
+                  <p className="text-sm leading-relaxed mb-2" style={{ color: 'var(--text-secondary)' }}>{aiAnswer}</p>
                 )}
-                {aiAnswer && (
-                  <button onClick={() => setAiAnswer('')} className="text-[10px] mt-2" style={{ color: 'var(--text-muted)' }}>Fermer</button>
+                {aiCards.length > 0 && (
+                  <div className="space-y-2 mt-3">
+                    {aiCards.map((card, i) => (
+                      <button
+                        key={i}
+                        onClick={() => handleSelectOption(i)}
+                        className="w-full text-left rounded-xl p-3 transition-all"
+                        style={{
+                          backgroundColor: selectedCard === i ? 'rgba(59,130,246,0.12)' : 'var(--bg-raised)',
+                          border: `1px solid ${selectedCard === i ? 'rgba(59,130,246,0.4)' : 'var(--border-subtle)'}`,
+                        }}
+                      >
+                        <div className="flex items-start gap-2">
+                          <span className="text-xs font-bold text-blue-500 mt-0.5 shrink-0">#{i + 1}</span>
+                          <div>
+                            <p className="text-sm font-medium" style={{ color: selectedCard === i ? '#3b82f6' : 'var(--text)' }}>{card.title}</p>
+                            <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>{card.description}</p>
+                          </div>
+                        </div>
+                        {selectedCard === i && (
+                          <div className="flex items-center gap-1 mt-2 text-[10px] text-blue-500 font-medium">
+                            <Check className="w-3 h-3" /> Sélectionné
+                          </div>
+                        )}
+                      </button>
+                    ))}
+                    {isListening && (
+                      <p className="text-[10px] text-center mt-1" style={{ color: 'var(--text-muted)' }}>
+                        Dis &quot;option 1&quot; ou &quot;option 2&quot; pour choisir
+                      </p>
+                    )}
+                  </div>
+                )}
+                {aiAnswer && !aiLoading && (
+                  <button onClick={() => { setAiAnswer(''); setAiCards([]); setSelectedCard(null); }} className="text-[10px] mt-2" style={{ color: 'var(--text-muted)' }}>Fermer</button>
                 )}
               </div>
             )}
