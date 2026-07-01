@@ -45,6 +45,7 @@ export function useVoiceCooking({ onNext, onPrev, onRepeat, onConfirm, onAskAI, 
   const audioCache = useRef<Map<string, Blob>>(new Map());
   const currentAudioRef = useRef<HTMLAudioElement | null>(null);
   const mountedRef = useRef(true);
+  const speakingRef = useRef(false);
 
   // Detect engines on mount
   useEffect(() => {
@@ -132,15 +133,66 @@ export function useVoiceCooking({ onNext, onPrev, onRepeat, onConfirm, onAskAI, 
     })();
   }, [ttsEngine, allStepsTexts]);
 
+  // ── Pause/resume mic around TTS ──
+  function pauseMic() {
+    if (mediaRecorderRef.current?.state === 'recording') {
+      mediaRecorderRef.current.onstop = null;
+      mediaRecorderRef.current.stop();
+    }
+    if (recordingTimeoutRef.current) {
+      clearTimeout(recordingTimeoutRef.current);
+      recordingTimeoutRef.current = null;
+    }
+  }
+
+  function resumeMic() {
+    if (!mediaStreamRef.current || !speakingRef.current === false) return;
+    // Only resume if we're still supposed to be listening
+    if (!mediaStreamRef.current) return;
+
+    const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
+      ? 'audio/webm;codecs=opus'
+      : MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : 'audio/mp4';
+    const recorder = new MediaRecorder(mediaStreamRef.current, { mimeType });
+    const chunks: Blob[] = [];
+    recorder.ondataavailable = (e) => { if (e.data.size > 0) chunks.push(e.data); };
+    recorder.onstop = () => {
+      if (chunks.length > 0 && !speakingRef.current) {
+        sendAudioChunkRef.current(new Blob(chunks, { type: mimeType }));
+      }
+      if (mediaStreamRef.current && !speakingRef.current) resumeMic();
+    };
+    mediaRecorderRef.current = recorder;
+    recorder.start();
+    recordingTimeoutRef.current = setTimeout(() => {
+      if (recorder.state === 'recording') recorder.stop();
+    }, 3000);
+  }
+
+  function markSpeaking(val: boolean) {
+    speakingRef.current = val;
+    setIsSpeaking(val);
+    if (val) pauseMic();
+    else if (mediaStreamRef.current) {
+      // Small delay before resuming mic to avoid catching tail of TTS
+      setTimeout(() => {
+        if (!speakingRef.current && mediaStreamRef.current) resumeMic();
+      }, 500);
+    }
+  }
+
   // ── TTS ──
   const speak = useCallback(async (text: string) => {
     if (!text) return;
 
+    // Stop any current playback
     if (currentAudioRef.current) {
       currentAudioRef.current.pause();
       currentAudioRef.current = null;
     }
     window.speechSynthesis?.cancel();
+
+    markSpeaking(true);
 
     if (ttsEngine === 'elevenlabs') {
       try {
@@ -154,36 +206,31 @@ export function useVoiceCooking({ onNext, onPrev, onRepeat, onConfirm, onAskAI, 
           if (res.ok) {
             blob = await res.blob();
             audioCache.current.set(text, blob);
-          } else {
-            console.warn('[VoiceCooking] TTS 502, falling back to native');
           }
         }
         if (blob) {
-          setIsSpeaking(true);
           const url = URL.createObjectURL(blob);
           const audio = new Audio(url);
           currentAudioRef.current = audio;
-          audio.onended = () => { setIsSpeaking(false); URL.revokeObjectURL(url); currentAudioRef.current = null; };
-          audio.onerror = () => { setIsSpeaking(false); URL.revokeObjectURL(url); currentAudioRef.current = null; };
+          audio.onended = () => { URL.revokeObjectURL(url); currentAudioRef.current = null; markSpeaking(false); };
+          audio.onerror = () => { URL.revokeObjectURL(url); currentAudioRef.current = null; markSpeaking(false); };
           await audio.play();
           return;
         }
-      } catch (err) {
-        console.warn('[VoiceCooking] ElevenLabs TTS failed, falling back to native:', err);
-      }
+      } catch {}
     }
 
     // Fallback native
     if ('speechSynthesis' in window) {
-      window.speechSynthesis.cancel();
       const utterance = new SpeechSynthesisUtterance(text);
       utterance.lang = 'fr-FR';
       utterance.rate = 0.9;
       utterance.pitch = 1;
-      utterance.onstart = () => setIsSpeaking(true);
-      utterance.onend = () => setIsSpeaking(false);
-      utterance.onerror = () => setIsSpeaking(false);
+      utterance.onend = () => markSpeaking(false);
+      utterance.onerror = () => markSpeaking(false);
       window.speechSynthesis.speak(utterance);
+    } else {
+      markSpeaking(false);
     }
   }, [ttsEngine]);
 
@@ -274,7 +321,7 @@ export function useVoiceCooking({ onNext, onPrev, onRepeat, onConfirm, onAskAI, 
       label = '🔇 Silence';
       if (currentAudioRef.current) { currentAudioRef.current.pause(); currentAudioRef.current = null; }
       window.speechSynthesis?.cancel();
-      setIsSpeaking(false);
+      markSpeaking(false);
     }
     // ── Lire étape ──
     else if (hasWord(t, 'lis', 'lire', 'dis moi', 'c\'est quoi', 'quelle etape', 'qu\'est ce que je dois', 'explique')) {
@@ -305,26 +352,23 @@ export function useVoiceCooking({ onNext, onPrev, onRepeat, onConfirm, onAskAI, 
     }
   }, [onNext, onPrev, onRepeat, onConfirm, onAskAI, onTimerStart, onTimerStop, onTimerReset, onFinish, currentStepText, currentStep, totalSteps, ingredientsText, waitingForConfirm, speak]);
 
-  // ── ElevenLabs STT chunk ──
-  const sendAudioChunk = useCallback(async (blob: Blob) => {
-    if (blob.size < 1000) return;
-    // Don't process audio while TTS is speaking (avoids hearing ourselves)
-    if (isSpeaking) return;
+  // ── ElevenLabs STT chunk (ref-based to avoid stale closures) ──
+  const sendAudioChunkRef = useRef(async (blob: Blob) => {});
+  sendAudioChunkRef.current = async (blob: Blob) => {
+    if (blob.size < 1000 || speakingRef.current) return;
     try {
       const form = new FormData();
       form.append('audio', blob, 'audio.webm');
       const res = await fetch('/api/stt', { method: 'POST', body: form });
       if (res.ok) {
         const { text } = await res.json();
-        console.log('[VoiceCooking] STT result:', text || '(silence)');
-        if (text) processCommand(text);
-      } else {
-        console.warn('[VoiceCooking] STT error:', res.status, await res.text().catch(() => ''));
+        if (text) {
+          console.log('[VoiceCooking] STT:', text.slice(0, 60));
+          processCommand(text);
+        }
       }
-    } catch (err) {
-      console.warn('[VoiceCooking] STT fetch failed:', err);
-    }
-  }, [processCommand, isSpeaking]);
+    } catch {}
+  };
 
   // ── Native Web Speech API STT ──
   const startNativeSTT = useCallback(() => {
@@ -339,6 +383,7 @@ export function useVoiceCooking({ onNext, onPrev, onRepeat, onConfirm, onAskAI, 
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     recognition.onresult = (event: any) => {
+      if (speakingRef.current) return;
       const transcript = event.results[event.results.length - 1][0].transcript;
       processCommand(transcript);
     };
@@ -360,36 +405,13 @@ export function useVoiceCooking({ onNext, onPrev, onRepeat, onConfirm, onAskAI, 
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       mediaStreamRef.current = stream;
       console.log('[VoiceCooking] Mic stream acquired');
-
-      const startRecording = () => {
-        if (!mediaStreamRef.current) return;
-        const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
-          ? 'audio/webm;codecs=opus'
-          : MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : 'audio/mp4';
-
-        const recorder = new MediaRecorder(mediaStreamRef.current, { mimeType });
-        const chunks: Blob[] = [];
-
-        recorder.ondataavailable = (e) => { if (e.data.size > 0) chunks.push(e.data); };
-        recorder.onstop = () => {
-          if (chunks.length > 0) sendAudioChunk(new Blob(chunks, { type: mimeType }));
-          if (mediaStreamRef.current) startRecording();
-        };
-
-        mediaRecorderRef.current = recorder;
-        recorder.start();
-        recordingTimeoutRef.current = setTimeout(() => {
-          if (recorder.state === 'recording') recorder.stop();
-        }, 3000);
-      };
-
-      startRecording();
+      resumeMic();
       setIsListening(true);
     } catch (err) {
       console.warn('[VoiceCooking] MediaRecorder failed, falling back to native:', err);
       startNativeSTT();
     }
-  }, [sendAudioChunk, startNativeSTT]);
+  }, [startNativeSTT]);
 
   // ── Public API ──
   const startListening = useCallback((greeting?: string) => {
