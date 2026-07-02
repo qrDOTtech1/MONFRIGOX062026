@@ -30,6 +30,7 @@ interface UseVoiceCookingOptions {
   onWhichMusic?: () => void;
   onVolumeUpMusic?: () => void;
   onVolumeDownMusic?: () => void;
+  onMaxVolumeMusic?: () => void;
   onStopMusic?: () => void;
   onPlayQuiz?: () => void;
   currentStepText: string;
@@ -45,7 +46,7 @@ interface UseVoiceCookingOptions {
 type TTSEngine = 'elevenlabs' | 'native' | 'none';
 type STTEngine = 'elevenlabs' | 'native' | 'none';
 
-export function useVoiceCooking({ onNext, onPrev, onRepeat, onConfirm, onAskAI, onRepeatStep, onSelectOption, onHelp, onTimerStart, onTimerStop, onTimerReset, onFinish, onPlayMusic, onPlayMatchingMusic, onPauseMusic, onResumeMusic, onNextMusic, onPrevMusic, onSurpriseMusic, onWhichMusic, onVolumeUpMusic, onVolumeDownMusic, onStopMusic, onPlayQuiz, currentStepText, currentStep, totalSteps, ingredientsText, waitingForConfirm, allStepsTexts, musicActive }: UseVoiceCookingOptions) {
+export function useVoiceCooking({ onNext, onPrev, onRepeat, onConfirm, onAskAI, onRepeatStep, onSelectOption, onHelp, onTimerStart, onTimerStop, onTimerReset, onFinish, onPlayMusic, onPlayMatchingMusic, onPauseMusic, onResumeMusic, onNextMusic, onPrevMusic, onSurpriseMusic, onWhichMusic, onVolumeUpMusic, onVolumeDownMusic, onMaxVolumeMusic, onStopMusic, onPlayQuiz, currentStepText, currentStep, totalSteps, ingredientsText, waitingForConfirm, allStepsTexts, musicActive }: UseVoiceCookingOptions) {
   const [isListening, setIsListening] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [lastCommand, setLastCommand] = useState('');
@@ -433,6 +434,10 @@ export function useVoiceCooking({ onNext, onPrev, onRepeat, onConfirm, onAskAI, 
         label = '🎵 Volume -';
         if (onVolumeDownMusic) onVolumeDownMusic();
         musicHandled = true;
+      } else if (hasWord(t, 'volume max', 'a fond', 'au max', 'maximum', 'plein volume', 'plein pot')) {
+        label = '🎵 Volume max';
+        if (onMaxVolumeMusic) onMaxVolumeMusic();
+        musicHandled = true;
       } else if (hasWord(t, 'plus fort', 'monte le son', 'augmente')) {
         label = '🎵 Volume +';
         if (onVolumeUpMusic) onVolumeUpMusic();
@@ -577,7 +582,7 @@ export function useVoiceCooking({ onNext, onPrev, onRepeat, onConfirm, onAskAI, 
     } else {
       console.log('[VoiceCooking] No command matched:', t.slice(0, 50));
     }
-  }, [onNext, onPrev, onRepeat, onConfirm, onAskAI, onRepeatStep, onSelectOption, onHelp, onTimerStart, onTimerStop, onTimerReset, onFinish, onPlayMusic, onPlayMatchingMusic, onPauseMusic, onResumeMusic, onNextMusic, onPrevMusic, onSurpriseMusic, onWhichMusic, onVolumeUpMusic, onVolumeDownMusic, onStopMusic, onPlayQuiz, currentStepText, currentStep, totalSteps, ingredientsText, waitingForConfirm, allStepsTexts, speak]);
+  }, [onNext, onPrev, onRepeat, onConfirm, onAskAI, onRepeatStep, onSelectOption, onHelp, onTimerStart, onTimerStop, onTimerReset, onFinish, onPlayMusic, onPlayMatchingMusic, onPauseMusic, onResumeMusic, onNextMusic, onPrevMusic, onSurpriseMusic, onWhichMusic, onVolumeUpMusic, onVolumeDownMusic, onMaxVolumeMusic, onStopMusic, onPlayQuiz, currentStepText, currentStep, totalSteps, ingredientsText, waitingForConfirm, allStepsTexts, speak]);
 
   // ── ElevenLabs STT chunk (ref-based to avoid stale closures) ──
   const sendAudioChunkRef = useRef(async (blob: Blob) => {});

@@ -291,9 +291,15 @@ export default function CookModePage() {
   }
 
   function adjustRadioVolume(delta: number) {
-    radioTargetVolumeRef.current = Math.min(0.4, Math.max(0.02, radioTargetVolumeRef.current + delta));
+    radioTargetVolumeRef.current = Math.min(0.85, Math.max(0.02, radioTargetVolumeRef.current + delta));
     if (radioPlaying) fadeRadioVolume(radioTargetVolumeRef.current);
     speak(delta > 0 ? 'Je monte un peu le son.' : 'Je baisse un peu le son.', 'easter');
+  }
+
+  function maxRadioVolume() {
+    radioTargetVolumeRef.current = 1;
+    if (radioPlaying) fadeRadioVolume(radioTargetVolumeRef.current);
+    speak('D\'accord, mais je pourrais mal vous entendre.', 'easter');
   }
 
   function stopRadio() {
@@ -555,8 +561,9 @@ export default function CookModePage() {
     onPrevMusic: () => prevRadioStation(),
     onSurpriseMusic: () => surpriseRadioStation(),
     onWhichMusic: () => announceCurrentStation(),
-    onVolumeUpMusic: () => adjustRadioVolume(0.06),
-    onVolumeDownMusic: () => adjustRadioVolume(-0.06),
+    onVolumeUpMusic: () => adjustRadioVolume(0.1),
+    onVolumeDownMusic: () => adjustRadioVolume(-0.1),
+    onMaxVolumeMusic: () => maxRadioVolume(),
     onStopMusic: () => { stopRadio(); speak('Musique coupée.', 'easter'); },
     onPlayQuiz: () => playQuiz(),
     currentStepText,
