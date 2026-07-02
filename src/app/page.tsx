@@ -30,8 +30,59 @@ function LandingStyles() {
       }
       .section-fade { opacity: 0; transform: translateY(24px); transition: opacity 0.6s ease, transform 0.6s ease; }
       .section-fade.visible { opacity: 1; transform: translateY(0); }
+
+      /* Fond lumineux qui suit le curseur */
+      .cursor-light {
+        position: fixed; inset: 0; z-index: 0; pointer-events: none;
+        transition: background 0.25s ease-out;
+        background: radial-gradient(600px circle at 50% 0%, rgba(16,185,129,0.05), transparent 65%);
+      }
+      /* Ripple au clic */
+      .click-ripple {
+        position: fixed; width: 12px; height: 12px; margin: -6px 0 0 -6px;
+        border-radius: 9999px; background: rgba(16,185,129,0.30);
+        pointer-events: none; transform: scale(0); z-index: 9999;
+        animation: ripple 0.6s cubic-bezier(0.2,0.7,0.3,1) forwards;
+      }
+      @keyframes ripple { to { transform: scale(9); opacity: 0; } }
+      @media (prefers-reduced-motion: reduce) {
+        .cursor-light, .click-ripple { display: none; }
+      }
     `}</style>
   );
+}
+
+/* ── Fond lumineux qui suit le curseur (sobre) + ripple au clic ──────── */
+function CursorFX() {
+  const lightRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    let raf = 0;
+    const onMove = (e: MouseEvent) => {
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(() => {
+        if (lightRef.current) {
+          lightRef.current.style.background =
+            `radial-gradient(600px circle at ${e.clientX}px ${e.clientY}px, rgba(16,185,129,0.07), transparent 65%)`;
+        }
+      });
+    };
+    const onClick = (e: MouseEvent) => {
+      const r = document.createElement('span');
+      r.className = 'click-ripple';
+      r.style.left = `${e.clientX}px`;
+      r.style.top = `${e.clientY}px`;
+      document.body.appendChild(r);
+      setTimeout(() => r.remove(), 650);
+    };
+    window.addEventListener('mousemove', onMove, { passive: true });
+    window.addEventListener('click', onClick);
+    return () => {
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('click', onClick);
+      cancelAnimationFrame(raf);
+    };
+  }, []);
+  return <div ref={lightRef} className="cursor-light" aria-hidden />;
 }
 
 /* ── Staggered section observer ─────────────────────────────────────── */
@@ -298,73 +349,83 @@ function WorldCupOffer({ t }: { t: (k: string, v?: Record<string, string | numbe
   }
 
   return (
-    <section className="mb-9 fade-in">
-      <div className="relative overflow-hidden rounded-3xl p-5 sm:p-6"
-        style={{ background: 'linear-gradient(135deg, #064e3b 0%, #0f766e 45%, #b45309 100%)', boxShadow: '0 14px 44px rgba(6,78,59,0.40)' }}>
-        <div className="absolute -right-5 -top-7 text-[130px] opacity-[0.12] select-none pointer-events-none">⚽</div>
+    <div className="mb-6 fade-in">
+      <div className="relative overflow-hidden rounded-2xl p-4"
+        style={{
+          background: 'linear-gradient(135deg, #052e1a 0%, #0b6b3a 52%, #b45309 100%)',
+          boxShadow: '0 8px 28px rgba(6,78,59,0.32)',
+        }}>
+        {/* Ambiance terrain de foot : lignes blanches très subtiles */}
+        <div className="absolute inset-0 pointer-events-none select-none" aria-hidden
+          style={{
+            backgroundImage:
+              'repeating-linear-gradient(90deg, rgba(255,255,255,0.035) 0 2px, transparent 2px 64px)',
+          }} />
+        {/* Trophée Coupe du Monde + plat à la place du ballon */}
+        <div className="absolute -right-3 -top-4 text-[86px] opacity-[0.16] select-none pointer-events-none leading-none">🏆</div>
+        <div className="absolute right-9 -bottom-3 text-[46px] opacity-[0.12] select-none pointer-events-none">🍽️</div>
 
-        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold mb-3 tracking-wide"
-          style={{ backgroundColor: 'rgba(255,255,255,0.18)', color: '#fff', backdropFilter: 'blur(4px)' }}>
-          {t('landing.wc.tag')}
-        </span>
+        <div className="relative">
+          <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold mb-2 tracking-wide"
+            style={{ backgroundColor: 'rgba(255,255,255,0.18)', color: '#fff', backdropFilter: 'blur(4px)' }}>
+            🏆 {t('landing.wc.tag')}
+          </span>
 
-        <h2 className="text-2xl sm:text-[28px] font-extrabold text-white leading-tight mb-2">{t('landing.wc.title')}</h2>
-        <p className="text-sm text-white/85 mb-4 max-w-md leading-relaxed">{t('landing.wc.sub')}</p>
+          <h3 className="text-lg font-extrabold text-white leading-tight mb-1">{t('landing.wc.title')}</h3>
+          <p className="text-xs text-white/80 mb-3 max-w-md leading-relaxed">{t('landing.wc.sub')}</p>
 
-        {!team ? (
-          <>
-            <p className="text-xs font-semibold text-white/70 mb-2 uppercase tracking-wide">{t('landing.wc.pick')} · {WC_TEAMS.length}</p>
-            <input
-              value={query}
-              onChange={e => setQuery(e.target.value)}
-              placeholder={t('landing.wc.search')}
-              className="w-full mb-2.5 px-3 py-2 rounded-xl text-sm outline-none"
-              style={{ backgroundColor: 'rgba(255,255,255,0.16)', color: '#fff', border: '1px solid rgba(255,255,255,0.22)' }}
-            />
-            <div className="flex flex-wrap gap-1.5 max-h-44 overflow-y-auto pr-1 scrollbar-hide" style={{ scrollbarWidth: 'none' }}>
-              {WC_TEAMS.filter(tm => tm.name.toLowerCase().includes(query.toLowerCase())).map(tm => (
-                <button key={tm.code} onClick={() => { setTeam(tm); setQuery(''); }}
-                  className="px-2.5 py-1.5 rounded-xl text-sm font-medium transition-all hover:scale-105 active:scale-95 flex items-center gap-1.5"
-                  style={{ backgroundColor: 'rgba(255,255,255,0.14)', color: '#fff', border: '1px solid rgba(255,255,255,0.22)' }}>
-                  <span className="text-base">{tm.flag}</span> {tm.name}
+          {!team ? (
+            <>
+              <input
+                value={query}
+                onChange={e => setQuery(e.target.value)}
+                placeholder={`⚽ ${t('landing.wc.search')} · ${WC_TEAMS.length} ${t('landing.wc.pick')}`}
+                className="w-full mb-2 px-3 py-1.5 rounded-lg text-xs outline-none"
+                style={{ backgroundColor: 'rgba(255,255,255,0.16)', color: '#fff', border: '1px solid rgba(255,255,255,0.22)' }}
+              />
+              <div className="flex flex-wrap gap-1.5 max-h-28 overflow-y-auto pr-1 scrollbar-hide" style={{ scrollbarWidth: 'none' }}>
+                {WC_TEAMS.filter(tm => tm.name.toLowerCase().includes(query.toLowerCase())).map(tm => (
+                  <button key={tm.code} onClick={() => { setTeam(tm); setQuery(''); }}
+                    className="px-2 py-1 rounded-lg text-xs font-medium transition-all hover:scale-105 active:scale-95 flex items-center gap-1"
+                    style={{ backgroundColor: 'rgba(255,255,255,0.14)', color: '#fff', border: '1px solid rgba(255,255,255,0.22)' }}>
+                    <span className="text-sm">{tm.flag}</span> {tm.name}
+                  </button>
+                ))}
+              </div>
+              <p className="text-[10px] text-white/60 mt-2">🔥 {t('landing.wc.urgency')}</p>
+            </>
+          ) : (
+            <div className="rounded-xl p-3 fade-in" style={{ backgroundColor: 'rgba(255,255,255,0.96)', color: '#0f172a' }}>
+              <div className="flex items-center gap-2 mb-2">
+                <span className="text-xl">{team.flag}</span>
+                <p className="font-bold text-xs">{t('landing.wc.chosen', { team: team.name })}</p>
+                <button onClick={() => setTeam(null)} className="ml-auto text-[10px] underline opacity-60">{t('landing.wc.change')}</button>
+              </div>
+              <div className="flex items-center gap-3 mb-2.5 rounded-lg p-2.5" style={{ background: 'linear-gradient(135deg, rgba(5,150,105,0.10), rgba(180,83,9,0.10))' }}>
+                <span className="text-3xl font-extrabold leading-none" style={{ color: '#047857' }}>-{team.percent}%</span>
+                <p className="text-[11px] leading-snug" style={{ color: '#334155' }}>{t('landing.wc.discountSub', { team: team.name })}</p>
+              </div>
+
+              <div className="flex items-center gap-2 mb-1">
+                <span className="text-[9px] font-semibold uppercase tracking-wide" style={{ color: '#64748b' }}>{t('landing.wc.codeLabel')}</span>
+                <span className="font-mono font-bold text-base tracking-wider px-2 py-0.5 rounded-md" style={{ backgroundColor: 'rgba(16,185,129,0.12)', color: '#047857' }}>{team.code}</span>
+                <button onClick={copyCode} className="p-1 rounded-lg transition-all hover:scale-110 active:scale-90" style={{ color: '#64748b' }}>
+                  {copied ? <Check className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4" />}
                 </button>
-              ))}
-            </div>
-            <p className="text-[11px] text-white/60 mt-3">🔥 {t('landing.wc.urgency')}</p>
-          </>
-        ) : (
-          <div className="rounded-2xl p-4 fade-in" style={{ backgroundColor: 'rgba(255,255,255,0.96)', color: '#0f172a' }}>
-            <div className="flex items-center gap-2 mb-2.5">
-              <span className="text-2xl">{team.flag}</span>
-              <p className="font-bold text-sm">{t('landing.wc.chosen', { team: team.name })}</p>
-              <button onClick={() => setTeam(null)} className="ml-auto text-[11px] underline opacity-60">{t('landing.wc.change')}</button>
-            </div>
-            {/* Le % gagné grâce à l'équipe */}
-            <div className="flex items-center gap-3 mb-3 rounded-xl p-3" style={{ background: 'linear-gradient(135deg, rgba(5,150,105,0.10), rgba(180,83,9,0.10))' }}>
-              <span className="text-4xl font-extrabold leading-none" style={{ color: '#047857' }}>-{team.percent}%</span>
-              <p className="text-xs leading-snug" style={{ color: '#334155' }}>{t('landing.wc.discountSub', { team: team.name })}</p>
-            </div>
+              </div>
+              <p className="text-[10px] mb-2.5" style={{ color: '#64748b' }}>{t('landing.wc.howto')}</p>
 
-            <div className="flex items-center gap-2 mb-1">
-              <span className="text-[10px] font-semibold uppercase tracking-wide" style={{ color: '#64748b' }}>{t('landing.wc.codeLabel')}</span>
-              <span className="font-mono font-bold text-lg tracking-wider px-2.5 py-1 rounded-lg" style={{ backgroundColor: 'rgba(16,185,129,0.12)', color: '#047857' }}>{team.code}</span>
-              <button onClick={copyCode} className="p-1 rounded-lg transition-all hover:scale-110 active:scale-90" style={{ color: '#64748b' }}>
-                {copied ? <Check className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4" />}
-              </button>
+              <Link href="/register"
+                onClick={() => { try { localStorage.setItem('wc_promo', team.code); } catch { /* ignore */ } }}
+                className="block w-full text-center py-2 rounded-lg text-xs font-bold text-white transition-all hover:scale-[1.02] active:scale-95"
+                style={{ background: 'linear-gradient(135deg, #059669, #b45309)' }}>
+                {t('landing.wc.cta', { team: team.name })}
+              </Link>
             </div>
-            <p className="text-[11px] mb-3" style={{ color: '#64748b' }}>{t('landing.wc.howto')}</p>
-
-            <Link href="/register"
-              onClick={() => { try { localStorage.setItem('wc_promo', team.code); } catch { /* ignore */ } }}
-              className="block w-full text-center py-2.5 rounded-xl text-sm font-bold text-white transition-all hover:scale-[1.02] active:scale-95"
-              style={{ background: 'linear-gradient(135deg, #059669, #b45309)' }}>
-              {t('landing.wc.cta', { team: team.name })}
-            </Link>
-            <p className="text-[11px] text-center mt-2.5" style={{ color: '#94a3b8' }}>🔥 {t('landing.wc.urgency')}</p>
-          </div>
-        )}
+          )}
+        </div>
       </div>
-    </section>
+    </div>
   );
 }
 
@@ -412,6 +473,7 @@ export default function LandingPage() {
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLdOrg }} />
       <FloatingEmojis />
       <LandingStyles />
+      <CursorFX />
 
       {/* ── Header ── */}
       <header className="flex items-center justify-between px-6 py-4 sticky top-0 z-20"
@@ -456,13 +518,8 @@ export default function LandingPage() {
 
       <main className="flex-1 max-w-2xl mx-auto w-full px-5 pb-20 relative z-10">
 
-        {/* ── Offre Coupe du Monde 2026 (tout en haut) ── */}
-        <div className="pt-6">
-          <WorldCupOffer t={t} />
-        </div>
-
         {/* ── Hero ── */}
-        <section className="text-center pt-2 pb-12">
+        <section className="text-center pt-8 pb-12">
           {/* Mascotte hero */}
           <div className="flex justify-center mb-6">
             <LogoAnim size={96} />
@@ -623,9 +680,12 @@ export default function LandingPage() {
         <div ref={pricingRef}>
           <section className="mb-14">
             <h2 className="text-xl font-bold text-center mb-1.5">{t('landing.pricing.title')}</h2>
-            <p className="text-sm text-center mb-7" style={{ color: 'var(--text-muted)' }}>
+            <p className="text-sm text-center mb-6" style={{ color: 'var(--text-muted)' }}>
               {t('landing.pricing.sub')}
             </p>
+
+            {/* ── Offre Coupe du Monde 2026 (compacte, au-dessus des prix) ── */}
+            <WorldCupOffer t={t} />
 
             <div className="space-y-3">
               {plans.map((plan, pi) => (
