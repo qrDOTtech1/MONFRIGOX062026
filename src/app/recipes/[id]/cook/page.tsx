@@ -81,6 +81,7 @@ interface Recipe {
   prepTime: number;
   servings: number;
   difficulty: string;
+  cuisine?: string;
   ingredients: Array<{
     quantity: number;
     unit: string;
@@ -178,11 +179,26 @@ export default function CookModePage() {
 
   // ── Radio (déclenchée uniquement à la voix, jamais annoncée dans l'UI) ──
   const RADIO_STATIONS = [
-    { name: 'FIP', url: 'https://icecast.radiofrance.fr/fip-midfi.mp3' },
-    { name: 'France Inter', url: 'https://icecast.radiofrance.fr/franceinter-midfi.mp3' },
-    { name: 'France Musique', url: 'https://icecast.radiofrance.fr/francemusique-midfi.mp3' },
-    { name: 'Le Mouv', url: 'https://icecast.radiofrance.fr/lemouv-midfi.mp3' },
+    { name: 'FIP', url: 'https://icecast.radiofrance.fr/fip-midfi.mp3', vibe: 'eclectic' },
+    { name: 'France Inter', url: 'https://icecast.radiofrance.fr/franceinter-midfi.mp3', vibe: 'calm' },
+    { name: 'France Musique', url: 'https://icecast.radiofrance.fr/francemusique-midfi.mp3', vibe: 'classic' },
+    { name: 'Le Mouv', url: 'https://icecast.radiofrance.fr/lemouv-midfi.mp3', vibe: 'energetic' },
+    { name: 'BBC World Service', url: 'http://stream.live.vc.bbcmedia.co.uk/bbc_world_service', vibe: 'world' },
+    { name: 'Radio Swiss Jazz', url: 'http://stream.srg-ssr.ch/m/rsj/mp3_128', vibe: 'cozy' },
+    { name: 'Radio Swiss Pop', url: 'http://stream.srg-ssr.ch/m/rp/mp3_128', vibe: 'lively' },
+    { name: 'Radio Swiss Classic', url: 'http://stream.srg-ssr.ch/m/rsc_de/mp3_128', vibe: 'elegant' },
   ];
+
+  // Devine une ambiance radio adaptée à la recette, à partir de la cuisine et du nom du plat
+  function pickStationForRecipe(): number {
+    const text = `${recipe?.cuisine || ''} ${recipe?.name || ''}`.toLowerCase();
+    if (/dessert|gâteau|gateau|tarte|patisserie|pâtisserie|sucre|mousse|crème|creme/.test(text)) return RADIO_STATIONS.findIndex(s => s.vibe === 'elegant');
+    if (/pizza|pâtes|pate|italien|italie/.test(text)) return RADIO_STATIONS.findIndex(s => s.vibe === 'lively');
+    if (/wok|curry|thai|thaï|japon|chine|asiat|inde|indien/.test(text)) return RADIO_STATIONS.findIndex(s => s.vibe === 'world');
+    if (/burger|tacos|frit|street|rapide|sandwich/.test(text)) return RADIO_STATIONS.findIndex(s => s.vibe === 'energetic');
+    if (/mijot|traditionnel|pot au feu|ragout|ragoût|soupe|bourguignon/.test(text)) return RADIO_STATIONS.findIndex(s => s.vibe === 'cozy');
+    return RADIO_STATIONS.findIndex(s => s.vibe === 'eclectic');
+  }
   const [radioStationIdx, setRadioStationIdx] = useState<number | null>(null);
   const [radioPlaying, setRadioPlaying] = useState(false);
   const [musicUnlocked, setMusicUnlocked] = useState(false);
@@ -281,7 +297,14 @@ export default function CookModePage() {
     setAiCards(RADIO_STATIONS.map(s => ({ title: s.name, description: 'Radio en direct' })));
     setCardsMode('radio');
     setSelectedCard(null);
-    speak(`Je te propose quelques radios : ${RADIO_STATIONS.map((s, i) => `option ${i + 1}, ${s.name}`).join(', ')}. Dis le numéro de ton choix.`);
+    speak(`Je te propose ${RADIO_STATIONS.length} radios, regarde les options à l'écran, et dis le numéro de ton choix.`);
+  }
+
+  function handlePlayMatchingMusic() {
+    const idx = pickStationForRecipe();
+    if (idx < 0) return;
+    playRadioAt(idx);
+    speak(`Je te mets une ambiance qui va bien avec ${recipe?.name || 'ta recette'} : ${RADIO_STATIONS[idx].name}.`);
   }
 
   // Referme les cartes IA quand on change d'étape pour ne pas garder d'anciennes suggestions à l'écran
@@ -405,6 +428,7 @@ export default function CookModePage() {
     },
     onFinish: () => setDone(true),
     onPlayMusic: handlePlayMusicRequest,
+    onPlayMatchingMusic: handlePlayMatchingMusic,
     onPauseMusic: () => { pauseRadio(); speak('Musique en pause.'); },
     onResumeMusic: () => { resumeRadio(); speak('Je remets la musique.'); },
     onNextMusic: () => nextRadioStation(),

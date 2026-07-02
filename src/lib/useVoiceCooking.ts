@@ -21,6 +21,7 @@ interface UseVoiceCookingOptions {
   onTimerReset?: () => void;
   onFinish?: () => void;
   onPlayMusic?: () => void;
+  onPlayMatchingMusic?: () => void;
   onPauseMusic?: () => void;
   onResumeMusic?: () => void;
   onNextMusic?: () => void;
@@ -38,7 +39,7 @@ interface UseVoiceCookingOptions {
 type TTSEngine = 'elevenlabs' | 'native' | 'none';
 type STTEngine = 'elevenlabs' | 'native' | 'none';
 
-export function useVoiceCooking({ onNext, onPrev, onRepeat, onConfirm, onAskAI, onRepeatStep, onSelectOption, onHelp, onTimerStart, onTimerStop, onTimerReset, onFinish, onPlayMusic, onPauseMusic, onResumeMusic, onNextMusic, onStopMusic, currentStepText, currentStep, totalSteps, ingredientsText, waitingForConfirm, allStepsTexts, musicActive }: UseVoiceCookingOptions) {
+export function useVoiceCooking({ onNext, onPrev, onRepeat, onConfirm, onAskAI, onRepeatStep, onSelectOption, onHelp, onTimerStart, onTimerStop, onTimerReset, onFinish, onPlayMusic, onPlayMatchingMusic, onPauseMusic, onResumeMusic, onNextMusic, onStopMusic, currentStepText, currentStep, totalSteps, ingredientsText, waitingForConfirm, allStepsTexts, musicActive }: UseVoiceCookingOptions) {
   const [isListening, setIsListening] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [lastCommand, setLastCommand] = useState('');
@@ -411,6 +412,10 @@ export function useVoiceCooking({ onNext, onPrev, onRepeat, onConfirm, onAskAI, 
         label = '🎵 Radio suivante';
         if (onNextMusic) onNextMusic();
         musicHandled = true;
+      } else if (hasWord(t, 'va avec', 'qui correspond', 'adapte', 'accord avec', 'ambiance de la recette', 'colle a la recette', 'colle avec')) {
+        label = '🎵 Musique assortie';
+        if (onPlayMatchingMusic) onPlayMatchingMusic();
+        musicHandled = true;
       } else if (hasWord(t, 'mets', 'lance', 'joue', 'mettre', 'demarre', 'veux')) {
         label = '🎵 Musique';
         if (onPlayMusic) onPlayMusic();
@@ -533,7 +538,7 @@ export function useVoiceCooking({ onNext, onPrev, onRepeat, onConfirm, onAskAI, 
     } else {
       console.log('[VoiceCooking] No command matched:', t.slice(0, 50));
     }
-  }, [onNext, onPrev, onRepeat, onConfirm, onAskAI, onRepeatStep, onSelectOption, onHelp, onTimerStart, onTimerStop, onTimerReset, onFinish, onPlayMusic, onPauseMusic, onResumeMusic, onNextMusic, onStopMusic, currentStepText, currentStep, totalSteps, ingredientsText, waitingForConfirm, allStepsTexts, speak]);
+  }, [onNext, onPrev, onRepeat, onConfirm, onAskAI, onRepeatStep, onSelectOption, onHelp, onTimerStart, onTimerStop, onTimerReset, onFinish, onPlayMusic, onPlayMatchingMusic, onPauseMusic, onResumeMusic, onNextMusic, onStopMusic, currentStepText, currentStep, totalSteps, ingredientsText, waitingForConfirm, allStepsTexts, speak]);
 
   // ── ElevenLabs STT chunk (ref-based to avoid stale closures) ──
   const sendAudioChunkRef = useRef(async (blob: Blob) => {});
