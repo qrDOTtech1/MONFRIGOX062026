@@ -190,12 +190,13 @@ export function startNotificationScheduler() {
         try { await autoImportRecipes(); } catch (e) { console.error('[import] Erreur:', e); }
       }
 
-      // Enrichissement continu du catalogue — petit lot toutes les 30 min, en boucle indéfiniment
-      if (Date.now() - lastRecipeImportAt >= 30 * 60 * 1000) {
+      // Enrichissement continu du catalogue — lot a chaque tick (10 min), en boucle indéfiniment.
+      // ~150 recettes/heure → couvre le catalogue complet en ~12 jours.
+      if (Date.now() - lastRecipeImportAt >= 10 * 60 * 1000) {
         lastRecipeImportAt = Date.now();
         try {
           const { importNextBatch } = await import('./marmiton-importer');
-          const r = await importNextBatch(5);
+          const r = await importNextBatch(25);
           console.log(`[catalogue] +${r.imported} recettes (curseur ${r.cursor}/${r.total})`);
         } catch (e) {
           console.error('[catalogue] Erreur:', e);

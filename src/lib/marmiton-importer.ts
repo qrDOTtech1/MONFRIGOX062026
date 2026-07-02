@@ -130,6 +130,7 @@ export async function importNextBatch(batchSize = 5): Promise<{ imported: number
   let imported = 0, skipped = 0, failed = 0;
 
   for (let i = 0; i < batchSize && cursor + i < urls.length; i++) {
+    if (i > 0) await new Promise(r => setTimeout(r, 300)); // léger espacement entre requêtes
     const url = urls[cursor + i];
     try {
       const html = await fetchText(url);
