@@ -31,20 +31,21 @@ function LandingStyles() {
       .section-fade { opacity: 0; transform: translateY(24px); transition: opacity 0.6s ease, transform 0.6s ease; }
       .section-fade.visible { opacity: 1; transform: translateY(0); }
 
-      /* Fond lumineux qui suit le curseur */
+      /* Fond lumineux qui suit le curseur / le doigt */
       .cursor-light {
         position: fixed; inset: 0; z-index: 0; pointer-events: none;
-        transition: background 0.25s ease-out;
-        background: radial-gradient(600px circle at 50% 0%, rgba(16,185,129,0.05), transparent 65%);
+        transition: background 0.2s ease-out;
+        background: radial-gradient(520px circle at 50% 12%, rgba(16,185,129,0.16), transparent 62%);
       }
-      /* Ripple au clic */
+      /* Ripple au clic / toucher */
       .click-ripple {
-        position: fixed; width: 12px; height: 12px; margin: -6px 0 0 -6px;
-        border-radius: 9999px; background: rgba(16,185,129,0.30);
+        position: fixed; width: 16px; height: 16px; margin: -8px 0 0 -8px;
+        border-radius: 9999px;
+        background: radial-gradient(circle, rgba(16,185,129,0.55), rgba(16,185,129,0.12) 60%, transparent 70%);
         pointer-events: none; transform: scale(0); z-index: 9999;
-        animation: ripple 0.6s cubic-bezier(0.2,0.7,0.3,1) forwards;
+        animation: ripple 0.62s cubic-bezier(0.2,0.7,0.3,1) forwards;
       }
-      @keyframes ripple { to { transform: scale(9); opacity: 0; } }
+      @keyframes ripple { to { transform: scale(11); opacity: 0; } }
       @media (prefers-reduced-motion: reduce) {
         .cursor-light, .click-ripple { display: none; }
       }
@@ -57,28 +58,44 @@ function CursorFX() {
   const lightRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     let raf = 0;
-    const onMove = (e: MouseEvent) => {
+    // Déplace le halo vers (x, y) — souris sur desktop, doigt sur mobile
+    const moveLight = (x: number, y: number) => {
       cancelAnimationFrame(raf);
       raf = requestAnimationFrame(() => {
         if (lightRef.current) {
           lightRef.current.style.background =
-            `radial-gradient(600px circle at ${e.clientX}px ${e.clientY}px, rgba(16,185,129,0.07), transparent 65%)`;
+            `radial-gradient(520px circle at ${x}px ${y}px, rgba(16,185,129,0.16), transparent 62%)`;
         }
       });
     };
-    const onClick = (e: MouseEvent) => {
+    // Ondulation à la position (x, y)
+    const spawnRipple = (x: number, y: number) => {
       const r = document.createElement('span');
       r.className = 'click-ripple';
-      r.style.left = `${e.clientX}px`;
-      r.style.top = `${e.clientY}px`;
+      r.style.left = `${x}px`;
+      r.style.top = `${y}px`;
       document.body.appendChild(r);
-      setTimeout(() => r.remove(), 650);
+      setTimeout(() => r.remove(), 680);
     };
-    window.addEventListener('mousemove', onMove, { passive: true });
+
+    const onMouseMove = (e: MouseEvent) => moveLight(e.clientX, e.clientY);
+    const onClick = (e: MouseEvent) => spawnRipple(e.clientX, e.clientY);
+    const onTouch = (e: TouchEvent) => {
+      const tch = e.touches[0] || e.changedTouches[0];
+      if (!tch) return;
+      moveLight(tch.clientX, tch.clientY);
+      spawnRipple(tch.clientX, tch.clientY);
+    };
+
+    window.addEventListener('mousemove', onMouseMove, { passive: true });
     window.addEventListener('click', onClick);
+    window.addEventListener('touchstart', onTouch, { passive: true });
+    window.addEventListener('touchmove', onTouch, { passive: true });
     return () => {
-      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mousemove', onMouseMove);
       window.removeEventListener('click', onClick);
+      window.removeEventListener('touchstart', onTouch);
+      window.removeEventListener('touchmove', onTouch);
       cancelAnimationFrame(raf);
     };
   }, []);
