@@ -220,51 +220,52 @@ export function useVoiceCooking({ onNext, onPrev, onRepeat, onConfirm, onAskAI, 
     return Math.max(SILENCE_RMS_THRESHOLD, noiseFloorRef.current * 2.2);
   }
 
+  // Un seul MediaRecorder pour toute la session d'écoute (démarré une fois dans startContinuousRecording).
+  // On ne le stoppe/redémarre plus jamais pendant la session : sur mobile, chaque stop/start de
+  // MediaRecorder déclenche un petit son système — en boucle toutes les 3s + à chaque tour de TTS,
+  // ça donnait un "concert" de bips. On mute/démute juste la piste audio à la place (silencieux).
   function pauseMic() {
     if (resumeTimeoutRef.current) { clearTimeout(resumeTimeoutRef.current); resumeTimeoutRef.current = null; }
-    stopVolumeSampling();
     // Physically mute the input so no audio can be captured while the app talks
     mediaStreamRef.current?.getAudioTracks().forEach(t => { t.enabled = false; });
-    if (mediaRecorderRef.current?.state === 'recording') {
-      mediaRecorderRef.current.onstop = null;
-      mediaRecorderRef.current.stop();
-    }
-    if (recordingTimeoutRef.current) {
-      clearTimeout(recordingTimeoutRef.current);
-      recordingTimeoutRef.current = null;
-    }
   }
 
   function resumeMic() {
-    if (!mediaStreamRef.current || speakingRef.current) return;
-
+    if (!mediaStreamRef.current) return;
     // Re-enable the muted input track
     mediaStreamRef.current.getAudioTracks().forEach(t => { t.enabled = true; });
     justResumedRef.current = true;
     setTimeout(() => { justResumedRef.current = false; }, 350);
+  }
+
+  function startContinuousRecording() {
+    if (!mediaStreamRef.current || mediaRecorderRef.current) return;
+
+    // Si le TTS parle déjà (ex: message d'accueil en cours) au moment où le flux micro arrive,
+    // on démarre muet pour ne pas capter sa propre voix dès la première tranche.
+    if (speakingRef.current) {
+      mediaStreamRef.current.getAudioTracks().forEach(t => { t.enabled = false; });
+    }
 
     const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
       ? 'audio/webm;codecs=opus'
       : MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : 'audio/mp4';
     const recorder = new MediaRecorder(mediaStreamRef.current, { mimeType });
-    const chunks: Blob[] = [];
-    recorder.ondataavailable = (e) => { if (e.data.size > 0) chunks.push(e.data); };
-    startVolumeSampling();
-    recorder.onstop = () => {
-      stopVolumeSampling();
+
+    recorder.ondataavailable = (e) => {
       const hadSpeech = maxVolumeRef.current > getEffectiveSilenceThreshold();
-      if (chunks.length > 0 && !speakingRef.current && !justResumedRef.current && hadSpeech) {
-        sendAudioChunkRef.current(new Blob(chunks, { type: mimeType }));
-      } else if (chunks.length > 0 && !hadSpeech) {
-        console.log('[VoiceCooking] Skipped silent chunk (rms=', maxVolumeRef.current.toFixed(4), ')');
+      maxVolumeRef.current = 0; // reset pour la tranche suivante
+      if (e.data.size === 0 || speakingRef.current || justResumedRef.current) return;
+      if (hadSpeech) {
+        sendAudioChunkRef.current(e.data);
+      } else {
+        console.log('[VoiceCooking] Skipped silent chunk');
       }
-      if (mediaStreamRef.current && !speakingRef.current) resumeMic();
     };
+
     mediaRecorderRef.current = recorder;
-    recorder.start();
-    recordingTimeoutRef.current = setTimeout(() => {
-      if (recorder.state === 'recording') recorder.stop();
-    }, 3000);
+    startVolumeSampling();
+    recorder.start(3000); // timeslice : ondataavailable toutes les 3s SANS jamais stopper l'enregistrement
   }
 
   function markSpeaking(val: boolean) {
@@ -639,7 +640,7 @@ export function useVoiceCooking({ onNext, onPrev, onRepeat, onConfirm, onAskAI, 
       });
       mediaStreamRef.current = stream;
       console.log('[VoiceCooking] Mic stream acquired');
-      resumeMic();
+      startContinuousRecording();
       setIsListening(true);
     } catch (err) {
       console.warn('[VoiceCooking] MediaRecorder failed, falling back to native:', err);
