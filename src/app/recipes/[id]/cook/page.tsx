@@ -1,9 +1,65 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { ArrowLeft, ArrowRight, ChefHat, Clock, X, Timer, Check, Users, Camera, Refrigerator, Loader2, Globe, Lock, Mic, MicOff, Volume2, HelpCircle } from 'lucide-react';
 import { useVoiceCooking } from '@/lib/useVoiceCooking';
+import Mascot, { MascotVariant } from '@/components/Mascot';
+
+const ENCOURAGEMENTS = [
+  '🌟 Tu t\'en sors bien !',
+  '👨‍🍳 Parfait ! Comme un pro !',
+  '🔥 C\'est beau ce que tu fais !',
+  '💪 Continue comme ça !',
+  '✨ Magnifique !',
+  '🎯 Tu maîtrises !',
+  '🚀 C\'est l\'élan !',
+  '😋 Ça va être délicieux !',
+  '⚡ Vitesse et précision !',
+  '🎉 Tu es formidable !',
+];
+
+function getStepAdviceAndAnecdote(stepText: string): { advice: string; anecdote: string } {
+  const text = (stepText || '').toLowerCase();
+  if (text.includes('découper') || text.includes('couper') || text.includes('émincer')) {
+    return { advice: '🔪 Couteau bien aiguisé = meilleur résultat + plus sûr', anecdote: '💡 Les chefs pros affûtent leurs couteaux tous les jours !' };
+  }
+  if (text.includes('chauffer') || text.includes('préchauffer') || text.includes('four')) {
+    return { advice: '🔥 Le préchauffage est CRUCIAL pour une cuisson uniforme', anecdote: '🌡️ Un four vraiment chaud à 180°C dore mieux qu\'un four froid à 200°C !' };
+  }
+  if (text.includes('mélang') || text.includes('fouett') || text.includes('remue')) {
+    return { advice: '🌀 Mélange lentement pour éviter d\'incorporer trop d\'air', anecdote: '🎂 Trop de mélange = perte de moelleux (sauf pour les blancs en neige !)' };
+  }
+  if (text.includes('mijot') || text.includes('cuisson lent')) {
+    return { advice: '⏱️ Feu doux = meilleure fusion des saveurs', anecdote: '😋 Un bon mijoté, c\'est le temps qui fait le travail' };
+  }
+  if (text.includes('repos') || text.includes('attendre') || text.includes('laisser')) {
+    return { advice: '⏸️ Ne force pas ! Les bonnes choses prennent du temps', anecdote: '🎭 La patience, la plus grande vertu du cuisinier' };
+  }
+  if (text.includes('sel') || text.includes('assaisonn')) {
+    return { advice: '🧂 Assaisonne progressivement, tu peux toujours ajouter, jamais retirer', anecdote: '👃 Le sel, c\'est le volume des saveurs' };
+  }
+  if (text.includes('huile') || text.includes('beurre')) {
+    return { advice: '🫒 Huile ou beurre chauds = meilleur goût et texture', anecdote: '🍳 La réaction de Maillard crée les vraies saveurs' };
+  }
+  if (text.includes('verser') || text.includes('ajouter') || text.includes('incorpor')) {
+    return { advice: '💧 Ajoute lentement pour garder une texture homogène', anecdote: '🎨 Chaque geste compte, comme en peinture' };
+  }
+  if (text.includes('goût') || text.includes('gout')) {
+    return { advice: '👅 Goûte ! Tes papilles sont ton meilleur guide', anecdote: '🤓 Les chefs goûtent en continu, c\'est leur contrôle qualité' };
+  }
+  if (text.includes('dor') || text.includes('couleur') || text.includes('brun')) {
+    return { advice: '🎨 La couleur, c\'est un indicateur de saveur. Dore bien !', anecdote: '✨ Le dorage prouve que la réaction de Maillard fait son effet' };
+  }
+  const defaults = [
+    { advice: '📖 Lis bien l\'étape avant de commencer', anecdote: '⚡ 2 secondes de lecture, zéro surprise' },
+    { advice: '🧊 Prépare tes ingrédients près de toi', anecdote: '👨‍🍳 C\'est la mise en place des vrais cuisiniers' },
+    { advice: '⏱️ Gère ton timing, pas de précipitation', anecdote: '🎯 Les meilleures recettes ne se pressent pas' },
+    { advice: '👃 Les arômes sont en route !', anecdote: '😋 Ça sent déjà bon, non ?' },
+    { advice: '🏆 Tu es presque champion !', anecdote: '🎉 Quelques minutes et c\'est fini' },
+  ];
+  return defaults[Math.floor(Math.random() * defaults.length)];
+}
 
 interface Recipe {
   id: string;
@@ -298,6 +354,13 @@ export default function CookModePage() {
   }, [timerRunning, timerSeconds]);
 
   const progress = step === -1 ? 0 : ((step + 1) / totalSteps) * 100;
+
+  const mascotVariant: MascotVariant = step <= 0 ? 'excited' : step === totalSteps - 1 ? 'love' : 'chef';
+  const encouragement = useMemo(
+    () => ENCOURAGEMENTS[Math.floor(Math.random() * ENCOURAGEMENTS.length)],
+    [step],
+  );
+  const stepAdvice = useMemo(() => getStepAdviceAndAnecdote(steps[step] || ''), [step, steps]);
 
   function detectTimer(text: string) {
     const match = text.match(/(\d+)\s*min/i);
@@ -648,18 +711,24 @@ export default function CookModePage() {
           </div>
         ) : (
           <div className="max-w-lg mx-auto px-6 py-8 fade-in" key={step}>
-            <div className="flex items-center gap-3 mb-6">
-              <div className="w-10 h-10 rounded-lg flex items-center justify-center" style={{ backgroundColor: 'var(--bg-inset)' }}>
-                <span className="text-lg font-semibold" style={{ color: 'var(--text-secondary)' }}>{step + 1}</span>
-              </div>
-              <div>
-                <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Étape {step + 1} sur {totalSteps}</p>
-              </div>
+            <div className="flex flex-col items-center text-center mb-6">
+              <Mascot variant={mascotVariant} size="md" animate="float" />
+              <p className="text-base font-bold mt-2" style={{ color: 'var(--accent)' }}>{encouragement}</p>
+              <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>Étape {step + 1} sur {totalSteps}</p>
             </div>
 
-            <p className="text-lg leading-relaxed font-light mb-8">
+            <p className="text-lg leading-relaxed font-light mb-6 text-center">
               {steps[step]}
             </p>
+
+            <div className="space-y-2.5 mb-2">
+              <div className="rounded-xl px-4 py-3" style={{ background: 'linear-gradient(135deg, rgba(59,130,246,0.1), rgba(34,211,238,0.08))', border: '1px solid rgba(59,130,246,0.2)' }}>
+                <p className="text-sm font-medium" style={{ color: 'var(--accent)' }}>{stepAdvice.advice}</p>
+              </div>
+              <div className="rounded-xl px-4 py-3" style={{ background: 'linear-gradient(135deg, rgba(245,158,11,0.1), rgba(249,115,22,0.08))', border: '1px solid rgba(245,158,11,0.2)' }}>
+                <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>{stepAdvice.anecdote}</p>
+              </div>
+            </div>
 
             {timer !== null && (
               <div className="card p-5 text-center mb-6">

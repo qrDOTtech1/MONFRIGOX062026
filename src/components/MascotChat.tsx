@@ -4,7 +4,7 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useT } from '@/lib/i18n';
 import Mascot, { MascotVariant } from './Mascot';
-import { Send, Mic, MicOff, Trash2, Clock, Flame, Volume2, VolumeX, ChevronLeft, ChevronRight, Timer, X, Play, Pause, Check, Plus, Crown } from 'lucide-react';
+import { Send, Mic, MicOff, Trash2, Clock, Flame, Volume2, VolumeX, X, Check, Crown } from 'lucide-react';
 
 interface ChatMessage {
   role: 'user' | 'assistant';
@@ -33,15 +33,6 @@ export interface RecipeMini {
   imageUrl: string;
   calories?: number | null;
   ingredients?: Array<{ ingredient: { emoji: string } }>;
-}
-
-interface CookingState {
-  recipeId: string;
-  recipeName: string;
-  steps: string[];
-  currentStep: number;
-  timerSeconds: number;
-  timerActive: boolean;
 }
 
 const STORAGE_KEY = 'mf_chat_history';
@@ -133,20 +124,6 @@ async function speak(text: string) {
   window.speechSynthesis.speak(utt);
 }
 
-function parseSteps(raw: string): string[] {
-  if (!raw) return [];
-  const text = raw.trim();
-  let parts = text.split(/\r?\n|\\n/).map(s => s.trim()).filter(Boolean);
-  if (parts.length > 1) return cleanSteps(parts);
-  parts = text.split(/(?=(?:\d+[\.\)]\s)|(?:étape\s*\d+\s*[:.\-]?\s))/i).map(s => s.trim()).filter(Boolean);
-  if (parts.length > 1) return cleanSteps(parts);
-  parts = text.split(/(?<=[.!?])\s+(?=[A-ZÀ-ÖÙ-Ý])/).map(s => s.trim()).filter(Boolean);
-  return parts.length > 1 ? cleanSteps(parts) : [text];
-}
-function cleanSteps(steps: string[]): string[] {
-  return steps.map(s => s.replace(/^\s*(?:étape\s*\d+\s*[:.\-]?\s*|\d+[\.\)]\s*|[-•*]\s*)/i, '').trim()).filter(Boolean);
-}
-
 /* ── Mini-card recette ── */
 function RecipeCard({ recipe, onNavigate }: { recipe: RecipeMini; onNavigate: (id: string) => void }) {
   const emoji = recipe.ingredients?.[0]?.ingredient?.emoji || '🍽️';
@@ -215,248 +192,6 @@ function ListeningOverlay({ transcript, onStop }: { transcript: string; onStop: 
   );
 }
 
-/* ── Mode cuisine plein écran ── */
-const ENCOURAGEMENTS = [
-  '🌟 Tu t\'en sors bien !',
-  '👨‍🍳 Parfait ! Comme un pro !',
-  '🔥 C\'est beau ce que tu fais !',
-  '💪 Continues comme ça !',
-  '✨ Magnifique !',
-  '🎯 Tu maîtrises !',
-  '🚀 C\'est l\'élan !',
-  '😋 Ça va être délicieux !',
-  '⚡ Vitesse et précision !',
-  '🎉 Vous êtes formidable !',
-];
-
-function getStepAdviceAndAnecdote(stepText: string): { advice: string; anecdote: string } {
-  const text = stepText.toLowerCase();
-
-  // Détection par keywords et conseil + anecdote contextuels
-  if (text.includes('découper') || text.includes('couper') || text.includes('émincer')) {
-    return {
-      advice: '🔪 Couteau bien aiguisé = meilleur résultat + plus sûr',
-      anecdote: '💡 Les chefs professionnels affûtent leurs couteaux tous les jours !',
-    };
-  }
-  if (text.includes('chauffer') || text.includes('préchauffer') || text.includes('four')) {
-    return {
-      advice: '🔥 Le préchauffage est CRUCIAL pour une cuisson uniforme',
-      anecdote: '🌡️ Un four à 180°C vraiment chaud = meilleur dorage qu\'à 200°C froid !',
-    };
-  }
-  if (text.includes('mélang') || text.includes('fouett') || text.includes('remue')) {
-    return {
-      advice: '🌀 Mélange lentement pour éviter d\'incorporer trop d\'air',
-      anecdote: '🎂 Trop de mélange = perte de moelleux (sauf pour les oeufs en neige !)',
-    };
-  }
-  if (text.includes('mijot') || text.includes('simmer') || text.includes('cuisson lent')) {
-    return {
-      advice: '⏱️ Feu doux = meilleure fusion des saveurs',
-      anecdote: '😋 Un bon mijoté = le temps est ton meilleur ami culinaire',
-    };
-  }
-  if (text.includes('repos') || text.includes('attendre') || text.includes('laisser')) {
-    return {
-      advice: '⏸️ Ne force pas ! Les bonnes choses prennent du temps',
-      anecdote: '🎭 Patience = la plus grande vertu du cuisinier',
-    };
-  }
-  if (text.includes('sel') || text.includes('assaisonn')) {
-    return {
-      advice: '🧂 Assaisonne progressivement - tu peux toujours ajouter, jamais retirer !',
-      anecdote: '👃 Le sel c\'est le "volume" des saveurs - sans lui, c\'est fade',
-    };
-  }
-  if (text.includes('huile') || text.includes('beurre') || text.includes('matière grasse')) {
-    return {
-      advice: '🫒 Huile/beurre chauds donnent meilleur goût et texture',
-      anecdote: '🍳 La réaction de Maillard crée les vraies saveurs - besoin de chaleur !',
-    };
-  }
-  if (text.includes('verser') || text.includes('ajouter') || text.includes('incorpor')) {
-    return {
-      advice: '💧 Ajoute lentement pour garder la texture homogène',
-      anecdote: '🎨 C\'est comme peindre - chaque coup de pinceau compte !',
-    };
-  }
-  if (text.includes('goût') || text.includes('gout') || text.includes('tast')) {
-    return {
-      advice: '👅 Goûte ! Tes papilles sont ton meilleur guide',
-      anecdote: '🤓 Les chefs goûtent continuellement - c\'est leur contrôle qualité !',
-    };
-  }
-  if (text.includes('dor') || text.includes('couleur') || text.includes('brun')) {
-    return {
-      advice: '🎨 La couleur = indicateur de saveur. Dore bien !',
-      anecdote: '✨ Le dorage = preuve que la réaction de Maillard se fait (délicieux !)',
-    };
-  }
-
-  // Par défaut : conseils génériques par position
-  const defaultAdvices = [
-    { advice: '📖 Lis bien l\'étape avant de commencer', anecdote: '⚡ 2 secondes de lecture = pas de surprise !' },
-    { advice: '🧊 Prépare tes ingrédients près de toi', anecdote: '👨‍🍳 C\'est la "mise en place" des vrais cuisiniers !' },
-    { advice: '⏱️ Gère ton timing - pas de précipitation !', anecdote: '🎯 Les meilleures recettes ne se pressent pas' },
-    { advice: '👃 Les arômes sont en route !', anecdote: '😋 Hummmm... ça sent déjà bon ?' },
-    { advice: '🎂 Presque fait ! Attention à la finition', anecdote: '✨ C\'est la dernière étape qui compte vraiment' },
-    { advice: '🏆 Tu es presque champion !', anecdote: '🎉 Quelques minutes et c\'est fini !' },
-  ];
-
-  return defaultAdvices[Math.floor(Math.random() * defaultAdvices.length)];
-}
-
-function CookingMode({ cooking, onClose, ttsEnabled }: { cooking: CookingState; onClose: () => void; ttsEnabled: boolean }) {
-  const [step, setStep] = useState(cooking.currentStep);
-  const [timer, setTimer] = useState(0);
-  const [timerActive, setTimerActive] = useState(false);
-  const [encouragement, setEncouragement] = useState('');
-  const timerRef = useRef<ReturnType<typeof setInterval>>(null);
-
-  const mascotVariant = step === 0 ? 'excited' : (step === cooking.steps.length - 1 ? 'love' : 'chef') as MascotVariant;
-
-  useEffect(() => {
-    if (ttsEnabled && cooking.steps[step]) {
-      speak(`Étape ${step + 1} sur ${cooking.steps.length}. ${cooking.steps[step]}`);
-    }
-  }, [step, ttsEnabled, cooking.steps]);
-
-  useEffect(() => {
-    // Encouragement random quand on change d'étape
-    const enc = ENCOURAGEMENTS[Math.floor(Math.random() * ENCOURAGEMENTS.length)];
-    setEncouragement(enc);
-    if (ttsEnabled) speak(enc);
-  }, [step, ttsEnabled]);
-
-  useEffect(() => {
-    if (timerActive && timer > 0) {
-      timerRef.current = setInterval(() => {
-        setTimer(prev => {
-          if (prev <= 1) {
-            setTimerActive(false);
-            if (ttsEnabled) speak('Le minuteur est terminé ! Prêt pour l\'étape suivante ?');
-            return 0;
-          }
-          return prev - 1;
-        });
-      }, 1000);
-    }
-    return () => { if (timerRef.current) clearInterval(timerRef.current); };
-  }, [timerActive, timer, ttsEnabled]);
-
-  const formatTimer = (s: number) => `${Math.floor(s / 60).toString().padStart(2, '0')}:${(s % 60).toString().padStart(2, '0')}`;
-  const total = cooking.steps.length;
-  const progress = ((step + 1) / total) * 100;
-  const { advice, anecdote } = getStepAdviceAndAnecdote(cooking.steps[step]);
-
-  return (
-    <div className="fixed inset-0 z-[180] flex flex-col" style={{ backgroundColor: 'rgba(0,0,0,0.98)' }}>
-      {/* Header */}
-      <div className="flex items-center justify-between px-4 py-4 shrink-0" style={{ borderBottom: '1px solid rgba(255,255,255,0.1)', background: 'linear-gradient(135deg, rgba(34,197,94,0.08), rgba(59,130,246,0.08))' }}>
-        <button onClick={onClose} className="p-2 rounded-xl hover:scale-110 transition-transform" style={{ color: 'var(--text-muted)' }}>
-          <X className="w-5 h-5" />
-        </button>
-        <div className="text-center">
-          <p className="text-sm font-bold mb-1" style={{ color: 'var(--accent)' }}>🍳 {cooking.recipeName}</p>
-          <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Étape <span style={{ color: 'var(--accent)' }}>{step + 1}</span> / {total}</p>
-        </div>
-        <div className="w-9" />
-      </div>
-
-      {/* Progress bar */}
-      <div className="h-2 w-full" style={{ backgroundColor: 'rgba(255,255,255,0.08)' }}>
-        <div className="h-full transition-all duration-500" style={{ width: `${progress}%`, backgroundColor: 'var(--accent)', boxShadow: '0 0 12px rgba(34,197,94,0.6)' }} />
-      </div>
-
-      {/* Mascotte grande + Encouragement */}
-      <div className="flex-1 flex flex-col items-center justify-center px-6 py-8 gap-4 overflow-y-auto">
-        <div className="relative">
-          <Mascot variant={mascotVariant} size="xl" animate="float" />
-          {encouragement && (
-            <div className="mt-4 text-center text-2xl font-bold animate-bounce" style={{ color: 'var(--accent)', textShadow: '0 0 20px rgba(34,197,94,0.3)' }}>
-              {encouragement}
-            </div>
-          )}
-        </div>
-
-        {/* Étape texte */}
-        <div className="text-center max-w-2xl space-y-4">
-          <p className="text-xs font-semibold uppercase" style={{ color: 'var(--accent)', letterSpacing: '0.1em' }}>Étape {step + 1}/{total}</p>
-          <p className="text-xl leading-relaxed font-medium" style={{ color: 'var(--text)' }}>
-            {cooking.steps[step]}
-          </p>
-
-          {/* Conseil spécifique à l'étape */}
-          <div className="bg-gradient-to-r from-blue-500/15 to-cyan-500/15 rounded-xl px-4 py-3 border border-cyan-500/30">
-            <p className="text-sm font-semibold" style={{ color: 'var(--accent)' }}>
-              {advice}
-            </p>
-          </div>
-
-          {/* Anecdote culinaire */}
-          <div className="bg-gradient-to-r from-amber-500/15 to-orange-500/15 rounded-xl px-4 py-3 border border-amber-500/30">
-            <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-              {anecdote}
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {/* Timer + Controls */}
-      <div className="bg-gradient-to-r from-green-900/30 to-blue-900/30 px-4 py-4 shrink-0" style={{ borderTop: '1px solid rgba(255,255,255,0.1)' }}>
-        <div className="flex items-center justify-center gap-2 mb-3">
-          <button onClick={() => { setTimer(prev => Math.max(0, prev - 60)); }}
-            className="p-2.5 rounded-lg hover:scale-110 transition-transform" style={{ backgroundColor: 'rgba(255,255,255,0.06)', color: 'var(--text-muted)' }}>
-            <MinusIcon className="w-5 h-5" />
-          </button>
-          <div className="flex items-center gap-3 px-6 py-3 rounded-2xl" style={{ backgroundColor: 'rgba(34,197,94,0.15)', border: '2px solid var(--accent)' }}>
-            <Timer className="w-5 h-5" style={{ color: timerActive ? 'var(--accent)' : 'var(--text-muted)' }} />
-            <span className="text-3xl font-mono font-bold" style={{ color: timer > 0 ? 'var(--accent)' : 'var(--text-muted)', minWidth: '100px', textAlign: 'center' }}>
-              {formatTimer(timer)}
-            </span>
-          </div>
-          <button onClick={() => { setTimer(prev => prev + 60); }}
-            className="p-2.5 rounded-lg hover:scale-110 transition-transform" style={{ backgroundColor: 'rgba(255,255,255,0.06)', color: 'var(--text-muted)' }}>
-            <Plus className="w-5 h-5" />
-          </button>
-          <button onClick={() => setTimerActive(v => !v)}
-            className="p-3 rounded-xl hover:scale-110 transition-transform" style={{ backgroundColor: timerActive ? 'rgba(239,68,68,0.3)' : 'rgba(34,197,94,0.25)', color: timerActive ? '#ef4444' : 'var(--accent)' }}>
-            {timerActive ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5" />}
-          </button>
-        </div>
-
-        {/* Navigation */}
-        <div className="flex items-center justify-between gap-2">
-          <button onClick={() => { if (step > 0) setStep(step - 1); }} disabled={step === 0}
-            className="flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-medium transition-all disabled:opacity-20"
-            style={{ backgroundColor: 'rgba(255,255,255,0.08)', color: 'var(--text)' }}>
-            <ChevronLeft className="w-4 h-4" /> Précédent
-          </button>
-
-          {step < total - 1 ? (
-            <button onClick={() => setStep(step + 1)}
-              className="flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-bold transition-all active:scale-95 hover:scale-105"
-              style={{ backgroundColor: 'var(--accent)', color: 'var(--accent-text)' }}>
-              Suivant <ChevronRight className="w-4 h-4" />
-            </button>
-          ) : (
-            <button onClick={onClose}
-              className="flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-bold transition-all active:scale-95 hover:scale-105"
-              style={{ backgroundColor: '#22c55e', color: 'white', boxShadow: '0 0 20px rgba(34,197,94,0.4)' }}>
-              <Check className="w-4 h-4" /> Bon appétit ! 🎉
-            </button>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function MinusIcon({ className }: { className?: string }) {
-  return <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M5 12h14" /></svg>;
-}
-
 /* ── Composant principal ── */
 export default function MascotChat({ allRecipes, embedded = false }: { allRecipes: RecipeMini[]; embedded?: boolean }) {
   const router = useRouter();
@@ -470,7 +205,6 @@ export default function MascotChat({ allRecipes, embedded = false }: { allRecipe
   const [hasSpeech, setHasSpeech] = useState(false);
   const [ttsEnabled, setTtsEnabled] = useState(true);
   const [pendingNav, setPendingNav] = useState<string | null>(null);
-  const [cooking, setCooking] = useState<CookingState | null>(null);
   const [dynamicRecipes, setDynamicRecipes] = useState<RecipeMini[]>([]);
   const [coachMode, setCoachMode] = useState(false);
   const [isVip, setIsVip] = useState(false);
@@ -513,19 +247,11 @@ export default function MascotChat({ allRecipes, embedded = false }: { allRecipe
     const results: string[] = [];
     for (const action of actions) {
       if (action.type === 'COOK') {
-        const recipe = [...allRecipes, ...dynamicRecipes].find(r => r.id === action.recipeId);
-        if (recipe) {
-          try {
-            const res = await fetch(`/api/recipes/${action.recipeId}`);
-            if (res.ok) {
-              const data = await res.json();
-              const steps = parseSteps(data.instructions || '');
-              if (steps.length > 0) {
-                setCooking({ recipeId: recipe.id, recipeName: recipe.name, steps, currentStep: 0, timerSeconds: 0, timerActive: false });
-                results.push(`Mode cuisine lancé pour ${recipe.name}`);
-              }
-            }
-          } catch { results.push('Impossible de charger la recette'); }
+        // Un seul mode cuisine dans l'app : la page dédiée (voix + IA intégrées).
+        // On y redirige directement plutôt que de dupliquer l'UI ici.
+        if (action.recipeId) {
+          results.push('Mode cuisine lancé, on y va !');
+          setPendingNav(`/recipes/${action.recipeId}/cook`);
         }
         continue;
       }
@@ -688,7 +414,6 @@ export default function MascotChat({ allRecipes, embedded = false }: { allRecipe
   return (
     <>
       {listening && <ListeningOverlay transcript={liveTranscript} onStop={stopListening} />}
-      {cooking && <CookingMode cooking={cooking} onClose={() => setCooking(null)} ttsEnabled={ttsEnabled} />}
 
       <div className={embedded ? '' : 'card overflow-hidden'}>
         {!embedded && (
