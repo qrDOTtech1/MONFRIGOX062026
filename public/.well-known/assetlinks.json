@@ -1,0 +1,13 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "app.monfrigo.twa",
+      "sha256_cert_fingerprints": [
+        "REMPLACER_PAR_EMPREINTE_CLE_UPLOAD",
+        "REMPLACER_PAR_EMPREINTE_PLAY_APP_SIGNING"
+      ]
+    }
+  }
+]

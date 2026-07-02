@@ -8,7 +8,12 @@ const publicPaths = ['/', '/login', '/register', '/api/auth/login', '/api/auth/r
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  if (publicPaths.some(p => pathname === p) || pathname.startsWith('/_next') || pathname.startsWith('/favicon')) {
+  if (
+    publicPaths.some(p => pathname === p) ||
+    pathname.startsWith('/_next') ||
+    pathname.startsWith('/favicon') ||
+    pathname.startsWith('/.well-known') // Digital Asset Links (vérification TWA Play Store), doit rester public
+  ) {
     return NextResponse.next();
   }
 
