@@ -40,6 +40,8 @@ export default function AdminConfigPage() {
   const [usdaKey, setUsdaKey] = useState('');
   const [elevenLabsKey, setElevenLabsKey] = useState('');
   const [elevenLabsVoice, setElevenLabsVoice] = useState('');
+  const [elevenLabsVoiceIa, setElevenLabsVoiceIa] = useState('');
+  const [elevenLabsVoiceEe, setElevenLabsVoiceEe] = useState('');
 
   // UI state
   const [saving, setSaving] = useState(false);
@@ -76,6 +78,8 @@ export default function AdminConfigPage() {
         if (map['USDA_API_KEY']) setUsdaKey(map['USDA_API_KEY']);
         if (map['ELEVENLABS_API_KEY']) setElevenLabsKey(map['ELEVENLABS_API_KEY']);
         if (map['ELEVENLABS_VOICE_ID']) setElevenLabsVoice(map['ELEVENLABS_VOICE_ID']);
+        if (map['ELEVENLABS_VOICE_ID_IA']) setElevenLabsVoiceIa(map['ELEVENLABS_VOICE_ID_IA']);
+        if (map['ELEVENLABS_VOICE_ID_EE']) setElevenLabsVoiceEe(map['ELEVENLABS_VOICE_ID_EE']);
       });
     fetch('/api/external/status')
       .then(r => r.ok ? r.json() : {})
@@ -157,6 +161,8 @@ export default function AdminConfigPage() {
       { key: 'USDA_API_KEY', value: usdaKey },
       { key: 'ELEVENLABS_API_KEY', value: elevenLabsKey },
       { key: 'ELEVENLABS_VOICE_ID', value: elevenLabsVoice },
+      { key: 'ELEVENLABS_VOICE_ID_IA', value: elevenLabsVoiceIa },
+      { key: 'ELEVENLABS_VOICE_ID_EE', value: elevenLabsVoiceEe },
     ].filter(c => c.value.trim());
 
     await fetch('/api/admin/config', {
@@ -541,7 +547,7 @@ export default function AdminConfigPage() {
               </div>
               <div>
                 <label className="flex items-center gap-1.5 text-xs mb-1.5" style={{ color: 'var(--text-muted)' }}>
-                  <Mic className="w-3.5 h-3.5" /> Voice ID
+                  <Mic className="w-3.5 h-3.5" /> Voice ID — Agent cuisine
                 </label>
                 <input
                   type="text"
@@ -551,7 +557,38 @@ export default function AdminConfigPage() {
                   className="input-field font-mono text-sm"
                 />
                 <p className="text-[10px] mt-1" style={{ color: 'var(--text-muted)' }}>
-                  Recommandé: voix féminine chaleureuse (ex: &quot;Sarah&quot;, &quot;Rachel&quot;)
+                  Voix 1 — mode cuisine mains libres. Recommandé: voix féminine chaleureuse (ex: &quot;Sarah&quot;, &quot;Rachel&quot;). Sert aussi de repli pour les voix 2 et 3 si elles sont vides.
+                </p>
+              </div>
+              <div>
+                <label className="flex items-center gap-1.5 text-xs mb-1.5" style={{ color: 'var(--text-muted)' }}>
+                  <Mic className="w-3.5 h-3.5" /> Voice ID — Assistant IA
+                </label>
+                <input
+                  type="text"
+                  value={elevenLabsVoiceIa}
+                  onChange={e => setElevenLabsVoiceIa(e.target.value)}
+                  placeholder="Optionnel — vide = utilise la voix cuisine"
+                  className="input-field font-mono text-sm"
+                />
+                <p className="text-[10px] mt-1" style={{ color: 'var(--text-muted)' }}>
+                  Voix 2 — chat IA général (page d&apos;accueil). Laisse vide pour réutiliser la voix cuisine.
+                </p>
+              </div>
+              <div>
+                <label className="flex items-center gap-1.5 text-xs mb-1.5" style={{ color: 'var(--text-muted)' }}>
+                  <Mic className="w-3.5 h-3.5" /> Voice ID — Easter egg
+                  <span className="text-[9px] px-1 py-0.5 rounded font-bold" style={{ backgroundColor: 'rgba(139,92,246,0.15)', color: '#8b5cf6' }}>EE</span>
+                </label>
+                <input
+                  type="text"
+                  value={elevenLabsVoiceEe}
+                  onChange={e => setElevenLabsVoiceEe(e.target.value)}
+                  placeholder="Optionnel — vide = utilise la voix cuisine"
+                  className="input-field font-mono text-sm"
+                />
+                <p className="text-[10px] mt-1" style={{ color: 'var(--text-muted)' }}>
+                  Voix 3 — fonctionnalités cachées non annoncées à l&apos;utilisateur. Laisse vide pour réutiliser la voix cuisine.
                 </p>
               </div>
             </div>

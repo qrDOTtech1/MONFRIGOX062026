@@ -6,6 +6,22 @@ async function getConfig(key: string): Promise<string> {
   return row?.value || '';
 }
 
+type VoiceChannel = 'cuisine' | 'ia' | 'easter';
+
+const VOICE_CONFIG_KEYS: Record<VoiceChannel, string> = {
+  cuisine: 'ELEVENLABS_VOICE_ID',
+  ia: 'ELEVENLABS_VOICE_ID_IA',
+  easter: 'ELEVENLABS_VOICE_ID_EE',
+};
+
+/** Résout le voice ID d'un canal, avec repli sur la voix cuisine (voix 1) si non configuré. */
+async function resolveVoiceId(channel: VoiceChannel): Promise<string> {
+  const specific = await getConfig(VOICE_CONFIG_KEYS[channel]);
+  if (specific) return specific;
+  if (channel === 'cuisine') return specific;
+  return getConfig(VOICE_CONFIG_KEYS.cuisine);
+}
+
 export async function GET() {
   const apiKey = await getConfig('ELEVENLABS_API_KEY');
   const voiceId = await getConfig('ELEVENLABS_VOICE_ID');
@@ -17,13 +33,15 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
-  const { text, lang } = await req.json();
+  const { text, lang, voice } = await req.json();
   if (!text || typeof text !== 'string') {
     return NextResponse.json({ error: 'text required' }, { status: 400 });
   }
 
+  const channel: VoiceChannel = voice === 'ia' || voice === 'easter' ? voice : 'cuisine';
+
   const apiKey = await getConfig('ELEVENLABS_API_KEY');
-  const voiceId = await getConfig('ELEVENLABS_VOICE_ID');
+  const voiceId = await resolveVoiceId(channel);
 
   if (!apiKey || !voiceId) {
     return NextResponse.json({ error: 'elevenlabs_not_configured' }, { status: 501 });

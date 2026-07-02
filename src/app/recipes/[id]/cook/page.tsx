@@ -255,7 +255,7 @@ export default function CookModePage() {
   function nextRadioStation() {
     const nextIdx = radioStationIdx === null ? 0 : (radioStationIdx + 1) % RADIO_STATIONS.length;
     playRadioAt(nextIdx);
-    speak(`${RADIO_STATIONS[nextIdx].name}, c'est parti.`);
+    speak(`${RADIO_STATIONS[nextIdx].name}, c'est parti.`, 'easter');
   }
 
   function stopRadio() {
@@ -278,7 +278,7 @@ export default function CookModePage() {
     if (cardsMode === 'radio') {
       if (idx >= 0 && idx < RADIO_STATIONS.length) {
         playRadioAt(idx);
-        speak(`${RADIO_STATIONS[idx].name}, c'est parti.`);
+        speak(`${RADIO_STATIONS[idx].name}, c'est parti.`, 'easter');
         closeAiCards();
       }
       return;
@@ -297,14 +297,14 @@ export default function CookModePage() {
     setAiCards(RADIO_STATIONS.map(s => ({ title: s.name, description: 'Radio en direct' })));
     setCardsMode('radio');
     setSelectedCard(null);
-    speak(`Je te propose ${RADIO_STATIONS.length} radios, regarde les options à l'écran, et dis le numéro de ton choix.`);
+    speak(`Je te propose ${RADIO_STATIONS.length} radios, regarde les options à l'écran, et dis le numéro de ton choix.`, 'easter');
   }
 
   function handlePlayMatchingMusic() {
     const idx = pickStationForRecipe();
     if (idx < 0) return;
     playRadioAt(idx);
-    speak(`Je te mets une ambiance qui va bien avec ${recipe?.name || 'ta recette'} : ${RADIO_STATIONS[idx].name}.`);
+    speak(`Je te mets une ambiance qui va bien avec ${recipe?.name || 'ta recette'} : ${RADIO_STATIONS[idx].name}.`, 'easter');
   }
 
   // Referme les cartes IA quand on change d'étape pour ne pas garder d'anciennes suggestions à l'écran
@@ -429,10 +429,10 @@ export default function CookModePage() {
     onFinish: () => setDone(true),
     onPlayMusic: handlePlayMusicRequest,
     onPlayMatchingMusic: handlePlayMatchingMusic,
-    onPauseMusic: () => { pauseRadio(); speak('Musique en pause.'); },
-    onResumeMusic: () => { resumeRadio(); speak('Je remets la musique.'); },
+    onPauseMusic: () => { pauseRadio(); speak('Musique en pause.', 'easter'); },
+    onResumeMusic: () => { resumeRadio(); speak('Je remets la musique.', 'easter'); },
     onNextMusic: () => nextRadioStation(),
-    onStopMusic: () => { stopRadio(); speak('Musique coupée.'); },
+    onStopMusic: () => { stopRadio(); speak('Musique coupée.', 'easter'); },
     currentStepText,
     currentStep: step,
     totalSteps,

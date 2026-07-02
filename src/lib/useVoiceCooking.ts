@@ -128,7 +128,7 @@ export function useVoiceCooking({ onNext, onPrev, onRepeat, onConfirm, onAskAI, 
           return;
         }
         const firstBlob = await testRes.blob();
-        audioCache.current.set(firstText, firstBlob);
+        audioCache.current.set(`cuisine:${firstText}`, firstBlob);
       } catch {
         console.warn('[VoiceCooking] Pre-cache skipped — TTS unreachable');
         return;
@@ -136,16 +136,16 @@ export function useVoiceCooking({ onNext, onPrev, onRepeat, onConfirm, onAskAI, 
 
       // First call succeeded — cache the rest
       for (const text of allStepsTexts) {
-        if (!text || audioCache.current.has(text)) continue;
+        if (!text || audioCache.current.has(`cuisine:${text}`)) continue;
         try {
           const res = await fetch('/api/tts', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ text, lang: 'fr' }),
+            body: JSON.stringify({ text, lang: 'fr', voice: 'cuisine' }),
           });
           if (res.ok) {
             const blob = await res.blob();
-            audioCache.current.set(text, blob);
+            audioCache.current.set(`cuisine:${text}`, blob);
           }
         } catch {}
       }
@@ -276,7 +276,7 @@ export function useVoiceCooking({ onNext, onPrev, onRepeat, onConfirm, onAskAI, 
   }
 
   // ── TTS ──
-  const speak = useCallback(async (text: string) => {
+  const speak = useCallback(async (text: string, voiceChannel: 'cuisine' | 'ia' | 'easter' = 'cuisine') => {
     if (!text) return;
 
     // Stop any current playback
@@ -290,16 +290,17 @@ export function useVoiceCooking({ onNext, onPrev, onRepeat, onConfirm, onAskAI, 
 
     if (ttsEngine === 'elevenlabs') {
       try {
-        let blob = audioCache.current.get(text);
+        const cacheKey = `${voiceChannel}:${text}`;
+        let blob = audioCache.current.get(cacheKey);
         if (!blob) {
           const res = await fetch('/api/tts', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ text, lang: 'fr' }),
+            body: JSON.stringify({ text, lang: 'fr', voice: voiceChannel }),
           });
           if (res.ok) {
             blob = await res.blob();
-            audioCache.current.set(text, blob);
+            audioCache.current.set(cacheKey, blob);
           }
         }
         if (blob) {
