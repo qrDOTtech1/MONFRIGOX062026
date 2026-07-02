@@ -16,7 +16,21 @@ interface BackupConfig {
 const CONFIG_KEYS = [
   'OLLAMA_HOST', 'OLLAMA_API_KEY', 'OLLAMA_MODEL', 'OLLAMA_VISION_MODEL',
   'OLLAMA_BACKUP_HOST', 'OLLAMA_BACKUP_API_KEY',
+  'OPENROUTER_API_KEY', 'GEMINI_API_KEY',
 ] as const;
+
+// Chaîne de modèles gratuits OpenRouter, essayés dans l'ordre (testés fonctionnels + JSON valide).
+// Si l'un est rate-limité (429) ou en erreur, on passe au suivant automatiquement.
+const OPENROUTER_FREE_MODELS = [
+  'nvidia/nemotron-3-super-120b-a12b:free',
+  'google/gemma-4-31b-it:free',
+  'meta-llama/llama-3.3-70b-instruct:free',
+  'qwen/qwen3-next-80b-a3b-instruct:free',
+  'openai/gpt-oss-120b:free',
+  'nvidia/nemotron-nano-9b-v2:free',
+];
+
+const GEMINI_MODEL = 'gemini-2.0-flash';
 
 async function getAllConfigs(): Promise<Record<string, string>> {
   const rows = await prisma.appConfig.findMany({
@@ -85,29 +99,120 @@ function trackUsage(response: any) {
   return response;
 }
 
+type ChatMessages = Array<{ role: 'system' | 'user' | 'assistant'; content: string }>;
+
+// Réponse normalisée au format Ollama ({ message: { content }, prompt_eval_count, eval_count })
+// pour que tous les appelants existants et trackUsage fonctionnent sans changement.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function toOllamaShape(content: string, usage?: { prompt?: number; completion?: number }): any {
+  return {
+    message: { role: 'assistant', content },
+    prompt_eval_count: usage?.prompt ?? 0,
+    eval_count: usage?.completion ?? 0,
+  };
+}
+
+/** Appel OpenRouter (API compatible OpenAI) sur la chaîne de modèles gratuits, avec bascule au suivant en cas d'échec. */
+async function tryOpenRouter(messages: ChatMessages, temperature: number, apiKey: string) {
+  for (const model of OPENROUTER_FREE_MODELS) {
+    try {
+      const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
+          'HTTP-Referer': 'https://monfrigo.app',
+          'X-Title': 'MonFrigo',
+        },
+        body: JSON.stringify({ model, messages, temperature }),
+      });
+      if (!res.ok) continue; // 429 / 5xx → modèle suivant
+      const data = await res.json();
+      const content = data?.choices?.[0]?.message?.content;
+      if (!content) continue;
+      return toOllamaShape(content, {
+        prompt: data?.usage?.prompt_tokens,
+        completion: data?.usage?.completion_tokens,
+      });
+    } catch {
+      // réseau/timeout → modèle suivant
+    }
+  }
+  return null;
+}
+
+/** Appel Gemini (API Google) — dernier recours cloud gratuit avant Ollama. */
+async function tryGemini(messages: ChatMessages, temperature: number, apiKey: string) {
+  try {
+    const systemParts = messages.filter(m => m.role === 'system').map(m => m.content).join('\n');
+    const contents = messages
+      .filter(m => m.role !== 'system')
+      .map(m => ({ role: m.role === 'assistant' ? 'model' : 'user', parts: [{ text: m.content }] }));
+
+    const res = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${apiKey}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents,
+          systemInstruction: systemParts ? { parts: [{ text: systemParts }] } : undefined,
+          generationConfig: { temperature },
+        }),
+      },
+    );
+    if (!res.ok) return null;
+    const data = await res.json();
+    const content = data?.candidates?.[0]?.content?.parts?.map((p: { text?: string }) => p.text || '').join('') || '';
+    if (!content) return null;
+    return toOllamaShape(content, {
+      prompt: data?.usageMetadata?.promptTokenCount,
+      completion: data?.usageMetadata?.candidatesTokenCount,
+    });
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Complétion de chat avec cascade de fallback multi-providers :
+ *   1. OpenRouter (chaîne de modèles gratuits, bascule interne)
+ *   2. Gemini (Google, gratuit)
+ *   3. Ollama principal
+ *   4. Ollama backup
+ * Chaque provider n'est tenté que si sa clé est configurée. Le premier qui répond gagne.
+ */
 export async function chatCompletion(
-  messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }>,
+  messages: ChatMessages,
   options?: { temperature?: number },
 ) {
-  const config = await getConfig();
-  const client = createClient(config.host, config.apiKey);
+  const c = await getAllConfigs();
+  const temperature = options?.temperature ?? 0.7;
 
+  // 1) OpenRouter (modèles gratuits en chaîne)
+  if (c['OPENROUTER_API_KEY']) {
+    const r = await tryOpenRouter(messages, temperature, c['OPENROUTER_API_KEY']);
+    if (r) return trackUsage(r);
+  }
+
+  // 2) Gemini
+  if (c['GEMINI_API_KEY']) {
+    const r = await tryGemini(messages, temperature, c['GEMINI_API_KEY']);
+    if (r) return trackUsage(r);
+  }
+
+  // 3) Ollama principal
+  const config = await getConfig();
   try {
-    const response = await client.chat({
-      model: config.model,
-      messages,
-      options: { temperature: options?.temperature ?? 0.7 },
-    });
+    const client = createClient(config.host, config.apiKey);
+    const response = await client.chat({ model: config.model, messages, options: { temperature } });
     return trackUsage(response);
   } catch (err) {
+    // 4) Ollama backup
     const backup = await getBackupConfig();
     if (backup) {
       const backupClient = createClient(backup.host, backup.apiKey);
-      const response = await backupClient.chat({
-        model: config.model,
-        messages,
-        options: { temperature: options?.temperature ?? 0.7 },
-      });
+      const response = await backupClient.chat({ model: config.model, messages, options: { temperature } });
       return trackUsage(response);
     }
     throw err;

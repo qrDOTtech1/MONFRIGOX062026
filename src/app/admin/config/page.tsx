@@ -35,6 +35,10 @@ export default function AdminConfigPage() {
   const [backupHost, setBackupHost] = useState('https://ollama.com');
   const [backupApiKey, setBackupApiKey] = useState('');
 
+  // Fallback cloud gratuit (prioritaire sur Ollama)
+  const [openRouterKey, setOpenRouterKey] = useState('');
+  const [geminiKey, setGeminiKey] = useState('');
+
   // Clés API externes
   const [spoonacularKey, setSpoonacularKey] = useState('');
   const [usdaKey, setUsdaKey] = useState('');
@@ -74,6 +78,8 @@ export default function AdminConfigPage() {
         if (map['OLLAMA_VISION_MODEL']) setVisionModel(map['OLLAMA_VISION_MODEL']);
         if (map['OLLAMA_BACKUP_HOST']) setBackupHost(map['OLLAMA_BACKUP_HOST']);
         if (map['OLLAMA_BACKUP_API_KEY']) setBackupApiKey(map['OLLAMA_BACKUP_API_KEY']);
+        if (map['OPENROUTER_API_KEY']) setOpenRouterKey(map['OPENROUTER_API_KEY']);
+        if (map['GEMINI_API_KEY']) setGeminiKey(map['GEMINI_API_KEY']);
         if (map['SPOONACULAR_API_KEY']) setSpoonacularKey(map['SPOONACULAR_API_KEY']);
         if (map['USDA_API_KEY']) setUsdaKey(map['USDA_API_KEY']);
         if (map['ELEVENLABS_API_KEY']) setElevenLabsKey(map['ELEVENLABS_API_KEY']);
@@ -157,6 +163,8 @@ export default function AdminConfigPage() {
       { key: 'OLLAMA_VISION_MODEL', value: visionModel },
       { key: 'OLLAMA_BACKUP_HOST', value: backupHost },
       { key: 'OLLAMA_BACKUP_API_KEY', value: backupApiKey },
+      { key: 'OPENROUTER_API_KEY', value: openRouterKey },
+      { key: 'GEMINI_API_KEY', value: geminiKey },
       { key: 'SPOONACULAR_API_KEY', value: spoonacularKey },
       { key: 'USDA_API_KEY', value: usdaKey },
       { key: 'ELEVENLABS_API_KEY', value: elevenLabsKey },
@@ -388,6 +396,38 @@ export default function AdminConfigPage() {
               {backupConnected === false && backupError && (
                 <div className="rounded-lg px-3.5 py-2.5 text-sm text-red-600 dark:text-red-400" style={{ backgroundColor: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)' }}>{backupError}</div>
               )}
+            </div>
+          </div>
+
+          {/* Fallback cloud gratuit — prioritaire sur Ollama */}
+          <div className="card p-5">
+            <div className="flex items-center gap-2.5 mb-1">
+              <Zap className="w-4 h-4" style={{ color: '#8b5cf6' }} />
+              <h2 className="font-medium">Fallback cloud gratuit</h2>
+              <span className="text-[10px] px-1.5 py-0.5 rounded font-medium text-emerald-600 dark:text-emerald-400" style={{ backgroundColor: 'rgba(16,185,129,0.1)' }}>GRATUIT</span>
+            </div>
+            <p className="text-xs mb-4" style={{ color: 'var(--text-muted)' }}>
+              Cascade essayée en priorité avant Ollama : OpenRouter (chaîne de modèles gratuits avec bascule auto si l&apos;un est saturé) → Gemini → Ollama. Si aucune clé ici, l&apos;app utilise Ollama comme avant.
+            </p>
+            <div className="space-y-3">
+              <div>
+                <label className="flex items-center gap-1.5 text-xs mb-1.5" style={{ color: 'var(--text-muted)' }}>
+                  <Key className="w-3.5 h-3.5" /> Clé OpenRouter
+                </label>
+                <input type="password" value={openRouterKey} onChange={e => setOpenRouterKey(e.target.value)} placeholder="sk-or-..." className="input-field font-mono text-sm" />
+                <p className="text-[10px] mt-1" style={{ color: 'var(--text-muted)' }}>
+                  <a href="https://openrouter.ai/keys" target="_blank" rel="noopener noreferrer" className="underline">openrouter.ai/keys</a> — modèles gratuits : Nemotron, Gemma, Llama, Qwen (bascule automatique)
+                </p>
+              </div>
+              <div>
+                <label className="flex items-center gap-1.5 text-xs mb-1.5" style={{ color: 'var(--text-muted)' }}>
+                  <Key className="w-3.5 h-3.5" /> Clé Gemini (Google)
+                </label>
+                <input type="password" value={geminiKey} onChange={e => setGeminiKey(e.target.value)} placeholder="AIza..." className="input-field font-mono text-sm" />
+                <p className="text-[10px] mt-1" style={{ color: 'var(--text-muted)' }}>
+                  <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer" className="underline">aistudio.google.com/apikey</a> — gemini-2.0-flash, tier gratuit généreux
+                </p>
+              </div>
             </div>
           </div>
         </>
