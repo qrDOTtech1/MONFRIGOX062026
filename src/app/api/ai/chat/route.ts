@@ -46,15 +46,51 @@ export async function POST(req: NextRequest) {
   const isVipOrAdmin = effectivePlan === 'VIP' || userRecord?.role === 'ADMIN';
 
   // ── Contexte recettes ──
-  const recipes = await prisma.recipe.findMany({
-    select: {
-      id: true, name: true, description: true, cuisine: true,
-      difficulty: true, prepTime: true, servings: true,
-      calories: true, protein: true, carbs: true, fat: true,
-      kidFriendly: true, babyFriendly: true,
-      ingredients: { select: { unit: true, quantity: true, ingredient: { select: { name: true } } } },
-    },
-  });
+  // ⚠️ Ne JAMAIS charger tout le catalogue dans le prompt : il grossit en continu (dizaines de
+  // milliers de recettes) et exploserait la fenêtre de contexte + le coût. On sélectionne au
+  // maximum RECIPE_CONTEXT_LIMIT recettes, en priorisant celles qui matchent le frigo de l'utilisateur.
+  const RECIPE_CONTEXT_LIMIT = 100;
+
+  const fridgeIngredientIds = (await prisma.fridgeItem.findMany({
+    where: { userId: user.id },
+    select: { ingredientId: true },
+  })).map(f => f.ingredientId);
+
+  // 1) Recettes qui utilisent au moins un ingrédient du frigo (les plus pertinentes)
+  const matchingRecipes = fridgeIngredientIds.length > 0
+    ? await prisma.recipe.findMany({
+        where: { ingredients: { some: { ingredientId: { in: fridgeIngredientIds } } } },
+        select: {
+          id: true, name: true, description: true, cuisine: true,
+          difficulty: true, prepTime: true, servings: true,
+          calories: true, protein: true, carbs: true, fat: true,
+          kidFriendly: true, babyFriendly: true,
+          ingredients: { select: { unit: true, quantity: true, ingredient: { select: { name: true } } } },
+        },
+        take: RECIPE_CONTEXT_LIMIT,
+      })
+    : [];
+
+  // 2) Complète avec des recettes récentes populaires si on n'a pas atteint la limite
+  let recipes = matchingRecipes;
+  if (recipes.length < RECIPE_CONTEXT_LIMIT) {
+    const exclude = new Set(recipes.map(r => r.id));
+    const fillers = await prisma.recipe.findMany({
+      where: { id: { notIn: [...exclude] } },
+      select: {
+        id: true, name: true, description: true, cuisine: true,
+        difficulty: true, prepTime: true, servings: true,
+        calories: true, protein: true, carbs: true, fat: true,
+        kidFriendly: true, babyFriendly: true,
+        ingredients: { select: { unit: true, quantity: true, ingredient: { select: { name: true } } } },
+      },
+      orderBy: [{ avgRating: 'desc' }, { createdAt: 'desc' }],
+      take: RECIPE_CONTEXT_LIMIT - recipes.length,
+    });
+    recipes = [...recipes, ...fillers];
+  }
+
+  const totalRecipeCount = await prisma.recipe.count();
 
   const recipeContext = recipes.map(r =>
     `[ID:${r.id}] "${r.name}" | ${r.cuisine} | ${r.difficulty} | ${r.prepTime}min | ${r.servings} pers.` +
@@ -159,7 +195,7 @@ ${fridgeContext}${dietInfo}
 PLANNING DE LA SEMAINE :
 ${planningContext}
 
-CATALOGUE (${recipes.length} recettes) :
+CATALOGUE — extrait de ${recipes.length} recettes les plus pertinentes (sur ${totalRecipeCount} au total, priorisées selon le frigo) :
 ${recipeContext}
 
 RÈGLES DE RÉPONSE :
