@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Database, RefreshCw, Download, Check, AlertTriangle, Server, Loader2, ChefHat, Utensils, Zap, Play, X, Languages, Flame } from 'lucide-react';
+import { Database, RefreshCw, Download, Check, AlertTriangle, Server, Loader2, ChefHat, Utensils, Zap, Play, Pause, X, Languages, Flame, Sparkles } from 'lucide-react';
 
 interface DbStatus {
   connected: boolean;
@@ -54,6 +54,11 @@ export default function AdminDatabasePage() {
 
   const [logs, setLogs] = useState<string[]>([]);
 
+  // Enrichissement automatique du catalogue (job continu)
+  const [autoImport, setAutoImport] = useState<{ cursor: number; total: number; enabled: boolean } | null>(null);
+  const [autoImportToggling, setAutoImportToggling] = useState(false);
+  const [autoImportRunning, setAutoImportRunning] = useState(false);
+
   function log(msg: string) {
     setLogs(prev => [`[${new Date().toLocaleTimeString('fr-FR')}] ${msg}`, ...prev].slice(0, 50));
   }
@@ -78,7 +83,59 @@ export default function AdminDatabasePage() {
     }
   }
 
-  useEffect(() => { loadStatus(); loadFounders(); }, []);
+  useEffect(() => { loadStatus(); loadFounders(); loadAutoImport(); }, []);
+
+  async function loadAutoImport() {
+    try {
+      const res = await fetch('/api/admin/recipe-import');
+      if (res.ok) setAutoImport(await res.json());
+    } catch { /* ignore */ }
+  }
+
+  async function toggleAutoImport() {
+    if (!autoImport) return;
+    setAutoImportToggling(true);
+    try {
+      const res = await fetch('/api/admin/recipe-import', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'toggle', enabled: !autoImport.enabled }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setAutoImport(data);
+        log(data.enabled ? 'Enrichissement catalogue : repris' : 'Enrichissement catalogue : mis en pause');
+      }
+    } catch (e: any) {
+      log(`Erreur: ${e.message}`);
+    } finally {
+      setAutoImportToggling(false);
+    }
+  }
+
+  async function runAutoImportNow() {
+    setAutoImportRunning(true);
+    log('Lot supplémentaire lancé manuellement...');
+    try {
+      const res = await fetch('/api/admin/recipe-import', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'run', batchSize: 10 }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        log(`+${data.imported} recettes ajoutées (curseur ${data.cursor}/${data.total})`);
+        loadAutoImport();
+        loadStatus();
+      } else {
+        log(`Erreur: ${data.error}`);
+      }
+    } catch (e: any) {
+      log(`Erreur: ${e.message}`);
+    } finally {
+      setAutoImportRunning(false);
+    }
+  }
 
   async function loadFounders() {
     try {
@@ -337,6 +394,64 @@ export default function AdminDatabasePage() {
         ) : (
           <div className="flex items-center justify-center py-6">
             <Loader2 className="w-5 h-5 animate-spin" style={{ color: 'var(--text-muted)' }} />
+          </div>
+        )}
+      </div>
+
+      {/* === ENRICHISSEMENT AUTOMATIQUE DU CATALOGUE === */}
+      <div className="card p-5">
+        <div className="flex items-center justify-between mb-1">
+          <div className="flex items-center gap-2.5">
+            <Sparkles className="w-4 h-4" style={{ color: '#8b5cf6' }} />
+            <h2 className="font-medium">Enrichissement automatique du catalogue</h2>
+          </div>
+          {autoImport && (
+            <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${autoImport.enabled ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}`}
+              style={{ backgroundColor: autoImport.enabled ? 'rgba(16,185,129,0.1)' : 'rgba(245,158,11,0.1)' }}>
+              {autoImport.enabled ? 'Actif' : 'En pause'}
+            </span>
+          )}
+        </div>
+        <p className="text-xs mb-4" style={{ color: 'var(--text-muted)' }}>
+          Job continu en arrière-plan : ajoute automatiquement de nouvelles recettes (avec nutrition calculée) au catalogue toutes les 10 minutes, sans action manuelle. Reboucle indéfiniment pour capter les nouveautés.
+        </p>
+
+        {autoImport ? (
+          <>
+            <div className="flex items-center gap-3 mb-4">
+              <div className="flex-1 h-2 rounded-full overflow-hidden" style={{ backgroundColor: 'var(--bg-inset)' }}>
+                <div className="h-full rounded-full transition-all" style={{ width: `${autoImport.total > 0 ? Math.min(100, (autoImport.cursor / autoImport.total) * 100) : 0}%`, background: 'linear-gradient(135deg, #8b5cf6, #ec4899)' }} />
+              </div>
+              <span className="text-sm font-semibold tabular-nums">
+                {autoImport.total > 0 ? Math.min(100, Math.round((autoImport.cursor / autoImport.total) * 100)) : 0}%
+              </span>
+            </div>
+            <p className="text-[10px] mb-4" style={{ color: 'var(--text-muted)' }}>
+              {Math.min(autoImport.cursor, autoImport.total).toLocaleString('fr-FR')} / {autoImport.total.toLocaleString('fr-FR')} parcourues
+            </p>
+
+            <div className="flex gap-2">
+              <button
+                onClick={toggleAutoImport}
+                disabled={autoImportToggling}
+                className="btn-primary flex items-center gap-2 disabled:opacity-40"
+              >
+                {autoImportToggling ? <Loader2 className="w-4 h-4 animate-spin" /> : autoImport.enabled ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
+                {autoImport.enabled ? 'Mettre en pause' : 'Reprendre'}
+              </button>
+              <button
+                onClick={runAutoImportNow}
+                disabled={autoImportRunning}
+                className="btn-secondary flex items-center gap-2 disabled:opacity-40"
+              >
+                {autoImportRunning ? <Loader2 className="w-4 h-4 animate-spin" /> : <Zap className="w-4 h-4" />}
+                {autoImportRunning ? 'En cours...' : 'Lancer un lot maintenant'}
+              </button>
+            </div>
+          </>
+        ) : (
+          <div className="flex items-center justify-center py-4">
+            <Loader2 className="w-4 h-4 animate-spin" style={{ color: 'var(--text-muted)' }} />
           </div>
         )}
       </div>

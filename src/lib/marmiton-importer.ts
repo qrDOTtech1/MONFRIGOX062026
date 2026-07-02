@@ -1,8 +1,10 @@
 import { prisma } from './db';
+import { estimateNutrition } from './ollama';
 
 const USER_AGENT = 'Mozilla/5.0 (compatible; MonFrigoBot/1.0)';
 const SITEMAP_INDEX = 'https://www.marmiton.org/wsitemap_recipes_index.xml';
 const CURSOR_KEY = 'recipe_import_cursor';
+const ENABLED_KEY = 'recipe_import_enabled';
 
 const DISALLOWED_PATTERNS = [
   /\/recettes\/private/i,
@@ -114,6 +116,33 @@ async function setCursor(value: number): Promise<void> {
   });
 }
 
+/** Statut courant pour l'admin : progression + activé/désactivé. */
+export async function getImportStatus(): Promise<{ cursor: number; total: number; enabled: boolean }> {
+  const [cursorRow, enabledRow, urls] = await Promise.all([
+    prisma.appConfig.findUnique({ where: { key: CURSOR_KEY } }),
+    prisma.appConfig.findUnique({ where: { key: ENABLED_KEY } }),
+    getUrlList().catch(() => urlListCache ?? []),
+  ]);
+  return {
+    cursor: cursorRow ? parseInt(cursorRow.value) || 0 : 0,
+    total: urls.length,
+    enabled: enabledRow ? enabledRow.value !== 'false' : true, // activé par défaut
+  };
+}
+
+export async function isImportEnabled(): Promise<boolean> {
+  const row = await prisma.appConfig.findUnique({ where: { key: ENABLED_KEY } });
+  return row ? row.value !== 'false' : true;
+}
+
+export async function setImportEnabled(enabled: boolean): Promise<void> {
+  await prisma.appConfig.upsert({
+    where: { key: ENABLED_KEY },
+    update: { value: String(enabled) },
+    create: { key: ENABLED_KEY, value: String(enabled) },
+  });
+}
+
 /**
  * Importe un petit lot de recettes en continu, en avançant un curseur persistant.
  * Boucle indéfiniment sur la liste (rafraîchie périodiquement) : une fois arrivé au bout,
@@ -121,6 +150,8 @@ async function setCursor(value: number): Promise<void> {
  * et les doublons sont naturellement ignorés (déduplication par nom).
  */
 export async function importNextBatch(batchSize = 5): Promise<{ imported: number; skipped: number; failed: number; cursor: number; total: number }> {
+  if (!(await isImportEnabled())) return { imported: 0, skipped: 0, failed: 0, cursor: await getCursor(), total: urlListCache?.length ?? 0 };
+
   const urls = await getUrlList();
   if (urls.length === 0) return { imported: 0, skipped: 0, failed: 0, cursor: 0, total: 0 };
 
@@ -148,7 +179,7 @@ export async function importNextBatch(batchSize = 5): Promise<{ imported: number
         .join('\n');
       if (!instructions) { failed++; continue; }
 
-      const recipeIngredients: Array<{ ingredientId: string; quantity: number; unit: string }> = [];
+      const recipeIngredients: Array<{ ingredientId: string; quantity: number; unit: string; name: string }> = [];
       const source = structured?.length ? structured : (ld.recipeIngredient || []).map((t: string) => ({ name: t, qty: 1, unit: '' }));
 
       for (const ing of source) {
@@ -161,12 +192,15 @@ export async function importNextBatch(batchSize = 5): Promise<{ imported: number
         }
         if (!ingredient) continue;
         const qty = typeof ing.qty === 'number' ? ing.qty : parseFloat(String(ing.qty).replace(',', '.')) || 1;
-        recipeIngredients.push({ ingredientId: ingredient.id, quantity: qty || 1, unit: String(ing.unit || '') || 'unité' });
+        const unit = String(ing.unit || '') || 'unité';
+        recipeIngredients.push({ ingredientId: ingredient.id, quantity: qty || 1, unit, name: ingName });
       }
 
       if (recipeIngredients.length === 0) { failed++; continue; }
 
-      await prisma.recipe.create({
+      const servings = parseServings(ld.recipeYield);
+
+      const created = await prisma.recipe.create({
         data: {
           name: ld.name,
           description: (ld.description || '').slice(0, 500) || `${ld.name} — recette maison`,
@@ -176,12 +210,37 @@ export async function importNextBatch(batchSize = 5): Promise<{ imported: number
           // (prépa + cuisson), sinon un plat qui mijote 2h afficherait "10 min" de façon trompeuse.
           prepTime: parseIsoDurationToMinutes(ld.totalTime || ld.prepTime),
           cuisine: ld.recipeCuisine || ld.recipeCategory || 'Maison',
-          servings: parseServings(ld.recipeYield),
+          servings,
           imageUrl: Array.isArray(ld.image) ? ld.image[0] : (ld.image || ''),
           isPublic: true,
-          ingredients: { create: recipeIngredients },
+          ingredients: { create: recipeIngredients.map(({ ingredientId, quantity, unit }) => ({ ingredientId, quantity, unit })) },
         },
       });
+
+      // Enrichissement nutrition immédiat — zéro demi-mesure, chaque recette importée est complète dès le départ.
+      try {
+        const nutrition = await estimateNutrition(
+          ld.name,
+          recipeIngredients.map(i => ({ name: i.name, quantity: i.quantity, unit: i.unit })),
+          servings,
+        );
+        await prisma.recipe.update({
+          where: { id: created.id },
+          data: {
+            calories: nutrition.calories,
+            protein: nutrition.protein,
+            fat: nutrition.fat,
+            carbs: nutrition.carbs,
+            fiber: nutrition.fiber,
+            salt: nutrition.salt,
+            nutriScore: nutrition.nutriScore,
+            kidFriendly: nutrition.kidFriendly,
+            babyFriendly: nutrition.babyFriendly,
+          },
+        });
+      } catch {
+        // La recette reste valide sans nutrition — un futur passage "Nutrition seule" pourra la compléter.
+      }
 
       imported++;
     } catch {
