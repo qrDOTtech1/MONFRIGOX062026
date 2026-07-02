@@ -210,7 +210,8 @@ Exemples :
 - [RECIPE:Riz au bœuf épicé tchinné|Burkinabè|FACILE|35|4|Fais revenir l'oignon et l'ail dans l'huile d'olive. Ajoute le bœuf haché et fais dorer 5 min. Mélange la sauce tomate, le curry et le paprika. Laisse mijoter 15 min. Cuis le riz à part. Sers le bœuf sur le riz.|bœuf haché:400:g,riz:300:g,oignon:1:unité,ail:3:gousse,sauce tomate:200:ml,curry:1:cs,paprika:1:cc,huile d'olive:2:cs]
 Après la commande, dis simplement "Je viens de créer la recette, la voici !" sans détailler les ingrédients ni les étapes (tout s'affiche dans la carte).
 Difficultés possibles : FACILE, MOYEN, DIFFICILE.
-Ne crée PAS de recette si elle existe déjà dans le catalogue (utilise [ID:xxx] à la place).${coachBlock}`;
+Ne crée PAS de recette si elle existe déjà dans le catalogue (utilise [ID:xxx] à la place).
+⚠️ N'OUBLIE JAMAIS un ingrédient structurel évident : une omelette a des œufs, une crêpe a farine+lait+œufs, un gâteau a farine+œufs+sucre, une pizza a pâte+sauce+fromage. Relis la liste d'ingrédients avant d'envoyer la commande et vérifie qu'elle est complète.${coachBlock}`;
 
   // Une demande de recette ("recette", "manger", "cuisiner", "plat"...) ne doit jamais
   // se solder par un simple [NAV:/dashboard] — détection pour déclencher un retry ciblé si besoin.
@@ -276,6 +277,36 @@ Ne crée PAS de recette si elle existe déjà dans le catalogue (utilise [ID:xxx
       return { type, ingredientName: args };
     });
 
+    // ── Cohérence minimale des recettes inventées : complète les ingrédients structurels oubliés ──
+    // (ex: une "omelette" sans œufs) plutôt que de laisser passer une recette cassée.
+    const COHERENCE_RULES: Array<{ keywords: string[]; requires: Array<{ match: string[]; add: { name: string; quantity: number; unit: string } }> }> = [
+      { keywords: ['omelette'], requires: [{ match: ['oeuf', 'œuf'], add: { name: 'œufs', quantity: 3, unit: 'pièce' } }] },
+      { keywords: ['crêpe', 'crepe', 'galette de froment'], requires: [
+        { match: ['farine'], add: { name: 'farine', quantity: 250, unit: 'g' } },
+        { match: ['lait'], add: { name: 'lait', quantity: 500, unit: 'ml' } },
+        { match: ['oeuf', 'œuf'], add: { name: 'œufs', quantity: 3, unit: 'pièce' } },
+      ] },
+      { keywords: ['gâteau', 'gateau', 'cake', 'fondant', 'brownie', 'moelleux'], requires: [
+        { match: ['farine'], add: { name: 'farine', quantity: 200, unit: 'g' } },
+        { match: ['oeuf', 'œuf'], add: { name: 'œufs', quantity: 3, unit: 'pièce' } },
+        { match: ['sucre'], add: { name: 'sucre', quantity: 150, unit: 'g' } },
+      ] },
+      { keywords: ['pizza'], requires: [
+        { match: ['farine'], add: { name: 'farine', quantity: 300, unit: 'g' } },
+        { match: ['tomate'], add: { name: 'sauce tomate', quantity: 200, unit: 'ml' } },
+        { match: ['fromage'], add: { name: 'fromage râpé', quantity: 150, unit: 'g' } },
+      ] },
+      { keywords: ['quiche', 'tarte salée'], requires: [
+        { match: ['farine'], add: { name: 'farine', quantity: 200, unit: 'g' } },
+        { match: ['oeuf', 'œuf'], add: { name: 'œufs', quantity: 3, unit: 'pièce' } },
+        { match: ['crème'], add: { name: 'crème fraîche', quantity: 200, unit: 'ml' } },
+      ] },
+      { keywords: ['pâte à pain', 'pain maison', 'baguette'], requires: [
+        { match: ['farine'], add: { name: 'farine', quantity: 500, unit: 'g' } },
+        { match: ['levure'], add: { name: 'levure boulangère', quantity: 1, unit: 'sachet' } },
+      ] },
+    ];
+
     // Extraire et créer les recettes personnalisées
     const recipeTagMatches = [...reply.matchAll(/\[RECIPE:([^\]]+)\]/gi)];
     const createdRecipeIds: string[] = [];
@@ -301,6 +332,22 @@ Ne crée PAS de recette si elle existe déjà dans le catalogue (utilise [ID:xxx
         });
 
         const ingParts = rIngs.split(',').map((s: string) => s.trim()).filter(Boolean);
+
+        // Complète les ingrédients structurels manquants selon le type de plat détecté par le nom
+        const dishNameLower = rName.toLowerCase();
+        const ingNamesLower = ingParts.map((p: string) => p.split(':')[0].trim().toLowerCase());
+        for (const rule of COHERENCE_RULES) {
+          if (!rule.keywords.some(kw => dishNameLower.includes(kw))) continue;
+          for (const req of rule.requires) {
+            const present = ingNamesLower.some((n: string) => req.match.some(m => n.includes(m)));
+            if (!present) {
+              ingParts.push(`${req.add.name}:${req.add.quantity}:${req.add.unit}`);
+              ingNamesLower.push(req.add.name.toLowerCase());
+              console.warn(`[chat] Recette "${rName.trim()}" complétée avec l'ingrédient manquant : ${req.add.name}`);
+            }
+          }
+        }
+
         for (const ip of ingParts) {
           const [ingName, ingQty, ingUnit] = ip.split(':').map((s: string) => s.trim());
           if (!ingName) continue;

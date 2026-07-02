@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { ArrowLeft, ArrowRight, ChefHat, Clock, X, Timer, Check, Users, Camera, Refrigerator, Loader2, Globe, Lock, Mic, MicOff, Volume2, HelpCircle } from 'lucide-react';
 import { useVoiceCooking } from '@/lib/useVoiceCooking';
@@ -158,6 +158,8 @@ export default function CookModePage() {
   const [aiCards, setAiCards] = useState<Array<{ title: string; description: string }>>([]);
   const [selectedCard, setSelectedCard] = useState<number | null>(null);
   const [showHelp, setShowHelp] = useState(false);
+  const [helpVoiceTriggered, setHelpVoiceTriggered] = useState(false);
+  const helpScrollRef = useRef<HTMLDivElement>(null);
 
   function closeAiCards() {
     setAiAnswer('');
@@ -177,6 +179,35 @@ export default function CookModePage() {
 
   // Referme les cartes IA quand on change d'étape pour ne pas garder d'anciennes suggestions à l'écran
   useEffect(() => { closeAiCards(); }, [step]);
+
+  // Aide déclenchée par la voix : reste affichée 15s avec défilement auto pour tout montrer, puis se ferme seule
+  useEffect(() => {
+    if (!showHelp || !helpVoiceTriggered) return;
+    const DURATION_MS = 15000;
+    const el = helpScrollRef.current;
+    let raf: number;
+    const start = performance.now();
+
+    function scrollStep(now: number) {
+      if (!el) return;
+      const elapsed = now - start;
+      const maxScroll = el.scrollHeight - el.clientHeight;
+      if (maxScroll > 0) {
+        // Défile jusqu'à 80% de la durée pour laisser un temps de lecture à la fin
+        const progressRatio = Math.min(1, elapsed / (DURATION_MS * 0.8));
+        el.scrollTop = progressRatio * maxScroll;
+      }
+      if (elapsed < DURATION_MS) raf = requestAnimationFrame(scrollStep);
+    }
+    raf = requestAnimationFrame(scrollStep);
+
+    const closeTimeout = setTimeout(() => {
+      setShowHelp(false);
+      setHelpVoiceTriggered(false);
+    }, DURATION_MS);
+
+    return () => { cancelAnimationFrame(raf); clearTimeout(closeTimeout); };
+  }, [showHelp, helpVoiceTriggered]);
 
   function handleTimerStart() {
     if (timer && timerSeconds > 0) setTimerRunning(true);
@@ -256,7 +287,7 @@ export default function CookModePage() {
       }
     },
     onSelectOption: handleSelectOption,
-    onHelp: () => setShowHelp(true),
+    onHelp: () => { setShowHelp(true); setHelpVoiceTriggered(true); },
     onTimerStart: () => {
       if (timer && timerSeconds > 0) setTimerRunning(true);
     },
@@ -573,7 +604,7 @@ export default function CookModePage() {
           {/* Bouton aide commandes vocales */}
           {supported && (
             <button
-              onClick={() => setShowHelp(true)}
+              onClick={() => { setShowHelp(true); setHelpVoiceTriggered(false); }}
               title="Commandes vocales"
               className="w-7 h-7 rounded-full flex items-center justify-center transition-all"
               style={{ border: '1.5px solid var(--border)', color: 'var(--text-muted)' }}>
@@ -583,12 +614,12 @@ export default function CookModePage() {
         </div>
       </header>
 
-      {/* Overlay aide — grille complète des commandes vocales */}
+      {/* Overlay aide — grille complète des commandes vocales, avec alias et auto-défilement si déclenchée par la voix */}
       {showHelp && (
         <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center px-4 pb-4 sm:pb-4 fade-in"
           style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}
-          onClick={() => setShowHelp(false)}>
-          <div className="w-full max-w-sm rounded-2xl p-5 max-h-[80vh] overflow-y-auto"
+          onClick={() => { setShowHelp(false); setHelpVoiceTriggered(false); }}>
+          <div ref={helpScrollRef} className="w-full max-w-sm rounded-2xl p-5 max-h-[80vh] overflow-y-auto"
             style={{ backgroundColor: 'var(--bg-raised)', border: '1px solid var(--border)' }}
             onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-4">
@@ -598,29 +629,32 @@ export default function CookModePage() {
                 </div>
                 <h3 className="text-sm font-semibold">Commandes vocales</h3>
               </div>
-              <button onClick={() => setShowHelp(false)} className="p-1 rounded-lg hover:bg-[var(--bg-inset)]">
+              <button onClick={() => { setShowHelp(false); setHelpVoiceTriggered(false); }} className="p-1 rounded-lg hover:bg-[var(--bg-inset)]">
                 <X className="w-4 h-4" style={{ color: 'var(--text-muted)' }} />
               </button>
             </div>
             <div className="grid grid-cols-2 gap-2">
               {[
-                { icon: '⏭', label: 'Suivant', ex: '"suivant"' },
-                { icon: '⏮', label: 'Précédent', ex: '"précédent"' },
-                { icon: '🔁', label: 'Répète', ex: '"répète"' },
-                { icon: '🔁', label: 'Répète étape N', ex: '"répète étape 3"' },
-                { icon: '✅', label: 'Confirmer', ex: '"confirmer"' },
-                { icon: '🥕', label: 'Ingrédients', ex: '"ingrédients"' },
-                { icon: '📊', label: 'Progression', ex: '"où j\'en suis"' },
-                { icon: '⏱', label: 'Minuteur', ex: '"minuteur"' },
-                { icon: '🏁', label: 'Terminé', ex: '"terminé"' },
-                { icon: '🔇', label: 'Silence', ex: '"stop"' },
-                { icon: '👆', label: 'Choisir option', ex: '"option 1"' },
-                { icon: '🤖', label: 'Question IA', ex: '"cheffe, …"' },
+                { icon: '⏭', label: 'Suivant', ex: '"suivant"', alias: 'next, suite, après, continue, avance, passe' },
+                { icon: '⏮', label: 'Précédent', ex: '"précédent"', alias: 'retour, reviens, recule, arrière' },
+                { icon: '🔁', label: 'Répète', ex: '"répète"', alias: 'redis, relis, encore, réexplique' },
+                { icon: '🔁', label: 'Répète étape N', ex: '"répète étape 3"', alias: 'relis étape N, redis étape N' },
+                { icon: '✅', label: 'Confirmer', ex: '"confirmer"', alias: 'ok, oui, go, prêt, d\'accord, top, envoie' },
+                { icon: '🥕', label: 'Ingrédients', ex: '"ingrédients"', alias: 'il me faut quoi, la liste, besoin de quoi' },
+                { icon: '📊', label: 'Progression', ex: '"où j\'en suis"', alias: 'combien, il reste, on en est où' },
+                { icon: '⏱', label: 'Minuteur', ex: '"minuteur"', alias: 'timer, chrono ; + stop/reset pour arrêter/relancer' },
+                { icon: '🏁', label: 'Terminé', ex: '"terminé"', alias: 'fini, c\'est prêt, bon appétit' },
+                { icon: '🔇', label: 'Silence', ex: '"stop"', alias: 'arrête, pause, chut, tais-toi' },
+                { icon: '👆', label: 'Choisir option', ex: '"option 1"', alias: 'choix 1, go pour option 2' },
+                { icon: '🤖', label: 'Question IA', ex: '"cheffe, …"', alias: 'chef, hey cheffe, suivi de ta question' },
               ].map((c, i) => (
                 <div key={i} className="rounded-xl p-3 flex flex-col gap-1" style={{ backgroundColor: 'var(--bg-inset)', border: '1px solid var(--border-subtle)' }}>
                   <span className="text-lg">{c.icon}</span>
                   <span className="text-xs font-medium">{c.label}</span>
                   <span className="text-[10px]" style={{ color: 'var(--text-muted)' }}>{c.ex}</span>
+                  <span className="text-[9px] leading-tight" style={{ color: 'var(--text-muted)', opacity: 0.75 }}>
+                    fonctionne aussi avec : {c.alias}
+                  </span>
                 </div>
               ))}
             </div>
