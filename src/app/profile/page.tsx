@@ -7,7 +7,7 @@ import NotificationsToggle from '@/components/NotificationsToggle';
 import { useTheme } from '@/components/ThemeProvider';
 import InfoBubble from '@/components/InfoBubble';
 import { useT, LANGUAGES } from '@/lib/i18n';
-import { UserCircle, LogOut, Shield, Heart, ShoppingCart, Refrigerator, Sun, Moon, Save, Check, AlertTriangle, Baby, Users, History, Sparkles, ChefHat, Zap, Crown, Star, Plus, Loader2, CalendarDays, ChevronRight, PiggyBank, Leaf, Flame, Receipt, Tag, Home } from 'lucide-react';
+import { UserCircle, LogOut, Shield, Heart, ShoppingCart, Refrigerator, Sun, Moon, Save, Check, AlertTriangle, Baby, Users, History, Sparkles, ChefHat, Zap, Crown, Star, Plus, Loader2, CalendarDays, ChevronRight, PiggyBank, Leaf, Flame, Receipt, Tag, Home, ShieldAlert, Camera } from 'lucide-react';
 
 // Bouton qui crée une Checkout Session Stripe et redirige
 function CheckoutButton({ priceId, label, sub, color, Icon, compact = false }:
@@ -440,7 +440,7 @@ export default function ProfilePage() {
 
           {/* ── Coach IA ── */}
           <button onClick={() => router.push('/coach')}
-            className="w-full card p-4 mb-5 flex items-center gap-3 text-left hover:scale-[1.01] transition-all"
+            className="w-full card p-4 mb-3 flex items-center gap-3 text-left hover:scale-[1.01] transition-all"
             style={{ background: 'linear-gradient(135deg, rgba(168,85,247,0.06), rgba(59,130,246,0.06))' }}>
             <div className="w-9 h-9 rounded-full flex items-center justify-center shrink-0"
               style={{ background: 'linear-gradient(135deg, rgb(168,85,247), rgb(59,130,246))' }}>
@@ -452,6 +452,24 @@ export default function ProfilePage() {
             </div>
             <Crown className="w-4 h-4 text-purple-400" />
           </button>
+
+          {/* ── Outils ── */}
+          <div className="flex gap-2 mb-5">
+            <button onClick={() => router.push('/rappels')}
+              className="flex-1 card p-3 flex flex-col items-center gap-1.5 text-center hover:scale-[1.01] transition-all"
+              style={{ backgroundColor: 'rgba(239,68,68,0.04)', border: '1px solid rgba(239,68,68,0.15)' }}>
+              <ShieldAlert className="w-5 h-5 text-red-500" />
+              <p className="text-xs font-semibold text-red-600 dark:text-red-400">Rappels produits</p>
+              <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>Alertes sécurité alimentaire</p>
+            </button>
+            <button onClick={() => router.push('/photo-scan')}
+              className="flex-1 card p-3 flex flex-col items-center gap-1.5 text-center hover:scale-[1.01] transition-all"
+              style={{ background: 'linear-gradient(135deg, rgba(168,85,247,0.04), rgba(59,130,246,0.04))', border: '1px solid rgba(168,85,247,0.15)' }}>
+              <Camera className="w-5 h-5 text-purple-500" />
+              <p className="text-xs font-semibold text-purple-600 dark:text-purple-400">Photo → Frigo</p>
+              <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>Scanner des ingrédients par photo</p>
+            </button>
+          </div>
 
           {/* ── Plan & Usage ── */}
           {billing && (

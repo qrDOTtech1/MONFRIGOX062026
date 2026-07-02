@@ -1,8 +1,8 @@
 ﻿'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, Suspense } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import AppShell from '@/components/AppShell';
 import MascotLoader from '@/components/MascotLoader';
 import Mascot from '@/components/Mascot';
@@ -125,8 +125,9 @@ function SectionLabel({ icon, label, count, color }: { icon: React.ReactNode; la
   );
 }
 
-export default function ExplorerPage() {
+function ExplorerContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { t } = useT();
 
   // Display label maps for filter chips (internal values stay in French for logic)
@@ -177,6 +178,12 @@ export default function ExplorerPage() {
   useEffect(() => {
     fetch('/api/billing/status').then(r => r.ok ? r.json() : null).then(d => d && setUserPlan(d.plan || 'FREE'));
   }, []);
+
+  useEffect(() => {
+    if (searchParams.get('anti-gaspi')) {
+      setDietary('Anti-gaspi');
+    }
+  }, [searchParams]);
 
   // Vérification côté client si un ingrédient correspond à un allergène
   function recipeHasAllergen(r: Recipe, allergenKey: string): boolean {
@@ -757,5 +764,13 @@ export default function ExplorerPage() {
       </>
       )}
     </AppShell>
+  );
+}
+
+export default function ExplorerPage() {
+  return (
+    <Suspense fallback={null}>
+      <ExplorerContent />
+    </Suspense>
   );
 }

@@ -7,7 +7,7 @@ import Mascot from '@/components/Mascot';
 import RecipeCard from '@/components/RecipeCard';
 import {
   Refrigerator, Plus, X, AlertTriangle, ChefHat,
-  Wand2, Loader2, Minus, SlidersHorizontal, Calendar, Check, Barcode, Home, ShieldAlert, Camera,
+  Wand2, Loader2, Minus, SlidersHorizontal, Calendar, Check, Barcode, Home, ShieldAlert, Camera, ShoppingCart, Sparkles,
 } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -243,6 +243,12 @@ export default function FridgePage() {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          <button onClick={() => router.push('/shopping')}
+            className="w-9 h-9 rounded-lg flex items-center justify-center transition-colors"
+            style={{ backgroundColor: 'var(--bg-inset)', border: '1px solid var(--border)' }}
+            title="Liste de courses">
+            <ShoppingCart className="w-4 h-4" style={{ color: 'var(--text-secondary)' }} />
+          </button>
           <button onClick={() => router.push('/photo-scan')}
             className="w-9 h-9 rounded-lg flex items-center justify-center transition-colors"
             style={{ background: 'linear-gradient(135deg, rgba(168,85,247,0.15), rgba(59,130,246,0.15))', border: '1px solid rgba(168,85,247,0.2)' }}
@@ -417,6 +423,12 @@ export default function FridgePage() {
                 </p>
               </div>
             )}
+            <button onClick={() => router.push(`/dashboard?anti-gaspi=${encodeURIComponent(expiringSoon.map(i => i.ingredient.name).join(','))}`)}
+              className="w-full flex items-center justify-center gap-2 mt-3 py-2 rounded-lg text-xs font-semibold transition-all hover:scale-[1.01]"
+              style={{ backgroundColor: 'rgba(234,179,8,0.12)', color: 'rgb(180,130,0)' }}>
+              <Sparkles className="w-3.5 h-3.5" />
+              Recettes anti-gaspi avec ces ingrédients
+            </button>
           </div>
         );
       })()}
