@@ -152,6 +152,7 @@ export async function runNotifications(type: 'expiry' | 'meals' | 'all') {
 let schedulerStarted = false;
 let lastExpiryDate = '';
 let lastMealsDate = '';
+let lastRecipeImportAt = 0;
 
 function parisNow(): { hour: number; minute: number; dateKey: string } {
   const paris = new Date(new Date().toLocaleString('en-US', { timeZone: 'Europe/Paris' }));
@@ -187,6 +188,18 @@ export function startNotificationScheduler() {
       if (hour === 3 && lastImportDate !== dateKey) {
         lastImportDate = dateKey;
         try { await autoImportRecipes(); } catch (e) { console.error('[import] Erreur:', e); }
+      }
+
+      // Enrichissement continu du catalogue — petit lot toutes les 30 min, en boucle indéfiniment
+      if (Date.now() - lastRecipeImportAt >= 30 * 60 * 1000) {
+        lastRecipeImportAt = Date.now();
+        try {
+          const { importNextBatch } = await import('./marmiton-importer');
+          const r = await importNextBatch(5);
+          console.log(`[catalogue] +${r.imported} recettes (curseur ${r.cursor}/${r.total})`);
+        } catch (e) {
+          console.error('[catalogue] Erreur:', e);
+        }
       }
     } catch (err) {
       console.error('[notifications] Erreur scheduler :', err);
