@@ -164,8 +164,9 @@ ${recipeContext}
 
 RÈGLES DE RÉPONSE :
 - ${lang === 'en' ? 'Respond in English. Warm, clear, conversational tone. No jargon.' : 'Français conversationnel, chaleureux, clair. Pas de jargon.'}
-- N'utilise JAMAIS de markdown (pas de **, *, _, #, - pour les listes). Écris en texte simple et naturel, comme si tu parlais à voix haute.
+- N'utilise JAMAIS de markdown ni de puces (pas de **, *, _, #, •, - en début de ligne pour les listes). Écris en phrases naturelles, comme si tu parlais à voix haute. Si tu donnes plusieurs idées, enchaîne-les en phrases, jamais en liste à puces.
 - Reste concis : 1-2 phrases si tu suggères des recettes, 3-4 si c'est une question sans recette. Jamais de pavé de texte.
+- ⚠️ [NAV:/dashboard] N'EST JAMAIS UNE RÉPONSE VALABLE à une demande de recette. Si l'utilisateur demande une recette (même avec une contrainte comme "moins de 15 minutes" ou "avec mon frigo"), tu DOIS répondre par des [ID:xxx] du catalogue (cohérents avec le frigo) OU inventer une recette avec [RECIPE:...] (voir plus bas). Ne renvoie JAMAIS l'utilisateur vers /dashboard pour "qu'il cherche lui-même" — c'est un échec, pas une réponse.
 
 ⚠️ RÈGLE ABSOLUE — COHÉRENCE FRIGO AVANT TOUT :
 Avant de citer une recette du catalogue avec [ID:xxx], VÉRIFIE que ses ingrédients principaux sont réellement présents dans le frigo (liste ci-dessus) ou sont des basiques de placard (sel, poivre, huile, farine, épices…).
@@ -211,8 +212,13 @@ Après la commande, dis simplement "Je viens de créer la recette, la voici !" s
 Difficultés possibles : FACILE, MOYEN, DIFFICILE.
 Ne crée PAS de recette si elle existe déjà dans le catalogue (utilise [ID:xxx] à la place).${coachBlock}`;
 
+  // Une demande de recette ("recette", "manger", "cuisiner", "plat"...) ne doit jamais
+  // se solder par un simple [NAV:/dashboard] — détection pour déclencher un retry ciblé si besoin.
+  const lastUserMessage = [...messages].reverse().find(m => m.role === 'user')?.content || '';
+  const looksLikeRecipeRequest = /recette|cuisin|manger|repas|plat\b|idée.{0,10}(diner|dîner|déjeuner|repas)|quoi.{0,10}(manger|cuisiner|faire)/i.test(lastUserMessage);
+
   try {
-    const resp = await chatCompletion(
+    let resp = await chatCompletion(
       [
         { role: 'system', content: systemPrompt },
         ...messages,
@@ -220,15 +226,38 @@ Ne crée PAS de recette si elle existe déjà dans le catalogue (utilise [ID:xxx
       { temperature: 0.6 },
     );
 
-    const reply = resp.message?.content || '';
+    let reply = resp.message?.content || '';
 
     // Extraire les IDs de recettes mentionnées
-    const idMatches = [...reply.matchAll(/\[ID:([a-z0-9]+)\]/gi)];
-    const recipeIds = [...new Set(idMatches.map(m => m[1]))];
+    let idMatches = [...reply.matchAll(/\[ID:([a-z0-9]+)\]/gi)];
+    let recipeIds = [...new Set(idMatches.map(m => m[1]))];
+    let recipeTagCount = (reply.match(/\[RECIPE:/gi) || []).length;
 
     // Extraire commande de navigation
-    const navMatch = reply.match(/\[NAV:(\/[^\]]*)\]/i);
-    const navTo = navMatch ? navMatch[1] : null;
+    let navMatch = reply.match(/\[NAV:(\/[^\]]*)\]/i);
+    let navTo = navMatch ? navMatch[1] : null;
+
+    // ── Garde-fou : demande de recette esquivée par un simple NAV, sans ID ni RECIPE → 1 seul retry forcé ──
+    if (looksLikeRecipeRequest && recipeIds.length === 0 && recipeTagCount === 0 && navTo) {
+      const retryResp = await chatCompletion(
+        [
+          { role: 'system', content: systemPrompt },
+          ...messages,
+          { role: 'assistant', content: reply },
+          { role: 'user', content: 'Ta réponse précédente ne respecte pas la consigne : tu as renvoyé [NAV:/dashboard] au lieu de proposer une vraie recette. Réponds à nouveau à ma question avec des [ID:xxx] du catalogue cohérents avec mon frigo, ou invente une recette avec [RECIPE:...]. Pas de NAV cette fois.' },
+        ],
+        { temperature: 0.5 },
+      );
+      const retryReply = retryResp.message?.content || '';
+      if (retryReply) {
+        reply = retryReply;
+        idMatches = [...reply.matchAll(/\[ID:([a-z0-9]+)\]/gi)];
+        recipeIds = [...new Set(idMatches.map(m => m[1]))];
+        recipeTagCount = (reply.match(/\[RECIPE:/gi) || []).length;
+        navMatch = reply.match(/\[NAV:(\/[^\]]*)\]/i);
+        navTo = navMatch ? navMatch[1] : null;
+      }
+    }
 
     // Extraire les actions
     const actionMatches = [...reply.matchAll(/\[ACTION:(PLAN|REMOVE_PLAN|FRIDGE|SHOP|COOK)\s+([^\]]+)\]/gi)];
@@ -271,9 +300,9 @@ Ne crée PAS de recette si elle existe déjà dans le catalogue (utilise [ID:xxx
           },
         });
 
-        const ingParts = rIngs.split(',').map(s => s.trim()).filter(Boolean);
+        const ingParts = rIngs.split(',').map((s: string) => s.trim()).filter(Boolean);
         for (const ip of ingParts) {
-          const [ingName, ingQty, ingUnit] = ip.split(':').map(s => s.trim());
+          const [ingName, ingQty, ingUnit] = ip.split(':').map((s: string) => s.trim());
           if (!ingName) continue;
           let ingredient = await prisma.ingredient.findFirst({
             where: { name: { equals: ingName, mode: 'insensitive' } },
@@ -297,12 +326,14 @@ Ne crée PAS de recette si elle existe déjà dans le catalogue (utilise [ID:xxx
 
     const allRecipeIds = [...recipeIds, ...createdRecipeIds];
 
-    // Nettoyer la réponse (retirer les balises internes)
+    // Nettoyer la réponse (retirer les balises internes + puces markdown résiduelles)
     const cleanReply = reply
       .replace(/\s*\[ID:[a-z0-9]+\]/gi, '')
       .replace(/\s*\[NAV:\/[^\]]*\]/gi, '')
       .replace(/\s*\[ACTION:[^\]]*\]/gi, '')
       .replace(/\s*\[RECIPE:[^\]]*\]/gi, '')
+      .replace(/(^|\n)\s*[•\-*]\s+/g, '$1')
+      .replace(/\*\*/g, '')
       .trim();
 
     return NextResponse.json({

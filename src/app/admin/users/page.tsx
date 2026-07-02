@@ -2,7 +2,7 @@
 import MascotLoader from '@/components/MascotLoader';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Users, Trash2, Shield, ShieldOff, Search } from 'lucide-react';
+import { Users, Trash2, Shield, ShieldOff, Search, RotateCcw, Gift } from 'lucide-react';
 
 interface User {
   id: string;
@@ -10,8 +10,18 @@ interface User {
   email: string;
   role: string;
   createdAt: string;
+  plan: string;
+  planExpiresAt: string | null;
+  extraQuota: number;
+  aiCallsMonth: number;
   _count: { fridgeItems: number; favorites: number };
 }
+
+const PLAN_COLORS: Record<string, { bg: string; fg: string }> = {
+  FREE: { bg: 'var(--bg-inset)', fg: 'var(--text-secondary)' },
+  PREMIUM: { bg: 'rgba(59,130,246,0.1)', fg: '#3b82f6' },
+  VIP: { bg: 'rgba(245,158,11,0.12)', fg: '#f59e0b' },
+};
 
 export default function AdminUsersPage() {
   const [users, setUsers] = useState<User[]>([]);
@@ -37,6 +47,35 @@ export default function AdminUsersPage() {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ role: currentRole === 'ADMIN' ? 'USER' : 'ADMIN' }),
+    });
+    load();
+  }
+
+  async function changePlan(id: string, plan: string) {
+    await fetch(`/api/admin/users/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ plan }),
+    });
+    load();
+  }
+
+  async function resetQuota(id: string) {
+    await fetch(`/api/admin/users/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ resetQuota: true }),
+    });
+    load();
+  }
+
+  async function grantExtraQuota(id: string, current: number) {
+    const amount = prompt('Combien de requêtes IA bonus offrir ?', '10');
+    if (!amount) return;
+    await fetch(`/api/admin/users/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ extraQuota: current + (parseInt(amount) || 0) }),
     });
     load();
   }
@@ -75,8 +114,8 @@ export default function AdminUsersPage() {
               <tr style={{ borderBottom: '1px solid var(--border)' }}>
                 <th className="text-left text-xs font-medium px-4 py-3" style={{ color: 'var(--text-muted)' }}>Utilisateur</th>
                 <th className="text-left text-xs font-medium px-4 py-3" style={{ color: 'var(--text-muted)' }}>Rôle</th>
-                <th className="text-left text-xs font-medium px-4 py-3" style={{ color: 'var(--text-muted)' }}>Frigo</th>
-                <th className="text-left text-xs font-medium px-4 py-3" style={{ color: 'var(--text-muted)' }}>Favoris</th>
+                <th className="text-left text-xs font-medium px-4 py-3" style={{ color: 'var(--text-muted)' }}>Plan</th>
+                <th className="text-left text-xs font-medium px-4 py-3" style={{ color: 'var(--text-muted)' }}>Quota IA</th>
                 <th className="text-left text-xs font-medium px-4 py-3" style={{ color: 'var(--text-muted)' }}>Inscrit</th>
                 <th className="text-right text-xs font-medium px-4 py-3" style={{ color: 'var(--text-muted)' }}>Actions</th>
               </tr>
@@ -100,11 +139,36 @@ export default function AdminUsersPage() {
                       {u.role}
                     </span>
                   </td>
-                  <td className="px-4 py-3 text-sm" style={{ color: 'var(--text-muted)' }}>{u._count.fridgeItems}</td>
-                  <td className="px-4 py-3 text-sm" style={{ color: 'var(--text-muted)' }}>{u._count.favorites}</td>
+                  <td className="px-4 py-3">
+                    <select
+                      value={u.plan}
+                      onChange={e => changePlan(u.id, e.target.value)}
+                      className="text-xs font-medium rounded-md px-2 py-1 border-0 cursor-pointer"
+                      style={{ backgroundColor: PLAN_COLORS[u.plan]?.bg, color: PLAN_COLORS[u.plan]?.fg }}
+                    >
+                      <option value="FREE">FREE</option>
+                      <option value="PREMIUM">PREMIUM</option>
+                      <option value="VIP">VIP</option>
+                    </select>
+                    {u.planExpiresAt && u.plan !== 'FREE' && (
+                      <p className="text-[10px] mt-1" style={{ color: 'var(--text-muted)' }}>
+                        jusqu&apos;au {new Date(u.planExpiresAt).toLocaleDateString('fr-FR')}
+                      </p>
+                    )}
+                  </td>
+                  <td className="px-4 py-3 text-xs" style={{ color: 'var(--text-muted)' }}>
+                    <p>{u.aiCallsMonth} appel{u.aiCallsMonth > 1 ? 's' : ''} {u.plan === 'FREE' ? '(à vie)' : '(mois)'}</p>
+                    {u.extraQuota > 0 && <p className="text-emerald-500">+{u.extraQuota} bonus</p>}
+                  </td>
                   <td className="px-4 py-3 text-xs" style={{ color: 'var(--text-muted)' }}>{new Date(u.createdAt).toLocaleDateString('fr-FR')}</td>
                   <td className="px-4 py-3">
                     <div className="flex gap-0.5 justify-end">
+                      <button onClick={() => grantExtraQuota(u.id, u.extraQuota)} className="p-2 rounded-md transition-colors hover:bg-[var(--bg-inset)]" title="Offrir des requêtes IA bonus">
+                        <Gift className="w-4 h-4 text-emerald-500" />
+                      </button>
+                      <button onClick={() => resetQuota(u.id)} className="p-2 rounded-md transition-colors hover:bg-[var(--bg-inset)]" title="Réinitialiser le quota IA">
+                        <RotateCcw className="w-4 h-4" style={{ color: 'var(--text-muted)' }} />
+                      </button>
                       <button onClick={() => toggleRole(u.id, u.role)} className="p-2 rounded-md transition-colors hover:bg-[var(--bg-inset)]" title="Changer le rôle">
                         {u.role === 'ADMIN' ? <ShieldOff className="w-4 h-4 text-amber-500" /> : <Shield className="w-4 h-4" style={{ color: 'var(--text-muted)' }} />}
                       </button>

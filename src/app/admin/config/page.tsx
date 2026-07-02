@@ -19,6 +19,13 @@ interface ApiStatusEntry {
   free: boolean;
 }
 
+interface UsageStats {
+  today: { calls: number; tokens: number };
+  last7Days: { calls: number; tokens: number };
+  last30Days: { calls: number; tokens: number };
+  daily: Array<{ date: string; calls: number; promptTokens: number; completionTokens: number }>;
+}
+
 export default function AdminConfigPage() {
   // Ollama
   const [host, setHost] = useState('https://ollama.com');
@@ -47,6 +54,7 @@ export default function AdminConfigPage() {
   const [backupError, setBackupError] = useState('');
   const [apiStatus, setApiStatus] = useState<Record<string, ApiStatusEntry>>({});
   const [activeTab, setActiveTab] = useState<'ollama' | 'apis'>('ollama');
+  const [usage, setUsage] = useState<UsageStats | null>(null);
 
   // Enrichissement OFF
   const [enrichStats, setEnrichStats]   = useState<EnrichStats | null>(null);
@@ -75,6 +83,9 @@ export default function AdminConfigPage() {
     fetch('/api/admin/enrich-ingredients')
       .then(r => r.ok ? r.json() : null)
       .then(setEnrichStats);
+    fetch('/api/admin/ollama')
+      .then(r => r.ok ? r.json() : null)
+      .then(data => { if (data?.usage) setUsage(data.usage); });
   }, []);
 
   async function runEnrichment() {
@@ -213,6 +224,40 @@ export default function AdminConfigPage() {
       {/* ====== ONGLET OLLAMA ====== */}
       {activeTab === 'ollama' && (
         <>
+          {usage && (
+            <div className="card p-5">
+              <div className="flex items-center gap-2.5 mb-4">
+                <Brain className="w-4 h-4" style={{ color: 'var(--text-secondary)' }} />
+                <h2 className="font-medium">Consommation de tokens Ollama</h2>
+              </div>
+              <div className="grid grid-cols-3 gap-3 mb-4">
+                <div className="rounded-lg p-3 text-center" style={{ backgroundColor: 'var(--bg-inset)' }}>
+                  <p className="text-lg font-semibold">{usage.today.tokens.toLocaleString('fr-FR')}</p>
+                  <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>tokens aujourd&apos;hui ({usage.today.calls} appels)</p>
+                </div>
+                <div className="rounded-lg p-3 text-center" style={{ backgroundColor: 'var(--bg-inset)' }}>
+                  <p className="text-lg font-semibold">{usage.last7Days.tokens.toLocaleString('fr-FR')}</p>
+                  <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>tokens sur 7 jours ({usage.last7Days.calls} appels)</p>
+                </div>
+                <div className="rounded-lg p-3 text-center" style={{ backgroundColor: 'var(--bg-inset)' }}>
+                  <p className="text-lg font-semibold">{usage.last30Days.tokens.toLocaleString('fr-FR')}</p>
+                  <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>tokens sur 30 jours ({usage.last30Days.calls} appels)</p>
+                </div>
+              </div>
+              <div className="flex items-end gap-0.5 h-16">
+                {usage.daily.slice(-14).map(d => {
+                  const max = Math.max(...usage.daily.slice(-14).map(x => x.promptTokens + x.completionTokens), 1);
+                  const h = Math.max(2, Math.round(((d.promptTokens + d.completionTokens) / max) * 100));
+                  return (
+                    <div key={d.date} className="flex-1 rounded-sm transition-all" title={`${d.date}: ${d.promptTokens + d.completionTokens} tokens, ${d.calls} appels`}
+                      style={{ height: `${h}%`, backgroundColor: 'var(--accent)', opacity: 0.7 }} />
+                  );
+                })}
+              </div>
+              <p className="text-[10px] text-center mt-1.5" style={{ color: 'var(--text-muted)' }}>14 derniers jours</p>
+            </div>
+          )}
+
           <div className="card p-5">
             <div className="flex items-center gap-2.5 mb-1">
               <Zap className="w-4 h-4" style={{ color: 'var(--text-secondary)' }} />

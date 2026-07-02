@@ -50,6 +50,41 @@ function createClient(host: string, apiKey: string): Ollama {
   });
 }
 
+function todayKey(): string {
+  return new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+}
+
+/**
+ * Log fire-and-forget de la conso de tokens Ollama, agrégé par jour dans AppConfig
+ * (clé 'ollama_usage_YYYY-MM-DD' = JSON {calls, promptTokens, completionTokens}).
+ * Pas de nouvelle table Prisma → zéro migration nécessaire.
+ */
+async function logOllamaUsage(promptTokens: number, completionTokens: number) {
+  try {
+    const key = `ollama_usage_${todayKey()}`;
+    const existing = await prisma.appConfig.findUnique({ where: { key } });
+    const current = existing ? JSON.parse(existing.value) : { calls: 0, promptTokens: 0, completionTokens: 0 };
+    const updated = {
+      calls: (current.calls || 0) + 1,
+      promptTokens: (current.promptTokens || 0) + (promptTokens || 0),
+      completionTokens: (current.completionTokens || 0) + (completionTokens || 0),
+    };
+    await prisma.appConfig.upsert({
+      where: { key },
+      update: { value: JSON.stringify(updated) },
+      create: { key, value: JSON.stringify(updated) },
+    });
+  } catch (e) {
+    console.error('[ollama-usage] Erreur de log:', e);
+  }
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function trackUsage(response: any) {
+  logOllamaUsage(response?.prompt_eval_count || 0, response?.eval_count || 0);
+  return response;
+}
+
 export async function chatCompletion(
   messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }>,
   options?: { temperature?: number },
@@ -63,16 +98,17 @@ export async function chatCompletion(
       messages,
       options: { temperature: options?.temperature ?? 0.7 },
     });
-    return response;
+    return trackUsage(response);
   } catch (err) {
     const backup = await getBackupConfig();
     if (backup) {
       const backupClient = createClient(backup.host, backup.apiKey);
-      return backupClient.chat({
+      const response = await backupClient.chat({
         model: config.model,
         messages,
         options: { temperature: options?.temperature ?? 0.7 },
       });
+      return trackUsage(response);
     }
     throw err;
   }
@@ -91,20 +127,22 @@ export async function analyzeImage(base64Image: string, prompt: string) {
   ];
 
   try {
-    return await client.chat({
+    const response = await client.chat({
       model: config.visionModel,
       messages,
       options: { temperature: 0.3 },
     });
+    return trackUsage(response);
   } catch (err) {
     const backup = await getBackupConfig();
     if (backup) {
       const backupClient = createClient(backup.host, backup.apiKey);
-      return backupClient.chat({
+      const response = await backupClient.chat({
         model: config.visionModel,
         messages,
         options: { temperature: 0.3 },
       });
+      return trackUsage(response);
     }
     throw err;
   }
