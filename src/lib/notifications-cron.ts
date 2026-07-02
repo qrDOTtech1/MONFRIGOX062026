@@ -1,6 +1,7 @@
 import { prisma } from './db';
 import { sendToUser } from './push';
 import { getShelfInfo } from './shelf-life';
+import { generateExpiryRecipe } from './ollama';
 
 /**
  * Logique d'envoi des notifications programmées.
@@ -16,7 +17,7 @@ export async function runNotifications(type: 'expiry' | 'meals' | 'all') {
   // Utilisateurs ayant au moins un abonnement push
   const users = await prisma.user.findMany({
     where: { pushSubs: { some: {} } },
-    select: { id: true, notifyExpiry: true, notifyMeals: true },
+    select: { id: true, notifyExpiry: true, notifyMeals: true, plan: true, planExpiresAt: true },
   });
 
   let expiryNotifs = 0;
@@ -36,12 +37,54 @@ export async function runNotifications(type: 'expiry' | 'meals' | 'all') {
         const extra = items.length > 3 ? ` +${items.length - 3}` : '';
         const canFreeze = items.some(i => getShelfInfo(i.ingredient.name)?.freezable);
         const freezeHint = canFreeze ? ' ❄️ Tu peux en congeler certains.' : '';
-        const sent = await sendToUser(u.id, {
-          title: `${items.length} aliment${items.length > 1 ? 's' : ''} à consommer 🥕`,
-          body: `${names}${extra} périme${items.length > 1 ? 'nt' : ''} bientôt. Une recette anti-gaspi ?${freezeHint}`,
-          url: '/dashboard',
-          tag: 'expiry',
-        });
+
+        const isVip = u.plan === 'VIP' && (!u.planExpiresAt || u.planExpiresAt >= now);
+        let notifTitle = `${items.length} aliment${items.length > 1 ? 's' : ''} à consommer 🥕`;
+        let notifBody = `${names}${extra} périme${items.length > 1 ? 'nt' : ''} bientôt. Une recette anti-gaspi ?${freezeHint}`;
+        let notifUrl = '/dashboard';
+
+        // ── VIP uniquement : l'IA génère une vraie recette anti-gaspi prête à cuisiner ──
+        // (réservé au VIP pour limiter la consommation de tokens — Free/Premium gardent la notif générique)
+        if (isVip) {
+          try {
+            const recipe = await generateExpiryRecipe(items.map(i => i.ingredient.name));
+            if (recipe) {
+              const created = await prisma.recipe.create({
+                data: {
+                  name: recipe.name,
+                  description: recipe.description,
+                  instructions: recipe.instructions,
+                  difficulty: recipe.difficulty,
+                  prepTime: recipe.prepTime,
+                  cuisine: recipe.cuisine,
+                  servings: recipe.servings,
+                  authorId: u.id,
+                  isPublic: false,
+                },
+              });
+              for (const ing of recipe.ingredients) {
+                if (!ing.name?.trim()) continue;
+                let ingredient = await prisma.ingredient.findFirst({ where: { name: { equals: ing.name.trim(), mode: 'insensitive' } } });
+                if (!ingredient) {
+                  ingredient = await prisma.ingredient.create({ data: { name: ing.name.trim().toLowerCase(), category: 'Épicerie', emoji: '🛒' } }).catch(() => null);
+                }
+                if (ingredient) {
+                  await prisma.recipeIngredient.create({
+                    data: { recipeId: created.id, ingredientId: ingredient.id, quantity: ing.quantity || 1, unit: ing.unit || 'unité' },
+                  }).catch(() => {});
+                }
+              }
+              notifTitle = 'Ta recette anti-gaspi du jour 👨‍🍳';
+              notifBody = `${recipe.name} — pensée pour utiliser ${names}${extra} avant qu'ils périment.`;
+              notifUrl = `/recipes/${created.id}`;
+            }
+          } catch (e) {
+            console.error('[notifications] Erreur génération recette anti-gaspi VIP:', e);
+            // Fallback silencieux vers la notif générique définie plus haut
+          }
+        }
+
+        const sent = await sendToUser(u.id, { title: notifTitle, body: notifBody, url: notifUrl, tag: 'expiry' });
         if (sent > 0) expiryNotifs++;
       }
     }

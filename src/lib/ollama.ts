@@ -194,6 +194,59 @@ Instructions : minimum 4 étapes claires, chaque étape sur une ligne (\\n), pas
   ]);
 }
 
+export interface ExpiryRecipe {
+  name: string;
+  description: string;
+  difficulty: 'FACILE' | 'MOYEN' | 'DIFFICILE';
+  prepTime: number;
+  cuisine: string;
+  servings: number;
+  instructions: string;
+  ingredients: Array<{ name: string; quantity: number; unit: string }>;
+}
+
+/**
+ * Génère UNE seule recette anti-gaspi ciblée sur des ingrédients qui périment.
+ * Volontairement plus légère que suggestRecipes (1 recette, prompt court) — utilisée par
+ * le cron de notifications proactives, réservée aux utilisateurs VIP pour limiter le coût token.
+ */
+export async function generateExpiryRecipe(expiringIngredients: string[]): Promise<ExpiryRecipe | null> {
+  const response = await chatCompletion([
+    {
+      role: 'system',
+      content: `Tu es un chef anti-gaspi. Génère UNE SEULE recette réaliste et cohérente qui utilise en priorité les ingrédients qui périment bientôt.
+Réponds UNIQUEMENT en JSON valide avec ce format exact :
+{"name":"Nom de la recette","description":"1 phrase appétissante","difficulty":"FACILE|MOYEN|DIFFICILE","prepTime":25,"cuisine":"FR","servings":2,"ingredients":[{"name":"farine","quantity":100,"unit":"g"}],"instructions":"Étape 1.\\nÉtape 2.\\nÉtape 3."}
+Règles : recette complète et cohérente (n'omets aucun ingrédient structurel nécessaire), quantités précises, instructions en 3-5 étapes claires séparées par \\n, pas de numéros dans les étapes.
+Basiques de placard toujours supposés disponibles : ${PANTRY_STAPLES.join(', ')}.`,
+    },
+    {
+      role: 'user',
+      content: `Ingrédients qui périment bientôt : ${expiringIngredients.join(', ')}. Génère une recette rapide et simple pour les utiliser.`,
+    },
+  ], { temperature: 0.6 });
+
+  const content = response.message?.content || '';
+  try {
+    const jsonMatch = content.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) return null;
+    const parsed = JSON.parse(jsonMatch[0]);
+    if (!parsed.name || !parsed.instructions) return null;
+    return {
+      name: parsed.name,
+      description: parsed.description || '',
+      difficulty: ['FACILE', 'MOYEN', 'DIFFICILE'].includes(parsed.difficulty) ? parsed.difficulty : 'FACILE',
+      prepTime: parseInt(parsed.prepTime) || 20,
+      cuisine: parsed.cuisine || 'FR',
+      servings: parseInt(parsed.servings) || 2,
+      instructions: parsed.instructions,
+      ingredients: Array.isArray(parsed.ingredients) ? parsed.ingredients : [],
+    };
+  } catch {
+    return null;
+  }
+}
+
 export async function translateToFrench(text: string, field: 'name' | 'description' | 'instructions' | 'ingredient'): Promise<string> {
   if (!text || text.trim().length === 0) return text;
 
