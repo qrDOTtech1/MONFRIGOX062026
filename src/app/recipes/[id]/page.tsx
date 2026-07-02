@@ -327,6 +327,8 @@ export default function RecipeDetailPage() {
     }
   }
 
+  const [translatingEn, setTranslatingEn] = useState(false);
+
   useEffect(() => {
     fetch(`/api/recipes/${id}`)
       .then(r => r.ok ? r.json() : null)
@@ -336,6 +338,31 @@ export default function RecipeDetailPage() {
         setLoading(false);
       });
   }, [id]);
+
+  // Première visite en anglais et recette jamais traduite : traduit + sauvegarde en DB (écran de chargement pendant l'appel)
+  useEffect(() => {
+    if (!recipe || lang !== 'en' || recipe.nameEn) return;
+    setTranslatingEn(true);
+    fetch(`/api/recipes/${id}/translate-en`, { method: 'POST' })
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (!data) return;
+        setRecipe(prev => {
+          if (!prev) return prev;
+          const enByIngredientId = new Map((data.ingredients || []).map((i: { id: string; nameEn: string }) => [i.id, i.nameEn]));
+          return {
+            ...prev,
+            nameEn: data.nameEn,
+            descriptionEn: data.descriptionEn,
+            instructionsEn: data.instructionsEn,
+            ingredients: prev.ingredients.map(ri => enByIngredientId.has(ri.ingredient.id)
+              ? { ...ri, ingredient: { ...ri.ingredient, nameEn: String(enByIngredientId.get(ri.ingredient.id) || ri.ingredient.nameEn || '') } }
+              : ri),
+          };
+        });
+      })
+      .finally(() => setTranslatingEn(false));
+  }, [recipe?.id, recipe?.nameEn, lang, id]);
 
   // Dynamic translation for non-FR/EN languages
   useEffect(() => {
@@ -571,6 +598,14 @@ export default function RecipeDetailPage() {
     return (
       <AppShell>
         <p className="text-center py-20" style={{ color: 'var(--text-muted)' }}>{t('recipe.notFound')}</p>
+      </AppShell>
+    );
+  }
+
+  if (translatingEn) {
+    return (
+      <AppShell>
+        <MascotLoader message="Translating this recipe into English…" variant="chef" />
       </AppShell>
     );
   }

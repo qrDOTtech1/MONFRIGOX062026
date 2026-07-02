@@ -1,8 +1,16 @@
 import type { Metadata, Viewport } from 'next';
+import { Space_Grotesk } from 'next/font/google';
 import ThemeProvider from '@/components/ThemeProvider';
 import { I18nProvider } from '@/lib/i18n';
 import ServiceWorkerRegistrar from '@/components/ServiceWorkerRegistrar';
 import './globals.css';
+
+const spaceGrotesk = Space_Grotesk({
+  subsets: ['latin'],
+  weight: ['400', '500', '600', '700'],
+  variable: '--font-app',
+  display: 'swap',
+});
 
 const SITE_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://monfrigo.app';
 const SITE_NAME = 'Mon Frigo';
@@ -93,7 +101,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           })();
         ` }} />
       </head>
-      <body className="antialiased">
+      <body className={`antialiased ${spaceGrotesk.variable}`}>
         <I18nProvider>
           <ThemeProvider>
             <ServiceWorkerRegistrar />

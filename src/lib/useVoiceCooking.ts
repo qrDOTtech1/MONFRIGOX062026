@@ -20,6 +20,11 @@ interface UseVoiceCookingOptions {
   onTimerStop?: () => void;
   onTimerReset?: () => void;
   onFinish?: () => void;
+  onPlayMusic?: () => void;
+  onPauseMusic?: () => void;
+  onResumeMusic?: () => void;
+  onNextMusic?: () => void;
+  onStopMusic?: () => void;
   currentStepText: string;
   currentStep?: number;
   totalSteps?: number;
@@ -27,12 +32,13 @@ interface UseVoiceCookingOptions {
   introText?: string;
   waitingForConfirm?: boolean;
   allStepsTexts?: string[];
+  musicActive?: boolean;
 }
 
 type TTSEngine = 'elevenlabs' | 'native' | 'none';
 type STTEngine = 'elevenlabs' | 'native' | 'none';
 
-export function useVoiceCooking({ onNext, onPrev, onRepeat, onConfirm, onAskAI, onRepeatStep, onSelectOption, onHelp, onTimerStart, onTimerStop, onTimerReset, onFinish, currentStepText, currentStep, totalSteps, ingredientsText, waitingForConfirm, allStepsTexts }: UseVoiceCookingOptions) {
+export function useVoiceCooking({ onNext, onPrev, onRepeat, onConfirm, onAskAI, onRepeatStep, onSelectOption, onHelp, onTimerStart, onTimerStop, onTimerReset, onFinish, onPlayMusic, onPauseMusic, onResumeMusic, onNextMusic, onStopMusic, currentStepText, currentStep, totalSteps, ingredientsText, waitingForConfirm, allStepsTexts, musicActive }: UseVoiceCookingOptions) {
   const [isListening, setIsListening] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [lastCommand, setLastCommand] = useState('');
@@ -54,6 +60,10 @@ export function useVoiceCooking({ onNext, onPrev, onRepeat, onConfirm, onAskAI, 
   const volumeSampleRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const maxVolumeRef = useRef(0);
   const lastAIIntentAtRef = useRef(0);
+  const musicActiveRef = useRef(false);
+  const noiseFloorRef = useRef(0);
+
+  useEffect(() => { musicActiveRef.current = !!musicActive; }, [musicActive]);
 
   // Detect engines on mount
   useEffect(() => {
@@ -183,10 +193,24 @@ export function useVoiceCooking({ onNext, onPrev, onRepeat, onConfirm, onAskAI, 
       }
       const rms = Math.sqrt(sumSquares / data.length);
       if (rms > maxVolumeRef.current) maxVolumeRef.current = rms;
+
+      // Traque le bruit de fond (musique) : descend vite, remonte lentement — approxime le plancher réel
+      if (noiseFloorRef.current === 0 || rms < noiseFloorRef.current) {
+        noiseFloorRef.current = rms;
+      } else {
+        noiseFloorRef.current = noiseFloorRef.current * 0.98 + rms * 0.02;
+      }
     }, 100);
   }
 
   const SILENCE_RMS_THRESHOLD = 0.02;
+
+  // Avec de la musique en fond, le seuil fixe ne suffit plus : on exige un pic nettement
+  // au-dessus du bruit ambiant mesuré, plutôt qu'une constante absolue.
+  function getEffectiveSilenceThreshold(): number {
+    if (!musicActiveRef.current) return SILENCE_RMS_THRESHOLD;
+    return Math.max(SILENCE_RMS_THRESHOLD, noiseFloorRef.current * 2.2);
+  }
 
   function pauseMic() {
     if (resumeTimeoutRef.current) { clearTimeout(resumeTimeoutRef.current); resumeTimeoutRef.current = null; }
@@ -220,7 +244,7 @@ export function useVoiceCooking({ onNext, onPrev, onRepeat, onConfirm, onAskAI, 
     startVolumeSampling();
     recorder.onstop = () => {
       stopVolumeSampling();
-      const hadSpeech = maxVolumeRef.current > SILENCE_RMS_THRESHOLD;
+      const hadSpeech = maxVolumeRef.current > getEffectiveSilenceThreshold();
       if (chunks.length > 0 && !speakingRef.current && !justResumedRef.current && hadSpeech) {
         sendAudioChunkRef.current(new Blob(chunks, { type: mimeType }));
       } else if (chunks.length > 0 && !hadSpeech) {
@@ -368,9 +392,38 @@ export function useVoiceCooking({ onNext, onPrev, onRepeat, onConfirm, onAskAI, 
     // Apostrophes create merged tokens ("l'étape" → "l'etape") that break anchor matching — strip them for these checks
     const tNoApos = t.replace(/'/g, ' ');
 
+    // ── Musique (non documentée — cf. hint vocal) ──
+    let musicHandled = false;
+    if (hasWord(t, 'musique', 'radio')) {
+      if (hasWord(t, 'stop', 'arrete', 'coupe', 'eteins')) {
+        label = '🎵 Stop musique';
+        if (onStopMusic) onStopMusic();
+        musicHandled = true;
+      } else if (hasWord(t, 'pause')) {
+        label = '🎵 Pause musique';
+        if (onPauseMusic) onPauseMusic();
+        musicHandled = true;
+      } else if (hasWord(t, 'reprend', 'continue', 'relance', 'remet')) {
+        label = '🎵 Reprend musique';
+        if (onResumeMusic) onResumeMusic();
+        musicHandled = true;
+      } else if (hasWord(t, 'suivante', 'change', 'autre', 'prochaine')) {
+        label = '🎵 Radio suivante';
+        if (onNextMusic) onNextMusic();
+        musicHandled = true;
+      } else if (hasWord(t, 'mets', 'lance', 'joue', 'mettre', 'demarre', 'veux')) {
+        label = '🎵 Musique';
+        if (onPlayMusic) onPlayMusic();
+        musicHandled = true;
+      }
+    }
+
     // ── Sélection option IA ("option 1", "go pour option 2", "choix numéro trois") ──
-    const optionNum = hasWord(t, 'option', 'choix') ? findNumberNear(tNoApos, 'option', 'choix', 'go') : null;
-    if (optionNum !== null && optionNum >= 1) {
+    const optionNum = !musicHandled && hasWord(t, 'option', 'choix') ? findNumberNear(tNoApos, 'option', 'choix', 'go') : null;
+    if (musicHandled) {
+      // handled above
+    }
+    else if (optionNum !== null && optionNum >= 1) {
       label = `👆 Option ${optionNum}`;
       if (onSelectOption) onSelectOption(optionNum - 1);
     }
@@ -480,7 +533,7 @@ export function useVoiceCooking({ onNext, onPrev, onRepeat, onConfirm, onAskAI, 
     } else {
       console.log('[VoiceCooking] No command matched:', t.slice(0, 50));
     }
-  }, [onNext, onPrev, onRepeat, onConfirm, onAskAI, onRepeatStep, onSelectOption, onHelp, onTimerStart, onTimerStop, onTimerReset, onFinish, currentStepText, currentStep, totalSteps, ingredientsText, waitingForConfirm, allStepsTexts, speak]);
+  }, [onNext, onPrev, onRepeat, onConfirm, onAskAI, onRepeatStep, onSelectOption, onHelp, onTimerStart, onTimerStop, onTimerReset, onFinish, onPlayMusic, onPauseMusic, onResumeMusic, onNextMusic, onStopMusic, currentStepText, currentStep, totalSteps, ingredientsText, waitingForConfirm, allStepsTexts, speak]);
 
   // ── ElevenLabs STT chunk (ref-based to avoid stale closures) ──
   const sendAudioChunkRef = useRef(async (blob: Blob) => {});

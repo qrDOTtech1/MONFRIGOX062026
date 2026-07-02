@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { ArrowLeft, ArrowRight, ChefHat, Clock, X, Timer, Check, Users, Camera, Refrigerator, Loader2, Globe, Lock, Mic, MicOff, Volume2, HelpCircle } from 'lucide-react';
+import { ArrowLeft, ArrowRight, ChefHat, Clock, X, Timer, Check, Users, Camera, Refrigerator, Loader2, Globe, Lock, Mic, MicOff, Volume2, HelpCircle, Pause, Play, Music } from 'lucide-react';
 import { useVoiceCooking } from '@/lib/useVoiceCooking';
 import Mascot, { MascotVariant } from '@/components/Mascot';
 
@@ -171,17 +171,102 @@ export default function CookModePage() {
   const [aiLoading, setAiLoading] = useState(false);
   const [aiCards, setAiCards] = useState<Array<{ title: string; description: string }>>([]);
   const [selectedCard, setSelectedCard] = useState<number | null>(null);
+  const [cardsMode, setCardsMode] = useState<'ai' | 'radio'>('ai');
   const [showHelp, setShowHelp] = useState(false);
   const [helpVoiceTriggered, setHelpVoiceTriggered] = useState(false);
   const helpScrollRef = useRef<HTMLDivElement>(null);
+
+  // ── Radio (déclenchée uniquement à la voix, jamais annoncée dans l'UI) ──
+  const RADIO_STATIONS = [
+    { name: 'FIP', url: 'https://icecast.radiofrance.fr/fip-midfi.mp3' },
+    { name: 'France Inter', url: 'https://icecast.radiofrance.fr/franceinter-midfi.mp3' },
+    { name: 'France Musique', url: 'https://icecast.radiofrance.fr/francemusique-midfi.mp3' },
+    { name: 'Le Mouv', url: 'https://icecast.radiofrance.fr/lemouv-midfi.mp3' },
+  ];
+  const [radioStationIdx, setRadioStationIdx] = useState<number | null>(null);
+  const [radioPlaying, setRadioPlaying] = useState(false);
+  const [musicUnlocked, setMusicUnlocked] = useState(false);
+  const radioAudioRef = useRef<HTMLAudioElement | null>(null);
+  const radioFadeRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const RADIO_VOLUME_NORMAL = 0.16;
+  const RADIO_VOLUME_DUCKED = 0.04;
+
+  function fadeRadioVolume(target: number) {
+    if (radioFadeRef.current) clearInterval(radioFadeRef.current);
+    const audio = radioAudioRef.current;
+    if (!audio) return;
+    radioFadeRef.current = setInterval(() => {
+      const diff = target - audio.volume;
+      if (Math.abs(diff) < 0.01) {
+        audio.volume = target;
+        if (radioFadeRef.current) clearInterval(radioFadeRef.current);
+        return;
+      }
+      audio.volume += diff * 0.3;
+    }, 60);
+  }
+
+  function playRadioAt(idx: number) {
+    const station = RADIO_STATIONS[idx];
+    if (!station) return;
+    if (radioAudioRef.current) { radioAudioRef.current.pause(); radioAudioRef.current = null; }
+    const audio = new Audio(station.url);
+    audio.volume = 0;
+    audio.crossOrigin = 'anonymous';
+    radioAudioRef.current = audio;
+    audio.play().catch(() => {});
+    fadeRadioVolume(RADIO_VOLUME_NORMAL);
+    setRadioStationIdx(idx);
+    setRadioPlaying(true);
+    setMusicUnlocked(true);
+  }
+
+  function pauseRadio() {
+    radioAudioRef.current?.pause();
+    setRadioPlaying(false);
+  }
+
+  function resumeRadio() {
+    if (radioAudioRef.current) {
+      radioAudioRef.current.play().catch(() => {});
+      setRadioPlaying(true);
+    } else if (radioStationIdx !== null) {
+      playRadioAt(radioStationIdx);
+    }
+  }
+
+  function nextRadioStation() {
+    const nextIdx = radioStationIdx === null ? 0 : (radioStationIdx + 1) % RADIO_STATIONS.length;
+    playRadioAt(nextIdx);
+    speak(`${RADIO_STATIONS[nextIdx].name}, c'est parti.`);
+  }
+
+  function stopRadio() {
+    if (radioFadeRef.current) clearInterval(radioFadeRef.current);
+    if (radioAudioRef.current) { radioAudioRef.current.pause(); radioAudioRef.current = null; }
+    setRadioPlaying(false);
+    setRadioStationIdx(null);
+  }
+
+  useEffect(() => () => { radioAudioRef.current?.pause(); if (radioFadeRef.current) clearInterval(radioFadeRef.current); }, []);
 
   function closeAiCards() {
     setAiAnswer('');
     setAiCards([]);
     setSelectedCard(null);
+    setCardsMode('ai');
   }
 
   function handleSelectOption(idx: number) {
+    if (cardsMode === 'radio') {
+      if (idx >= 0 && idx < RADIO_STATIONS.length) {
+        playRadioAt(idx);
+        speak(`${RADIO_STATIONS[idx].name}, c'est parti.`);
+        closeAiCards();
+      }
+      return;
+    }
     if (idx >= 0 && idx < aiCards.length) {
       setSelectedCard(idx);
       const card = aiCards[idx];
@@ -189,6 +274,14 @@ export default function CookModePage() {
       // La liste se referme après la sélection, comme lors d'un changement d'étape
       setTimeout(() => closeAiCards(), 3500);
     }
+  }
+
+  function handlePlayMusicRequest() {
+    setAiAnswer('Voici quelques radios, dis "option 1", "2"... pour choisir :');
+    setAiCards(RADIO_STATIONS.map(s => ({ title: s.name, description: 'Radio en direct' })));
+    setCardsMode('radio');
+    setSelectedCard(null);
+    speak(`Je te propose quelques radios : ${RADIO_STATIONS.map((s, i) => `option ${i + 1}, ${s.name}`).join(', ')}. Dis le numéro de ton choix.`);
   }
 
   // Referme les cartes IA quand on change d'étape pour ne pas garder d'anciennes suggestions à l'écran
@@ -245,6 +338,7 @@ export default function CookModePage() {
       setAiAnswer('');
       setAiCards([]);
       setSelectedCard(null);
+      setCardsMode('ai');
       try {
         const allIngredientsContext = recipe ? recipe.ingredients.map(ing => `${ing.quantity} ${ing.unit} ${ing.ingredient.name}`).join(', ') : '';
         const res = await fetch('/api/ai/cook-intent', {
@@ -310,13 +404,26 @@ export default function CookModePage() {
       if (timer) { setTimerSeconds(timer * 60); setTimerRunning(false); }
     },
     onFinish: () => setDone(true),
+    onPlayMusic: handlePlayMusicRequest,
+    onPauseMusic: () => { pauseRadio(); speak('Musique en pause.'); },
+    onResumeMusic: () => { resumeRadio(); speak('Je remets la musique.'); },
+    onNextMusic: () => nextRadioStation(),
+    onStopMusic: () => { stopRadio(); speak('Musique coupée.'); },
     currentStepText,
     currentStep: step,
     totalSteps,
     ingredientsText,
     waitingForConfirm,
     allStepsTexts: steps,
+    musicActive: radioPlaying,
   });
+
+  // Ducking : la musique baisse pendant que l'IA/TTS parle, remonte ensuite
+  useEffect(() => {
+    if (!radioPlaying) return;
+    fadeRadioVolume(isSpeaking ? RADIO_VOLUME_DUCKED : RADIO_VOLUME_NORMAL);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isSpeaking, radioPlaying]);
 
   useEffect(() => {
     fetch('/api/auth/me')
@@ -615,6 +722,18 @@ export default function CookModePage() {
                 : <MicOff className="w-4 h-4" style={{ color: 'var(--text-muted)' }} />}
             </button>
           )}
+          {/* Bouton pause musique — n'apparaît qu'une fois la musique demandée */}
+          {musicUnlocked && (
+            <button
+              onClick={() => (radioPlaying ? pauseRadio() : resumeRadio())}
+              title={radioPlaying ? 'Mettre la musique en pause' : 'Reprendre la musique'}
+              className="p-2 rounded-lg transition-all"
+              style={{ backgroundColor: 'var(--bg-inset)', border: '1px solid var(--border-subtle)' }}>
+              {radioPlaying
+                ? <Pause className="w-4 h-4" style={{ color: 'var(--text-secondary)' }} />
+                : <Play className="w-4 h-4" style={{ color: 'var(--text-secondary)' }} />}
+            </button>
+          )}
           {/* Bouton aide commandes vocales */}
           {supported && (
             <button
@@ -627,6 +746,22 @@ export default function CookModePage() {
           )}
         </div>
       </header>
+
+      {/* Panneau des commandes vocales musique — visible uniquement une fois débloqué (jamais annoncé ailleurs) */}
+      {musicUnlocked && radioStationIdx !== null && (
+        <div className="flex items-center justify-between px-4 py-2 fade-in"
+          style={{ backgroundColor: 'rgba(139,92,246,0.07)', borderBottom: '1px solid rgba(139,92,246,0.15)' }}>
+          <div className="flex items-center gap-2 min-w-0">
+            <Music className="w-3.5 h-3.5 shrink-0" style={{ color: '#8b5cf6' }} />
+            <span className="text-xs font-medium truncate" style={{ color: '#8b5cf6' }}>
+              {RADIO_STATIONS[radioStationIdx].name}{radioPlaying ? '' : ' (pause)'}
+            </span>
+          </div>
+          <span className="text-[10px] shrink-0" style={{ color: 'var(--text-muted)' }}>
+            &quot;pause musique&quot; · &quot;reprends&quot; · &quot;suivante&quot; · &quot;stop musique&quot;
+          </span>
+        </div>
+      )}
 
       {/* Overlay aide — grille complète des commandes vocales, avec alias et auto-défilement si déclenchée par la voix */}
       {showHelp && (
