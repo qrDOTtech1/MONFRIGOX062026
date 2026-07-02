@@ -577,7 +577,7 @@ export default function AdminConfigPage() {
               </div>
               <div>
                 <label className="flex items-center gap-1.5 text-xs mb-1.5" style={{ color: 'var(--text-muted)' }}>
-                  <Mic className="w-3.5 h-3.5" /> Voice ID — Easter egg
+                  <Mic className="w-3.5 h-3.5" /> Voice ID
                   <span className="text-[9px] px-1 py-0.5 rounded font-bold" style={{ backgroundColor: 'rgba(139,92,246,0.15)', color: '#8b5cf6' }}>EE</span>
                 </label>
                 <input
@@ -588,7 +588,7 @@ export default function AdminConfigPage() {
                   className="input-field font-mono text-sm"
                 />
                 <p className="text-[10px] mt-1" style={{ color: 'var(--text-muted)' }}>
-                  Voix 3 — fonctionnalités cachées non annoncées à l&apos;utilisateur. Laisse vide pour réutiliser la voix cuisine.
+                  Optionnel. Laisse vide pour réutiliser la voix cuisine.
                 </p>
               </div>
             </div>

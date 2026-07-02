@@ -183,10 +183,10 @@ export default function CookModePage() {
     { name: 'France Inter', url: 'https://icecast.radiofrance.fr/franceinter-midfi.mp3', vibe: 'calm' },
     { name: 'France Musique', url: 'https://icecast.radiofrance.fr/francemusique-midfi.mp3', vibe: 'classic' },
     { name: 'Le Mouv', url: 'https://icecast.radiofrance.fr/lemouv-midfi.mp3', vibe: 'energetic' },
-    { name: 'BBC World Service', url: 'http://stream.live.vc.bbcmedia.co.uk/bbc_world_service', vibe: 'world' },
-    { name: 'Radio Swiss Jazz', url: 'http://stream.srg-ssr.ch/m/rsj/mp3_128', vibe: 'cozy' },
-    { name: 'Radio Swiss Pop', url: 'http://stream.srg-ssr.ch/m/rp/mp3_128', vibe: 'lively' },
-    { name: 'Radio Swiss Classic', url: 'http://stream.srg-ssr.ch/m/rsc_de/mp3_128', vibe: 'elegant' },
+    { name: 'BBC World Service', url: 'https://stream.live.vc.bbcmedia.co.uk/bbc_world_service', vibe: 'world' },
+    { name: 'Radio Swiss Jazz', url: 'https://stream.srg-ssr.ch/m/rsj/mp3_128', vibe: 'cozy' },
+    { name: 'Radio Swiss Pop', url: 'https://stream.srg-ssr.ch/m/rp/mp3_128', vibe: 'lively' },
+    { name: 'Radio Swiss Classic', url: 'https://stream.srg-ssr.ch/m/rsc_de/mp3_128', vibe: 'elegant' },
   ];
 
   // Devine une ambiance radio adaptée à la recette, à partir de la cuisine et du nom du plat
@@ -223,7 +223,7 @@ export default function CookModePage() {
     }, 60);
   }
 
-  function playRadioAt(idx: number) {
+  function playRadioAt(idx: number, retriesLeft = RADIO_STATIONS.length - 1) {
     const station = RADIO_STATIONS[idx];
     if (!station) return;
     if (radioAudioRef.current) { radioAudioRef.current.pause(); radioAudioRef.current = null; }
@@ -231,6 +231,19 @@ export default function CookModePage() {
     audio.volume = 0;
     audio.crossOrigin = 'anonymous';
     radioAudioRef.current = audio;
+
+    // Filet de sécurité : si le flux ne charge pas (mort, bloqué), on bascule sur la station suivante
+    // au lieu de laisser un échec silencieux — jamais plus de "musique qui ne marche pas".
+    audio.onerror = () => {
+      if (radioAudioRef.current !== audio) return; // remplacé entre-temps, on ignore
+      if (retriesLeft > 0) {
+        playRadioAt((idx + 1) % RADIO_STATIONS.length, retriesLeft - 1);
+      } else {
+        setRadioPlaying(false);
+        speak('Aucune radio ne répond pour le moment, réessaie plus tard.', 'easter');
+      }
+    };
+
     audio.play().catch(() => {});
     fadeRadioVolume(radioTargetVolumeRef.current);
     setRadioStationIdx(idx);

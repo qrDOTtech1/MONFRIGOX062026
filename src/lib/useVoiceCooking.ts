@@ -401,8 +401,10 @@ export function useVoiceCooking({ onNext, onPrev, onRepeat, onConfirm, onAskAI, 
     const tNoApos = t.replace(/'/g, ' ');
 
     // ── Musique (non documentée — cf. hint vocal) ──
+    // Déclencheur volontairement large : le STT hallucine/déforme facilement ce mot,
+    // et on préfère un faux positif rare à un repli sur l'IA qui ne connaît pas cette fonctionnalité cachée.
     let musicHandled = false;
-    if (hasWord(t, 'musique', 'radio')) {
+    if (hasWord(t, 'musique', 'radio', 'music', 'playlist', 'ambiance sonore', 'fond sonore')) {
       if (hasWord(t, 'stop', 'arrete', 'coupe', 'eteins')) {
         label = '🎵 Stop musique';
         if (onStopMusic) onStopMusic();
@@ -443,7 +445,9 @@ export function useVoiceCooking({ onNext, onPrev, onRepeat, onConfirm, onAskAI, 
         label = '🎵 Musique assortie';
         if (onPlayMatchingMusic) onPlayMatchingMusic();
         musicHandled = true;
-      } else if (hasWord(t, 'mets', 'lance', 'joue', 'mettre', 'demarre', 'veux')) {
+      } else {
+        // Filet de sécurité : toute mention de musique/radio non reconnue plus haut
+        // déclenche quand même la proposition de radios, plutôt que de tomber sur l'IA.
         label = '🎵 Musique';
         if (onPlayMusic) onPlayMusic();
         musicHandled = true;
