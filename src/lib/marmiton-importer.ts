@@ -172,7 +172,9 @@ export async function importNextBatch(batchSize = 5): Promise<{ imported: number
           description: (ld.description || '').slice(0, 500) || `${ld.name} — recette maison`,
           instructions,
           difficulty: difficulty as any,
-          prepTime: parseIsoDurationToMinutes(ld.prepTime),
+          // Le modèle n'a qu'un seul champ temps affiché aux utilisateurs → on prend le temps total
+          // (prépa + cuisson), sinon un plat qui mijote 2h afficherait "10 min" de façon trompeuse.
+          prepTime: parseIsoDurationToMinutes(ld.totalTime || ld.prepTime),
           cuisine: ld.recipeCuisine || ld.recipeCategory || 'Maison',
           servings: parseServings(ld.recipeYield),
           imageUrl: Array.isArray(ld.image) ? ld.image[0] : (ld.image || ''),
