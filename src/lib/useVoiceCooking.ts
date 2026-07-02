@@ -25,7 +25,13 @@ interface UseVoiceCookingOptions {
   onPauseMusic?: () => void;
   onResumeMusic?: () => void;
   onNextMusic?: () => void;
+  onPrevMusic?: () => void;
+  onSurpriseMusic?: () => void;
+  onWhichMusic?: () => void;
+  onVolumeUpMusic?: () => void;
+  onVolumeDownMusic?: () => void;
   onStopMusic?: () => void;
+  onPlayQuiz?: () => void;
   currentStepText: string;
   currentStep?: number;
   totalSteps?: number;
@@ -39,7 +45,7 @@ interface UseVoiceCookingOptions {
 type TTSEngine = 'elevenlabs' | 'native' | 'none';
 type STTEngine = 'elevenlabs' | 'native' | 'none';
 
-export function useVoiceCooking({ onNext, onPrev, onRepeat, onConfirm, onAskAI, onRepeatStep, onSelectOption, onHelp, onTimerStart, onTimerStop, onTimerReset, onFinish, onPlayMusic, onPlayMatchingMusic, onPauseMusic, onResumeMusic, onNextMusic, onStopMusic, currentStepText, currentStep, totalSteps, ingredientsText, waitingForConfirm, allStepsTexts, musicActive }: UseVoiceCookingOptions) {
+export function useVoiceCooking({ onNext, onPrev, onRepeat, onConfirm, onAskAI, onRepeatStep, onSelectOption, onHelp, onTimerStart, onTimerStop, onTimerReset, onFinish, onPlayMusic, onPlayMatchingMusic, onPauseMusic, onResumeMusic, onNextMusic, onPrevMusic, onSurpriseMusic, onWhichMusic, onVolumeUpMusic, onVolumeDownMusic, onStopMusic, onPlayQuiz, currentStepText, currentStep, totalSteps, ingredientsText, waitingForConfirm, allStepsTexts, musicActive }: UseVoiceCookingOptions) {
   const [isListening, setIsListening] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [lastCommand, setLastCommand] = useState('');
@@ -409,9 +415,29 @@ export function useVoiceCooking({ onNext, onPrev, onRepeat, onConfirm, onAskAI, 
         label = '🎵 Reprend musique';
         if (onResumeMusic) onResumeMusic();
         musicHandled = true;
+      } else if (hasWord(t, 'surprise', 'aleatoire', 'hasard', 'etonne')) {
+        label = '🎵 Radio surprise';
+        if (onSurpriseMusic) onSurpriseMusic();
+        musicHandled = true;
+      } else if (hasWord(t, 'precedente', 'davant', 'retour radio', 'radio davant')) {
+        label = '🎵 Radio précédente';
+        if (onPrevMusic) onPrevMusic();
+        musicHandled = true;
       } else if (hasWord(t, 'suivante', 'change', 'autre', 'prochaine')) {
         label = '🎵 Radio suivante';
         if (onNextMusic) onNextMusic();
+        musicHandled = true;
+      } else if (hasWord(t, 'moins fort', 'baisse', 'plus bas')) {
+        label = '🎵 Volume -';
+        if (onVolumeDownMusic) onVolumeDownMusic();
+        musicHandled = true;
+      } else if (hasWord(t, 'plus fort', 'monte le son', 'augmente')) {
+        label = '🎵 Volume +';
+        if (onVolumeUpMusic) onVolumeUpMusic();
+        musicHandled = true;
+      } else if (hasWord(t, 'quelle radio', 'quelle station', 'cest quoi cette musique', 'quest ce que cest', 'ca joue quoi')) {
+        label = '🎵 Radio actuelle';
+        if (onWhichMusic) onWhichMusic();
         musicHandled = true;
       } else if (hasWord(t, 'va avec', 'qui correspond', 'adapte', 'accord avec', 'ambiance de la recette', 'colle a la recette', 'colle avec')) {
         label = '🎵 Musique assortie';
@@ -424,9 +450,17 @@ export function useVoiceCooking({ onNext, onPrev, onRepeat, onConfirm, onAskAI, 
       }
     }
 
+    // ── Quiz culinaire (non documenté — cf. hint vocal) ──
+    let quizHandled = false;
+    if (!musicHandled && hasWord(t, 'jeu', 'quiz', 'defi', 'devine devinette')) {
+      label = '🎲 Quiz';
+      if (onPlayQuiz) onPlayQuiz();
+      quizHandled = true;
+    }
+
     // ── Sélection option IA ("option 1", "go pour option 2", "choix numéro trois") ──
-    const optionNum = !musicHandled && hasWord(t, 'option', 'choix') ? findNumberNear(tNoApos, 'option', 'choix', 'go') : null;
-    if (musicHandled) {
+    const optionNum = !musicHandled && !quizHandled && hasWord(t, 'option', 'choix') ? findNumberNear(tNoApos, 'option', 'choix', 'go') : null;
+    if (musicHandled || quizHandled) {
       // handled above
     }
     else if (optionNum !== null && optionNum >= 1) {
@@ -539,7 +573,7 @@ export function useVoiceCooking({ onNext, onPrev, onRepeat, onConfirm, onAskAI, 
     } else {
       console.log('[VoiceCooking] No command matched:', t.slice(0, 50));
     }
-  }, [onNext, onPrev, onRepeat, onConfirm, onAskAI, onRepeatStep, onSelectOption, onHelp, onTimerStart, onTimerStop, onTimerReset, onFinish, onPlayMusic, onPlayMatchingMusic, onPauseMusic, onResumeMusic, onNextMusic, onStopMusic, currentStepText, currentStep, totalSteps, ingredientsText, waitingForConfirm, allStepsTexts, speak]);
+  }, [onNext, onPrev, onRepeat, onConfirm, onAskAI, onRepeatStep, onSelectOption, onHelp, onTimerStart, onTimerStop, onTimerReset, onFinish, onPlayMusic, onPlayMatchingMusic, onPauseMusic, onResumeMusic, onNextMusic, onPrevMusic, onSurpriseMusic, onWhichMusic, onVolumeUpMusic, onVolumeDownMusic, onStopMusic, onPlayQuiz, currentStepText, currentStep, totalSteps, ingredientsText, waitingForConfirm, allStepsTexts, speak]);
 
   // ── ElevenLabs STT chunk (ref-based to avoid stale closures) ──
   const sendAudioChunkRef = useRef(async (blob: Blob) => {});

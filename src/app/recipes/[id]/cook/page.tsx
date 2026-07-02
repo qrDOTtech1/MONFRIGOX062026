@@ -172,7 +172,7 @@ export default function CookModePage() {
   const [aiLoading, setAiLoading] = useState(false);
   const [aiCards, setAiCards] = useState<Array<{ title: string; description: string }>>([]);
   const [selectedCard, setSelectedCard] = useState<number | null>(null);
-  const [cardsMode, setCardsMode] = useState<'ai' | 'radio'>('ai');
+  const [cardsMode, setCardsMode] = useState<'ai' | 'radio' | 'quiz'>('ai');
   const [showHelp, setShowHelp] = useState(false);
   const [helpVoiceTriggered, setHelpVoiceTriggered] = useState(false);
   const helpScrollRef = useRef<HTMLDivElement>(null);
@@ -204,8 +204,8 @@ export default function CookModePage() {
   const [musicUnlocked, setMusicUnlocked] = useState(false);
   const radioAudioRef = useRef<HTMLAudioElement | null>(null);
   const radioFadeRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const radioTargetVolumeRef = useRef(0.16);
 
-  const RADIO_VOLUME_NORMAL = 0.16;
   const RADIO_VOLUME_DUCKED = 0.04;
 
   function fadeRadioVolume(target: number) {
@@ -232,7 +232,7 @@ export default function CookModePage() {
     audio.crossOrigin = 'anonymous';
     radioAudioRef.current = audio;
     audio.play().catch(() => {});
-    fadeRadioVolume(RADIO_VOLUME_NORMAL);
+    fadeRadioVolume(radioTargetVolumeRef.current);
     setRadioStationIdx(idx);
     setRadioPlaying(true);
     setMusicUnlocked(true);
@@ -258,6 +258,31 @@ export default function CookModePage() {
     speak(`${RADIO_STATIONS[nextIdx].name}, c'est parti.`, 'easter');
   }
 
+  function prevRadioStation() {
+    const prevIdx = radioStationIdx === null ? 0 : (radioStationIdx - 1 + RADIO_STATIONS.length) % RADIO_STATIONS.length;
+    playRadioAt(prevIdx);
+    speak(`${RADIO_STATIONS[prevIdx].name}, c'est parti.`, 'easter');
+  }
+
+  function surpriseRadioStation() {
+    const others = RADIO_STATIONS.map((_, i) => i).filter(i => i !== radioStationIdx);
+    const pick = others[Math.floor(Math.random() * others.length)] ?? 0;
+    playRadioAt(pick);
+    const intros = ['Tiens, je te surprends avec', 'Roulette radio :', 'On tente autre chose :', 'Voici un choix audacieux :'];
+    speak(`${intros[Math.floor(Math.random() * intros.length)]} ${RADIO_STATIONS[pick].name}.`, 'easter');
+  }
+
+  function announceCurrentStation() {
+    if (radioStationIdx === null) { speak('Aucune radio en cours.', 'easter'); return; }
+    speak(`Tu écoutes ${RADIO_STATIONS[radioStationIdx].name}.`, 'easter');
+  }
+
+  function adjustRadioVolume(delta: number) {
+    radioTargetVolumeRef.current = Math.min(0.4, Math.max(0.02, radioTargetVolumeRef.current + delta));
+    if (radioPlaying) fadeRadioVolume(radioTargetVolumeRef.current);
+    speak(delta > 0 ? 'Je monte un peu le son.' : 'Je baisse un peu le son.', 'easter');
+  }
+
   function stopRadio() {
     if (radioFadeRef.current) clearInterval(radioFadeRef.current);
     if (radioAudioRef.current) { radioAudioRef.current.pause(); radioAudioRef.current = null; }
@@ -266,6 +291,73 @@ export default function CookModePage() {
   }
 
   useEffect(() => () => { radioAudioRef.current?.pause(); if (radioFadeRef.current) clearInterval(radioFadeRef.current); }, []);
+
+  // ── Quiz culinaire éclair (non documenté — cf. hint vocal) ──
+  const [quizCorrectIndex, setQuizCorrectIndex] = useState<number | null>(null);
+  const [quizFunFact, setQuizFunFact] = useState('');
+  const [quizStreak, setQuizStreak] = useState(0);
+  const quizAskedRef = useRef<string[]>([]);
+
+  const QUIZ_TITLES: Array<{ min: number; title: string }> = [
+    { min: 8, title: 'Toqué d\'or 👑' },
+    { min: 5, title: 'Chef confirmé 🥇' },
+    { min: 3, title: 'Sous-chef 🥈' },
+  ];
+
+  async function playQuiz() {
+    setAiLoading(true);
+    setAiAnswer('');
+    setAiCards([]);
+    setCardsMode('quiz');
+    setSelectedCard(null);
+    try {
+      const allIngredientsContext = recipe ? recipe.ingredients.map(ing => `${ing.quantity} ${ing.unit} ${ing.ingredient.name}`).join(', ') : '';
+      const res = await fetch('/api/ai/cook-quiz', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          recipeName: recipe?.name || '',
+          stepText: steps[step] || '',
+          ingredientsText: allIngredientsContext,
+          askedQuestions: quizAskedRef.current,
+        }),
+      });
+      const data = await res.json();
+      if (data.error || !data.question) {
+        speak('Le quiz est indisponible pour le moment.', 'easter');
+        setCardsMode('ai');
+        return;
+      }
+      quizAskedRef.current = [...quizAskedRef.current, data.question].slice(-8);
+      setAiAnswer(data.question);
+      setAiCards(data.options.map((opt: string) => ({ title: opt, description: '' })));
+      setQuizCorrectIndex(data.correctIndex);
+      setQuizFunFact(data.funFact || '');
+      speak(`${data.question} ${data.options.map((o: string, i: number) => `Option ${i + 1} : ${o}`).join('. ')}`, 'easter');
+    } catch {
+      speak('Le quiz est indisponible pour le moment.', 'easter');
+      setCardsMode('ai');
+    } finally {
+      setAiLoading(false);
+    }
+  }
+
+  function answerQuiz(idx: number) {
+    setSelectedCard(idx);
+    const correct = idx === quizCorrectIndex;
+    if (correct) {
+      const newStreak = quizStreak + 1;
+      setQuizStreak(newStreak);
+      const unlocked = QUIZ_TITLES.find(t => newStreak === t.min);
+      const titleLine = unlocked ? ` Nouveau titre débloqué : ${unlocked.title} !` : '';
+      speak(`Bonne réponse !${titleLine} ${quizFunFact}`, 'easter');
+    } else {
+      setQuizStreak(0);
+      const correctText = quizCorrectIndex !== null ? aiCards[quizCorrectIndex]?.title : '';
+      speak(`Raté, c'était plutôt ${correctText}. ${quizFunFact}`, 'easter');
+    }
+    setTimeout(() => closeAiCards(), 5000);
+  }
 
   function closeAiCards() {
     setAiAnswer('');
@@ -281,6 +373,10 @@ export default function CookModePage() {
         speak(`${RADIO_STATIONS[idx].name}, c'est parti.`, 'easter');
         closeAiCards();
       }
+      return;
+    }
+    if (cardsMode === 'quiz') {
+      if (idx >= 0 && idx < aiCards.length) answerQuiz(idx);
       return;
     }
     if (idx >= 0 && idx < aiCards.length) {
@@ -432,7 +528,13 @@ export default function CookModePage() {
     onPauseMusic: () => { pauseRadio(); speak('Musique en pause.', 'easter'); },
     onResumeMusic: () => { resumeRadio(); speak('Je remets la musique.', 'easter'); },
     onNextMusic: () => nextRadioStation(),
+    onPrevMusic: () => prevRadioStation(),
+    onSurpriseMusic: () => surpriseRadioStation(),
+    onWhichMusic: () => announceCurrentStation(),
+    onVolumeUpMusic: () => adjustRadioVolume(0.06),
+    onVolumeDownMusic: () => adjustRadioVolume(-0.06),
     onStopMusic: () => { stopRadio(); speak('Musique coupée.', 'easter'); },
+    onPlayQuiz: () => playQuiz(),
     currentStepText,
     currentStep: step,
     totalSteps,
@@ -445,7 +547,7 @@ export default function CookModePage() {
   // Ducking : la musique baisse pendant que l'IA/TTS parle, remonte ensuite
   useEffect(() => {
     if (!radioPlaying) return;
-    fadeRadioVolume(isSpeaking ? RADIO_VOLUME_DUCKED : RADIO_VOLUME_NORMAL);
+    fadeRadioVolume(isSpeaking ? RADIO_VOLUME_DUCKED : radioTargetVolumeRef.current);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isSpeaking, radioPlaying]);
 
