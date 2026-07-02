@@ -5,12 +5,11 @@ import fr from '@/locales/fr';
 import en from '@/locales/en';
 
 export const LANGUAGES = [
-  { code: 'fr', label: 'Français', flag: '🇫🇷' },
+  { code: 'pt', label: 'Português', flag: '🇵🇹' },
   { code: 'en', label: 'English', flag: '🇬🇧' },
   { code: 'es', label: 'Español', flag: '🇪🇸' },
   { code: 'de', label: 'Deutsch', flag: '🇩🇪' },
   { code: 'it', label: 'Italiano', flag: '🇮🇹' },
-  { code: 'pt', label: 'Português', flag: '🇧🇷' },
   { code: 'nl', label: 'Nederlands', flag: '🇳🇱' },
   { code: 'ar', label: 'العربية', flag: '🇸🇦' },
   { code: 'zh', label: '中文', flag: '🇨🇳' },
@@ -21,6 +20,7 @@ export const LANGUAGES = [
   { code: 'pl', label: 'Polski', flag: '🇵🇱' },
   { code: 'hi', label: 'हिन्दी', flag: '🇮🇳' },
   { code: 'sv', label: 'Svenska', flag: '🇸🇪' },
+  { code: 'fr', label: 'Français', flag: '🇫🇷' },
 ] as const;
 
 export type Lang = string;

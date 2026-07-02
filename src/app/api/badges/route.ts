@@ -4,7 +4,7 @@ import { getCurrentUser } from '@/lib/auth';
 
 const FOUNDER_LIMIT = 100;
 
-const BADGE_META: Record<string, { emoji: string; label: string; desc: string }> = {
+const BADGE_META: Record<string, { emoji: string; label: string; desc: string; topSecret?: boolean }> = {
   founder:    { emoji: '💎', label: 'Pionnier',               desc: 'Parmi les 100 premiers membres' },
   cook_1:     { emoji: '👨‍🍳', label: 'Première recette',     desc: 'Cuisiner ta première recette' },
   cook_10:    { emoji: '🔥', label: '10 recettes',            desc: 'Cuisiner 10 recettes' },
@@ -15,6 +15,9 @@ const BADGE_META: Record<string, { emoji: string; label: string; desc: string }>
   rater_5:    { emoji: '⭐', label: 'Critique gastronomique', desc: 'Noter 5 recettes' },
   fridge_20:  { emoji: '🧊', label: 'Frigo bien rempli',      desc: 'Avoir 20 ingrédients dans le frigo' },
   anti_gaspi: { emoji: '♻️', label: 'Anti-gaspi champion',    desc: '10 recettes cuisinées, 0 ingrédient expiré' },
+  secret_dj:         { emoji: '🎧', label: 'DJ caché',          desc: 'A trouvé une ambiance sonore secrète en mode cuisine', topSecret: true },
+  secret_quizmaster: { emoji: '🧠', label: 'Quiz Master',       desc: 'A trouvé le quiz culinaire caché en mode cuisine', topSecret: true },
+  secret_finder:     { emoji: '🕵️', label: 'Chasseur d\'œufs', desc: 'A débusqué un easter egg bien planqué', topSecret: true },
 };
 
 export async function GET() {
@@ -31,9 +34,15 @@ export async function GET() {
   const badges = Object.entries(BADGE_META).map(([code, meta]) => {
     const userBadge = earned.find(b => b.code === code);
     const unlocked = !!userBadge;
+
+    // Badges top secret verrouillés : on ne révèle ni le nom ni la description tant qu'ils ne sont pas trouvés
+    const displayMeta = meta.topSecret && !unlocked
+      ? { emoji: '🔒', label: '???', desc: 'Top secret — à découvrir…', topSecret: true }
+      : meta;
+
     const base = {
       code,
-      ...meta,
+      ...displayMeta,
       unlocked,
       unlockedAt: userBadge?.unlockedAt ?? null,
     };

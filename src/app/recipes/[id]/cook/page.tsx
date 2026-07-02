@@ -304,7 +304,16 @@ export default function CookModePage() {
     { min: 3, title: 'Sous-chef 🥈' },
   ];
 
+  function unlockSecretBadge(code: string) {
+    fetch('/api/badges/unlock', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code }),
+    }).catch(() => {});
+  }
+
   async function playQuiz() {
+    unlockSecretBadge('secret_quizmaster');
     setAiLoading(true);
     setAiAnswer('');
     setAiCards([]);
@@ -389,6 +398,7 @@ export default function CookModePage() {
   }
 
   function handlePlayMusicRequest() {
+    unlockSecretBadge('secret_dj');
     setAiAnswer('Voici quelques radios, dis "option 1", "2"... pour choisir :');
     setAiCards(RADIO_STATIONS.map(s => ({ title: s.name, description: 'Radio en direct' })));
     setCardsMode('radio');
@@ -397,6 +407,7 @@ export default function CookModePage() {
   }
 
   function handlePlayMatchingMusic() {
+    unlockSecretBadge('secret_dj');
     const idx = pickStationForRecipe();
     if (idx < 0) return;
     playRadioAt(idx);

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import AppShell from '@/components/AppShell';
 import NotificationsToggle from '@/components/NotificationsToggle';
@@ -120,8 +120,10 @@ export default function ProfilePage() {
   const [cookLogs, setCookLogs] = useState<CookLogEntry[]>([]);
   const [cookCounts, setCookCounts] = useState<Record<string,number>>({});
   const [historyLoaded, setHistoryLoaded] = useState(false);
-  const [badges, setBadges] = useState<Array<{ code: string; emoji: string; label: string; desc: string; unlocked: boolean; unlockedAt: string | null }>>([]);
+  const [badges, setBadges] = useState<Array<{ code: string; emoji: string; label: string; desc: string; unlocked: boolean; unlockedAt: string | null; topSecret?: boolean }>>([]);
   const [badgesLoaded, setBadgesLoaded] = useState(false);
+  const badgeClickCountRef = useRef(0);
+  const badgeClickTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [spending, setSpending] = useState<{ monthlyHistory: Array<{ month: string; total: number; sessions: number }>; totalSpent: number } | null>(null);
   const [spendingLoaded, setSpendingLoaded] = useState(false);
 
@@ -212,6 +214,26 @@ export default function ProfilePage() {
     const res = await fetch('/api/badges');
     if (res.ok) setBadges(await res.json());
     setBadgesLoaded(true);
+  }
+
+  // 7 clics sur le compteur de badges débloquent un easter egg — jamais indiqué dans l'UI
+  function handleBadgeHeaderClick() {
+    badgeClickCountRef.current += 1;
+    if (badgeClickTimeoutRef.current) clearTimeout(badgeClickTimeoutRef.current);
+    badgeClickTimeoutRef.current = setTimeout(() => { badgeClickCountRef.current = 0; }, 2000);
+
+    if (badgeClickCountRef.current >= 7) {
+      badgeClickCountRef.current = 0;
+      fetch('/api/badges/unlock', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: 'secret_finder' }),
+      }).then(r => r.ok ? r.json() : null).then(data => {
+        if (data?.unlocked) {
+          fetch('/api/badges').then(r => r.ok ? r.json() : null).then(fresh => { if (fresh) setBadges(fresh); });
+        }
+      }).catch(() => {});
+    }
   }
 
   function toggleAllergen(key: string) {
@@ -716,22 +738,28 @@ export default function ProfilePage() {
           {/* ─── BADGES TAB ─── */}
           {activeTab === 'badges' && (
             <div className="mb-5">
-              <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
+              <h3 className="text-sm font-semibold mb-3 flex items-center gap-2 select-none" onClick={handleBadgeHeaderClick}>
                 <Star className="w-4 h-4" style={{ color: '#f59e0b' }} />
                 {t('profile.badges.title')}
               </h3>
-              <p className="text-xs mb-4" style={{ color: 'var(--text-muted)' }}>
+              <p className="text-xs mb-4 select-none" onClick={handleBadgeHeaderClick} style={{ color: 'var(--text-muted)' }}>
                 {t('profile.badges.unlocked', { n: badges.filter(b => b.unlocked).length, total: badges.length })}
               </p>
               <div className="grid grid-cols-3 gap-2">
                 {badges.map(b => (
                   <div key={b.code}
-                    className="flex flex-col items-center p-3 rounded-xl text-center transition-all"
+                    className="relative flex flex-col items-center p-3 rounded-xl text-center transition-all"
                     style={{
                       backgroundColor: b.unlocked ? 'rgba(245,158,11,0.06)' : 'var(--bg-inset)',
                       border: b.unlocked ? '1px solid rgba(245,158,11,0.2)' : '1px solid var(--border-subtle)',
                       opacity: b.unlocked ? 1 : 0.45,
                     }}>
+                    {b.topSecret && (
+                      <span className="absolute -top-1.5 -right-1.5 text-[7px] font-bold px-1 py-0.5 rounded"
+                        style={{ backgroundColor: b.unlocked ? '#8b5cf6' : 'var(--text-muted)', color: 'white', letterSpacing: '0.03em' }}>
+                        TOP SECRET
+                      </span>
+                    )}
                     <span className="text-2xl mb-1">{b.emoji}</span>
                     <p className="text-[10px] font-semibold leading-tight">{b.label}</p>
                     <p className="text-[9px] mt-0.5" style={{ color: 'var(--text-muted)' }}>{b.desc}</p>
