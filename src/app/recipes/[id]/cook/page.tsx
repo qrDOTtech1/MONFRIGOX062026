@@ -19,9 +19,9 @@ const ENCOURAGEMENTS = [
   '🎉 Tu es formidable !',
 ];
 
-function getStepAdviceAndAnecdote(stepText: string): { advice: string; anecdote: string } {
+function getStepAdviceAndAnecdote(stepText: string, stepIndex: number, totalSteps: number): { advice: string; anecdote: string } {
   const text = (stepText || '').toLowerCase();
-  if (text.includes('découper') || text.includes('couper') || text.includes('émincer')) {
+  if (text.includes('découper') || text.includes('couper') || text.includes('émincer') || text.includes('hach')) {
     return { advice: '🔪 Couteau bien aiguisé = meilleur résultat + plus sûr', anecdote: '💡 Les chefs pros affûtent leurs couteaux tous les jours !' };
   }
   if (text.includes('chauffer') || text.includes('préchauffer') || text.includes('four')) {
@@ -51,14 +51,28 @@ function getStepAdviceAndAnecdote(stepText: string): { advice: string; anecdote:
   if (text.includes('dor') || text.includes('couleur') || text.includes('brun')) {
     return { advice: '🎨 La couleur, c\'est un indicateur de saveur. Dore bien !', anecdote: '✨ Le dorage prouve que la réaction de Maillard fait son effet' };
   }
-  const defaults = [
-    { advice: '📖 Lis bien l\'étape avant de commencer', anecdote: '⚡ 2 secondes de lecture, zéro surprise' },
-    { advice: '🧊 Prépare tes ingrédients près de toi', anecdote: '👨‍🍳 C\'est la mise en place des vrais cuisiniers' },
-    { advice: '⏱️ Gère ton timing, pas de précipitation', anecdote: '🎯 Les meilleures recettes ne se pressent pas' },
-    { advice: '👃 Les arômes sont en route !', anecdote: '😋 Ça sent déjà bon, non ?' },
-    { advice: '🏆 Tu es presque champion !', anecdote: '🎉 Quelques minutes et c\'est fini' },
-  ];
-  return defaults[Math.floor(Math.random() * defaults.length)];
+  if (text.includes('pli') || text.includes('roul')) {
+    return { advice: '🤲 Geste délicat = présentation soignée', anecdote: '👐 Un pliage doux évite de dégonfler la préparation' };
+  }
+  if (text.includes('saupoudr') || text.includes('râp') || text.includes('parsem')) {
+    return { advice: '🧀 Répartis uniformément pour une saveur homogène partout', anecdote: '✨ La dernière touche fait toute la différence visuelle' };
+  }
+  if (text.includes('sers') || text.includes('serv') || text.includes('dress')) {
+    return { advice: '🍽️ Sers immédiatement pour profiter de la texture optimale', anecdote: '📸 Un beau dressage se mange déjà avec les yeux' };
+  }
+  if (text.includes('égoutt') || text.includes('press')) {
+    return { advice: '💦 Bien égoutter évite une préparation trop liquide', anecdote: '🧽 L\'excès d\'eau dilue toujours les saveurs' };
+  }
+
+  // Par défaut : conseil selon la position dans la recette (début / milieu / fin), pas au hasard
+  const ratio = totalSteps > 0 ? (stepIndex + 1) / totalSteps : 0;
+  if (ratio <= 0.34) {
+    return { advice: '🧊 Prépare tes ingrédients près de toi', anecdote: '👨‍🍳 C\'est la mise en place des vrais cuisiniers' };
+  }
+  if (ratio <= 0.75) {
+    return { advice: '⏱️ Gère ton timing, pas de précipitation', anecdote: '👃 Les arômes sont en route, ça sent déjà bon ?' };
+  }
+  return { advice: '🏆 Tu es presque champion, dernière ligne droite !', anecdote: '🎉 Quelques minutes et c\'est prêt' };
 }
 
 interface Recipe {
@@ -391,7 +405,7 @@ export default function CookModePage() {
     () => ENCOURAGEMENTS[Math.floor(Math.random() * ENCOURAGEMENTS.length)],
     [step],
   );
-  const stepAdvice = useMemo(() => getStepAdviceAndAnecdote(steps[step] || ''), [step, steps]);
+  const stepAdvice = useMemo(() => getStepAdviceAndAnecdote(steps[step] || '', step, totalSteps), [step, steps, totalSteps]);
 
   function detectTimer(text: string) {
     const match = text.match(/(\d+)\s*min/i);
