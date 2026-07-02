@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
+import { getEffectivePlan, isPremiumVoiceAllowed } from '@/lib/plan';
 
 async function getConfig(key: string): Promise<string> {
   const row = await prisma.appConfig.findUnique({ where: { key } });
@@ -7,6 +8,12 @@ async function getConfig(key: string): Promise<string> {
 }
 
 export async function POST(req: NextRequest) {
+  // Transcription premium (ElevenLabs Scribe) réservée aux payants → FREE utilise le STT natif.
+  const { plan } = await getEffectivePlan();
+  if (!isPremiumVoiceAllowed(plan)) {
+    return NextResponse.json({ error: 'premium_only' }, { status: 403 });
+  }
+
   const apiKey = await getConfig('ELEVENLABS_API_KEY');
 
   if (!apiKey) {

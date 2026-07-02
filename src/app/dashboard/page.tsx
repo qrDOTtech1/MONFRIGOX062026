@@ -167,12 +167,39 @@ function ExplorerContent() {
   // Chargement progressif : on n'affiche pas toutes les recettes d'un coup
   const [visibleLimit, setVisibleLimit]     = useState(PAGE_SIZE);
   const sentinelRef = useRef<HTMLDivElement>(null);
+  // Pagination serveur (chargement progressif 100 par 100)
+  const SERVER_PAGE = 100;
+  const serverPageRef = useRef(1);
+  const [serverHasMore, setServerHasMore] = useState(false);
+  const loadingMoreRef = useRef(false);
 
   const load = useCallback(async () => {
-    const res = await fetch('/api/recipes');
-    if (res.ok) setRecipes(await res.json());
+    const res = await fetch(`/api/recipes?page=1&limit=${SERVER_PAGE}`);
+    if (res.ok) {
+      const data = await res.json();
+      setRecipes(data.recipes || []);
+      setServerHasMore(!!data.hasMore);
+      serverPageRef.current = 1;
+    }
     setLoading(false);
   }, []);
+
+  const loadMoreFromServer = useCallback(async () => {
+    if (loadingMoreRef.current || !serverHasMore) return;
+    loadingMoreRef.current = true;
+    try {
+      const next = serverPageRef.current + 1;
+      const res = await fetch(`/api/recipes?page=${next}&limit=${SERVER_PAGE}`);
+      if (res.ok) {
+        const data = await res.json();
+        setRecipes(prev => [...prev, ...(data.recipes || [])]);
+        setServerHasMore(!!data.hasMore);
+        serverPageRef.current = next;
+      }
+    } finally {
+      loadingMoreRef.current = false;
+    }
+  }, [serverHasMore]);
 
   useEffect(() => { load(); }, [load]);
   useEffect(() => {
@@ -252,7 +279,7 @@ function ExplorerContent() {
   // On ne rend qu'un sous-ensemble des recettes, puis on agrandit la
   // fenêtre au défilement. Évite d'afficher des centaines de cartes d'un
   // coup (ce qui rendait Explorer très lent à l'ouverture).
-  const hasMore = visibleLimit < filtered.length;
+  const hasMore = visibleLimit < filtered.length || serverHasMore;
   const readyShown      = ready.slice(0, visibleLimit);
   const remAfterReady   = Math.max(0, visibleLimit - readyShown.length);
   const partialShown    = partial.slice(0, remAfterReady);
@@ -264,17 +291,23 @@ function ExplorerContent() {
     setVisibleLimit(PAGE_SIZE);
   }, [search, difficulty, time, cuisine, dietary, budget, customBudget, guestDiet, guestAllergens, kidMode, sectionMode, view]);
 
-  // Agrandit la fenêtre quand le bas de liste devient visible (scroll infini)
+  // Scroll infini : révèle plus de cartes déjà chargées, et va chercher la page suivante
+  // côté serveur (100 de plus) quand on approche du bas du lot local.
   useEffect(() => {
     const el = sentinelRef.current;
     if (!el) return;
     const obs = new IntersectionObserver(
-      entries => { if (entries[0].isIntersecting) setVisibleLimit(v => v + PAGE_SIZE); },
+      entries => {
+        if (!entries[0].isIntersecting) return;
+        setVisibleLimit(v => v + PAGE_SIZE);
+        // À l'approche de la fin du lot chargé, précharge la page serveur suivante
+        if (visibleLimit + PAGE_SIZE >= recipes.length - PAGE_SIZE) loadMoreFromServer();
+      },
       { rootMargin: '400px' },
     );
     obs.observe(el);
     return () => obs.disconnect();
-  }, [hasMore, view, sectionMode, isSearching]);
+  }, [hasMore, view, sectionMode, isSearching, visibleLimit, recipes.length, loadMoreFromServer]);
 
   function resetGuest() {
     setGuestDiet('');
@@ -744,11 +777,11 @@ function ExplorerContent() {
         <>
           <div ref={sentinelRef} aria-hidden className="h-1" />
           <button
-            onClick={() => setVisibleLimit(v => v + PAGE_SIZE)}
+            onClick={() => { setVisibleLimit(v => v + PAGE_SIZE); loadMoreFromServer(); }}
             className="w-full mt-2 mb-1 flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-medium transition-all"
             style={{ backgroundColor: 'var(--bg-inset)', color: 'var(--text-secondary)', border: '1px solid var(--border)' }}>
             <Loader2 className="w-4 h-4" />
-            Voir plus de recettes ({filtered.length - visibleLimit} restantes)
+            Voir plus de recettes
           </button>
         </>
       )}

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
+import { getEffectivePlan, isPremiumVoiceAllowed } from '@/lib/plan';
 
 async function getConfig(key: string): Promise<string> {
   const row = await prisma.appConfig.findUnique({ where: { key } });
@@ -23,6 +24,13 @@ async function resolveVoiceId(channel: VoiceChannel): Promise<string> {
 }
 
 export async function GET() {
+  // Voix premium réservée aux payants → pour les FREE on annonce "non configuré",
+  // ce qui fait basculer le client sur la synthèse vocale native (gratuite).
+  const { plan } = await getEffectivePlan();
+  if (!isPremiumVoiceAllowed(plan)) {
+    return NextResponse.json({ configured: false, hasKey: false, hasVoice: false, premiumOnly: true });
+  }
+
   const apiKey = await getConfig('ELEVENLABS_API_KEY');
   const voiceId = await getConfig('ELEVENLABS_VOICE_ID');
   return NextResponse.json({
@@ -36,6 +44,12 @@ export async function POST(req: NextRequest) {
   const { text, lang, voice } = await req.json();
   if (!text || typeof text !== 'string') {
     return NextResponse.json({ error: 'text required' }, { status: 400 });
+  }
+
+  // Voix premium réservée aux payants
+  const { plan } = await getEffectivePlan();
+  if (!isPremiumVoiceAllowed(plan)) {
+    return NextResponse.json({ error: 'premium_only' }, { status: 403 });
   }
 
   const channel: VoiceChannel = voice === 'ia' || voice === 'easter' ? voice : 'cuisine';

@@ -50,6 +50,8 @@ export async function GET(req: NextRequest) {
 
   const favOnly = req.nextUrl.searchParams.get('favorites') === 'true';
   const search = req.nextUrl.searchParams.get('q')?.trim().toLowerCase() || '';
+  const page = parseInt(req.nextUrl.searchParams.get('page') || '0');
+  const limitParam = parseInt(req.nextUrl.searchParams.get('limit') || '0');
 
   let userAllergens: string[] = [];
   let dietMode = '';
@@ -190,16 +192,34 @@ export async function GET(req: NextRequest) {
   const userRecord = await prisma.user.findUnique({ where: { id: user.id }, select: { role: true, plan: true, planExpiresAt: true } });
   const effectivePlan = (userRecord?.planExpiresAt && userRecord.planExpiresAt < new Date()) ? 'FREE' : (userRecord?.plan || 'FREE');
 
-  if (userRecord?.role === 'ADMIN') {
-    return NextResponse.json(filtered.map(r => ({ ...r, isLocked: false, _score: undefined })));
+  // Verrouillage freemium : les FREE voient la moitié haute (triée par pertinence), le reste est
+  // verrouillé. On applique le lock sur la liste complète triée AVANT de paginer, pour que le
+  // statut soit stable d'une page à l'autre.
+  const isFreeLocked = userRecord?.role !== 'ADMIN' && effectivePlan === 'FREE' && !favOnly;
+  const lockThreshold = Math.ceil(filtered.length / 2);
+  const withLock = filtered.map((r, i) => ({
+    ...r,
+    isLocked: isFreeLocked && i >= lockThreshold,
+    _score: undefined,
+  }));
+
+  // Mode paginé (chargement progressif 100 par 100) : renvoie un objet { recipes, total, hasMore }.
+  if (page >= 1) {
+    const lim = Math.min(limitParam || 100, 200);
+    const start = (page - 1) * lim;
+    const slice = withLock.slice(start, start + lim);
+    return NextResponse.json({
+      recipes: slice,
+      total: withLock.length,
+      page,
+      hasMore: start + lim < withLock.length,
+    });
   }
 
-  if (effectivePlan === 'FREE' && !favOnly) {
-    const half = Math.ceil(filtered.length / 2);
-    return NextResponse.json(filtered.map((r, i) => ({ ...r, isLocked: i >= half, _score: undefined })));
-  }
-
-  return NextResponse.json(filtered.map(r => ({ ...r, isLocked: false, _score: undefined })));
+  // Mode legacy (tableau) : borné pour ne jamais renvoyer tout le catalogue d'un coup.
+  // Les favoris sont peu nombreux → pas de cap. Sinon top 250 par pertinence.
+  const legacyLimit = favOnly ? withLock.length : (limitParam ? Math.min(limitParam, 500) : 250);
+  return NextResponse.json(withLock.slice(0, legacyLimit));
 }
 
 export async function POST(req: NextRequest) {

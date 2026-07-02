@@ -427,7 +427,7 @@ export default function AdminDatabasePage() {
               </span>
             </div>
             <p className="text-[10px] mb-4" style={{ color: 'var(--text-muted)' }}>
-              {Math.min(autoImport.cursor, autoImport.total).toLocaleString('fr-FR')} / {autoImport.total.toLocaleString('fr-FR')} parcourues
+              {Math.min(autoImport.cursor, autoImport.total).toLocaleString('fr-FR')} / {autoImport.total.toLocaleString('fr-FR')} recettes au catalogue
             </p>
 
             <div className="flex gap-2">
