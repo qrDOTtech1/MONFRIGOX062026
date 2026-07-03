@@ -18,13 +18,7 @@ export default function BottomNav() {
   ];
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50"
-      style={{
-        backgroundColor: 'color-mix(in srgb, var(--bg-raised) 82%, transparent)',
-        borderTop: '1px solid var(--border)',
-        backdropFilter: 'blur(12px)',
-        WebkitBackdropFilter: 'blur(12px)',
-      }}>
+    <nav className="bottom-nav fixed bottom-0 left-0 right-0 z-50">
       <div className="max-w-lg mx-auto flex justify-around py-1.5 pb-[max(0.375rem,env(safe-area-inset-bottom))]">
         {items.map(({ href, icon: Icon, label }) => {
           const active = pathname === href || pathname.startsWith(href + '/');

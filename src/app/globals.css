@@ -78,6 +78,7 @@ body {
     .card:hover {
       transform: translateY(-3px);
       box-shadow: var(--card-shadow-hover);
+      border-color: var(--brand);                                   /* repli navigateurs anciens */
       border-color: color-mix(in srgb, var(--brand) 35%, var(--border));
     }
   }
@@ -88,11 +89,13 @@ body {
     @apply font-semibold px-5 py-2.5 rounded-xl transition-all duration-200 active:scale-[0.96];
     background-color: var(--accent);
     color: var(--accent-text);
+    box-shadow: 0 4px 14px rgba(24, 24, 27, 0.22);                  /* repli */
     box-shadow: 0 4px 14px color-mix(in srgb, var(--accent) 22%, transparent);
   }
   .btn-primary:hover {
     background-color: var(--accent-hover);
     transform: translateY(-2px);
+    box-shadow: 0 8px 22px rgba(24, 24, 27, 0.30);                  /* repli */
     box-shadow: 0 8px 22px color-mix(in srgb, var(--accent) 30%, transparent);
   }
   .btn-primary:disabled { opacity: 0.4; pointer-events: none; }
@@ -106,7 +109,17 @@ body {
   .btn-secondary:hover {
     background-color: var(--bg-inset);
     transform: translateY(-2px);
+    border-color: var(--brand);                                     /* repli */
     border-color: color-mix(in srgb, var(--brand) 40%, var(--border));
+  }
+
+  /* Barre de navigation basse — fond solide (repli) puis translucide + flou (modernes) */
+  .bottom-nav {
+    background-color: var(--bg-raised);
+    background-color: color-mix(in srgb, var(--bg-raised) 82%, transparent);
+    -webkit-backdrop-filter: blur(12px);
+    backdrop-filter: blur(12px);
+    border-top: 1px solid var(--border);
   }
 
   .input-field {
@@ -266,6 +279,7 @@ h1, h2, h3 {
   content: '';
   position: absolute; inset: 0;
   transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.35), transparent);   /* repli */
   background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--bg-raised) 60%, transparent), transparent);
   animation: skeleton-shimmer 1.3s infinite;
 }
