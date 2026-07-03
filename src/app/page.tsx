@@ -533,54 +533,51 @@ export default function LandingPage() {
         </div>
       </header>
 
-      <main className="flex-1 max-w-2xl mx-auto w-full px-5 pb-20 relative z-10">
+      <main className="flex-1 max-w-3xl mx-auto w-full px-6 pb-10 relative z-10">
 
         {/* ── Hero ── */}
-        <section className="text-center pt-8 pb-12">
-          {/* Mascotte hero */}
-          <div className="flex justify-center mb-6">
-            <LogoAnim size={96} />
+        <section className="text-center pt-20 md:pt-28 pb-24">
+          {/* Logo hero */}
+          <div className="flex justify-center mb-9">
+            <LogoAnim size={108} />
           </div>
 
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium mb-7"
-            style={{ backgroundColor: 'rgba(16,185,129,0.1)', color: 'rgb(16,185,129)', border: '1px solid rgba(16,185,129,0.2)' }}>
-            <Sparkles className="w-3 h-3" /> {t('landing.badge')}
+          <div className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-[13px] font-medium mb-8"
+            style={{ backgroundColor: 'var(--bg-inset)', color: 'var(--text-secondary)', border: '1px solid var(--border)' }}>
+            <Sparkles className="w-3.5 h-3.5" style={{ color: 'rgb(16,185,129)' }} /> {t('landing.badge')}
           </div>
 
-          <h1 className="text-4xl md:text-5xl font-bold leading-tight tracking-tight mb-5">
+          <h1 className="text-5xl md:text-7xl font-semibold leading-[1.04] tracking-[-0.035em] mb-7">
             {t('landing.hero.title1')} <span className="shimmer-text">{t('landing.hero.title2')}</span><br />
             {t('landing.hero.title3')}
           </h1>
 
-          <p className="text-base leading-relaxed mb-2 max-w-md mx-auto" style={{ color: 'var(--text-secondary)' }}>
+          <p className="text-lg md:text-xl leading-relaxed mb-11 max-w-xl mx-auto" style={{ color: 'var(--text-secondary)' }}>
             {t('landing.hero.sub')}
-          </p>
-          <p className="text-sm mb-10 max-w-sm mx-auto" style={{ color: 'var(--text-muted)' }}>
-            {t('landing.hero.sub2')}
           </p>
 
           <Link href="/register"
-            className="btn-glow inline-flex items-center gap-2 px-8 py-3.5 rounded-xl text-base font-semibold transition-all hover:scale-[1.03] active:scale-95"
+            className="inline-flex items-center gap-2 px-9 py-4 rounded-full text-base font-semibold transition-all hover:scale-[1.03] active:scale-95"
             style={{ backgroundColor: 'var(--accent)', color: 'var(--accent-text)' }}>
             {t('landing.cta')}
           </Link>
-          <p className="text-xs mt-3" style={{ color: 'var(--text-muted)' }}>
+          <p className="text-[13px] mt-4" style={{ color: 'var(--text-muted)' }}>
             {t('landing.cta.sub')}
           </p>
         </section>
 
-        {/* ── Chiffres clés ── */}
+        {/* ── Chiffres clés (ligne épurée, sans cadres) ── */}
         <div ref={statsRef}>
-          <section className="grid grid-cols-3 gap-3 mb-14">
+          <section className="flex items-stretch justify-center mb-28 max-w-md mx-auto">
             {[
               { value: '< 3s',  labelKey: 'landing.stats.scan' },
               { value: '100%',  labelKey: 'landing.stats.recipes' },
               { value: '0€',    labelKey: 'landing.stats.price' },
             ].map((s, i) => (
-              <div key={s.labelKey} className="card p-4 text-center"
-                style={{ transitionDelay: `${i * 80}ms`, backdropFilter: 'blur(4px)', WebkitBackdropFilter: 'blur(4px)' }}>
-                <p className="text-2xl font-bold mb-1">{s.value}</p>
-                <p className="text-[11px] leading-tight" style={{ color: 'var(--text-muted)' }}>{t(s.labelKey)}</p>
+              <div key={s.labelKey} className="flex-1 text-center px-3"
+                style={{ borderLeft: i > 0 ? '1px solid var(--border-subtle)' : 'none' }}>
+                <p className="text-3xl md:text-4xl font-semibold mb-1.5 tracking-tight">{s.value}</p>
+                <p className="text-xs leading-tight" style={{ color: 'var(--text-muted)' }}>{t(s.labelKey)}</p>
               </div>
             ))}
           </section>
@@ -588,26 +585,26 @@ export default function LandingPage() {
 
         {/* ── Features ── */}
         <div ref={featuresRef}>
-          <section className="mb-14">
-            <h2 className="text-xl font-bold text-center mb-1.5">{t('landing.features.title')}</h2>
-            <p className="text-sm text-center mb-6" style={{ color: 'var(--text-muted)' }}>
+          <section className="mb-28">
+            <h2 className="text-3xl md:text-4xl font-semibold text-center tracking-tight mb-3">{t('landing.features.title')}</h2>
+            <p className="text-base text-center mb-10 max-w-md mx-auto" style={{ color: 'var(--text-muted)' }}>
               {t('landing.features.sub')}
             </p>
-            <div className="grid grid-cols-1 gap-2.5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {features.map((f, i) => (
-                <div key={f.title} className="card p-4 flex items-start gap-4 hover:scale-[1.01] transition-transform"
+                <div key={f.title} className="rounded-2xl p-5 flex items-start gap-4 transition-all hover:scale-[1.01]"
                   style={{
-                    backdropFilter: 'blur(6px)',
-                    WebkitBackdropFilter: 'blur(6px)',
-                    transitionDelay: `${i * 60}ms`,
+                    backgroundColor: 'var(--bg-raised)',
+                    border: '1px solid var(--border-subtle)',
+                    transitionDelay: `${i * 50}ms`,
                   }}>
-                  <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
-                    style={{ backgroundColor: 'var(--bg-inset)' }}>
-                    <f.icon className="w-[1.1rem] h-[1.1rem]" style={{ color: 'var(--text-secondary)' }} />
+                  <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+                    style={{ backgroundColor: 'rgba(16,185,129,0.08)' }}>
+                    <f.icon className="w-5 h-5" style={{ color: 'rgb(16,185,129)' }} />
                   </div>
                   <div>
-                    <h3 className="font-semibold text-sm mb-0.5">{f.title}</h3>
-                    <p className="text-xs leading-relaxed" style={{ color: 'var(--text-muted)' }}>{f.desc}</p>
+                    <h3 className="font-semibold text-[15px] mb-1">{f.title}</h3>
+                    <p className="text-[13px] leading-relaxed" style={{ color: 'var(--text-muted)' }}>{f.desc}</p>
                   </div>
                 </div>
               ))}
@@ -616,7 +613,7 @@ export default function LandingPage() {
         </div>
 
         {/* ── Social proof ── */}
-        <section className="mb-14 text-center">
+        <section className="mb-28 text-center">
           <div className="flex items-center justify-center gap-1 mb-2">
             {[1,2,3,4,5].map(i => <Star key={i} className="w-4 h-4 fill-yellow-400 text-yellow-400" />)}
           </div>
@@ -635,8 +632,8 @@ export default function LandingPage() {
         </section>
 
         {/* ── Comparison table ── */}
-        <section className="mb-14">
-          <h2 className="text-xl font-bold text-center mb-1.5">{t('landing.compare.title')}</h2>
+        <section className="mb-28">
+          <h2 className="text-3xl md:text-4xl font-semibold text-center tracking-tight mb-3">{t('landing.compare.title')}</h2>
           <p className="text-sm text-center mb-6" style={{ color: 'var(--text-muted)' }}>{t('landing.compare.sub')}</p>
 
           <div className="overflow-x-auto -mx-5 px-5">
@@ -695,8 +692,8 @@ export default function LandingPage() {
 
         {/* ── Pricing ── */}
         <div ref={pricingRef}>
-          <section className="mb-14">
-            <h2 className="text-xl font-bold text-center mb-1.5">{t('landing.pricing.title')}</h2>
+          <section className="mb-28">
+            <h2 className="text-3xl md:text-4xl font-semibold text-center tracking-tight mb-3">{t('landing.pricing.title')}</h2>
             <p className="text-sm text-center mb-6" style={{ color: 'var(--text-muted)' }}>
               {t('landing.pricing.sub')}
             </p>
@@ -774,18 +771,13 @@ export default function LandingPage() {
 
         {/* ── Final CTA ── */}
         <div ref={ctaRef}>
-          <section className="text-center px-6 py-12 rounded-2xl"
-            style={{
-              backgroundColor: 'var(--bg-raised)', border: '1px solid var(--border)',
-              backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)',
-            }}>
-            <div className="text-5xl mb-4 animate-bounce" style={{ animationDuration: '2.5s' }}>🍽️</div>
-            <h2 className="text-xl font-bold mb-2">{t('landing.final.title')}</h2>
-            <p className="text-sm mb-6 max-w-xs mx-auto" style={{ color: 'var(--text-muted)' }}>
+          <section className="text-center px-6 py-20">
+            <h2 className="text-3xl md:text-5xl font-semibold tracking-tight mb-4">{t('landing.final.title')}</h2>
+            <p className="text-base md:text-lg mb-9 max-w-md mx-auto" style={{ color: 'var(--text-muted)' }}>
               {t('landing.final.sub')}
             </p>
             <Link href="/register"
-              className="btn-glow inline-flex items-center gap-2 px-8 py-3 rounded-xl text-sm font-semibold transition-all hover:scale-[1.03] active:scale-95"
+              className="inline-flex items-center gap-2 px-9 py-4 rounded-full text-base font-semibold transition-all hover:scale-[1.03] active:scale-95"
               style={{ backgroundColor: 'var(--accent)', color: 'var(--accent-text)' }}>
               {t('landing.final.cta')}
             </Link>
