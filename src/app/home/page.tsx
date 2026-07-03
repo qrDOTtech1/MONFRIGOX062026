@@ -7,6 +7,7 @@ import Mascot, { MascotVariant } from '@/components/Mascot';
 import { useMealTypes } from '@/lib/useMealTypes';
 import { useRecentPages } from '@/lib/useRecentPages';
 import { useT } from '@/lib/i18n';
+import { cachedFetch, peekCache } from '@/lib/dataCache';
 import {
   Flame, Beef, Leaf, Zap, DollarSign, Trophy, BarChart2, Recycle,
   Plus, ChevronRight, ShoppingCart, ScanLine, Refrigerator,
@@ -197,10 +198,11 @@ export default function HomePage() {
       if (dashRes && dashRes.status === 401) { router.replace('/login'); return; }
       if (dashRes && dashRes.ok) setData(await dashRes.json());
 
-      // Recettes : version allégée (le chatbot n'a pas besoin de tout le catalogue) — non bloquant
+      // Recettes : version allégée + cache partagé (navigation instantanée) — non bloquant
       try {
-        const recipesRes = await fetch('/api/recipes?limit=300');
-        if (recipesRes.ok) setAllRecipes(await recipesRes.json());
+        const cached = peekCache<any[]>('/api/recipes?limit=300');
+        if (cached) setAllRecipes(cached);
+        setAllRecipes(await cachedFetch<any[]>('/api/recipes?limit=300'));
       } catch { /* non bloquant : l'accueil s'affiche quand même */ }
     } catch {
       /* data reste null → écran d'erreur avec bouton Réessayer */

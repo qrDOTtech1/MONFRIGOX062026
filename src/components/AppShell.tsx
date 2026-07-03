@@ -6,6 +6,7 @@ import LogoAnim from './LogoAnim';
 import { useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { trackPageVisit } from '@/lib/useRecentPages';
+import { cachedFetch, peekCache } from '@/lib/dataCache';
 
 interface RecipeMini {
   id: string;
@@ -44,12 +45,13 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [recipes, setRecipes] = useState<RecipeMini[]>([]);
 
-  // Charge les recettes une fois pour le chatbot global
+  // Charge les recettes pour le chatbot global — via cache partagé :
+  // plus de re-téléchargement du catalogue à chaque changement d'onglet.
   useEffect(() => {
-    fetch('/api/recipes')
-      .then(r => r.ok ? r.json() : [])
-      .then(setRecipes)
-      .catch(() => {});
+    // Affichage immédiat si déjà en cache (navigation instantanée)
+    const cached = peekCache<RecipeMini[]>('/api/recipes?limit=300');
+    if (cached) setRecipes(cached);
+    cachedFetch<RecipeMini[]>('/api/recipes?limit=300').then(setRecipes).catch(() => {});
   }, []);
 
   // Track page visit for dynamic shortcuts
@@ -75,9 +77,11 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       {/* Feedback tactile global (ondulation au clic/tap) */}
       <AppRipple />
 
-      {/* Top bar avec logo */}
-      <header className="fixed top-0 left-0 right-0 z-40 flex items-center px-4 h-12"
+      {/* Top bar avec logo — respecte l'encoche (safe-area) sur mobile */}
+      <header className="fixed top-0 left-0 right-0 z-40 flex items-center px-4"
         style={{
+          height: 'calc(3rem + env(safe-area-inset-top))',
+          paddingTop: 'env(safe-area-inset-top)',
           backgroundColor: 'var(--bg)',
           borderBottom: '1px solid var(--border-subtle)',
           backdropFilter: 'blur(8px)',
@@ -87,7 +91,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       </header>
 
       {/* Contenu décalé sous le top bar (au-dessus du halo, apparition douce) */}
-      <div className="page-container fade-in app-enter relative z-[1]" style={{ paddingTop: '3rem' }}>{children}</div>
+      <div className="page-container fade-in app-enter relative z-[1]" style={{ paddingTop: 'calc(3rem + env(safe-area-inset-top))' }}>{children}</div>
       {pathname !== '/home' && <RecipeChat allRecipes={recipes} />}
       <BottomNav />
     </>

@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useRef, Suspense } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import AppShell from '@/components/AppShell';
-import MascotLoader from '@/components/MascotLoader';
+import PageSkeleton from '@/components/PageSkeleton';
 import Mascot from '@/components/Mascot';
 import RecipeCard from '@/components/RecipeCard';
 import CommunityFeed from '@/components/CommunityFeed';
@@ -347,7 +347,7 @@ function ExplorerContent() {
   if (loading) {
     return (
       <AppShell>
-        <MascotLoader />
+        <PageSkeleton />
       </AppShell>
     );
   }

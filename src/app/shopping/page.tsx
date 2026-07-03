@@ -7,6 +7,7 @@ import Mascot from '@/components/Mascot';
 import { useUserPlan, showPlanBadge } from '@/lib/useUserPlan';
 import { useMealTypes } from '@/lib/useMealTypes';
 import { useT } from '@/lib/i18n';
+import { cachedFetch, peekCache } from '@/lib/dataCache';
 import {
   CalendarDays, ShoppingCart, ChevronLeft, ChevronRight, ChevronDown,
   Plus, X, Search, Check, Refrigerator, Share2,
@@ -124,12 +125,11 @@ export default function ShoppingPage() {
   const startDate = dateKey(weekDays[0]);
   const endDate   = dateKey(weekDays[6]);
 
-  /* Load recipes once */
+  /* Load recipes once (via cache partagé — navigation instantanée) */
   useEffect(() => {
-    fetch('/api/recipes')
-      .then(r => r.ok ? r.json() : [])
-      .then(setAllRecipes)
-      .catch(() => {});
+    const cached = peekCache<any[]>('/api/recipes?limit=300');
+    if (cached) setAllRecipes(cached);
+    cachedFetch<any[]>('/api/recipes?limit=300').then(setAllRecipes).catch(() => {});
   }, []);
 
   /* Load meal plans when week changes */

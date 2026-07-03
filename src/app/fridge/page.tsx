@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import AppShell from '@/components/AppShell';
-import MascotLoader from '@/components/MascotLoader';
+import PageSkeleton from '@/components/PageSkeleton';
 import Mascot from '@/components/Mascot';
 import RecipeCard from '@/components/RecipeCard';
 import {
@@ -12,6 +12,7 @@ import {
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useT } from '@/lib/i18n';
+import { cachedFetch, invalidate } from '@/lib/dataCache';
 import { getShelfInfo } from '@/lib/shelf-life';
 import ScanDLC from '@/components/ScanDLC';
 
@@ -80,9 +81,8 @@ export default function FridgePage() {
 
   const loadData = useCallback(async () => {
     try {
-      const [fridgeRes, recipesRes, householdRes, meRes, rappelRes] = await Promise.all([
+      const [fridgeRes, householdRes, meRes, rappelRes] = await Promise.all([
         fetch('/api/fridge'),
-        fetch('/api/recipes?limit=300'),   // allégé (mobile)
         fetch('/api/household'),
         fetch('/api/auth/me'),
         fetch('/api/rappel-conso'),
@@ -90,7 +90,8 @@ export default function FridgePage() {
       // Session expirée / non connecté → connexion (évite un frigo "vide" trompeur)
       if (fridgeRes.status === 401) { router.replace('/login'); return; }
       if (fridgeRes.ok) setFridgeItems(await fridgeRes.json());
-      if (recipesRes.ok) setAllRecipes(await recipesRes.json());
+      // Recettes via cache partagé (le cache est invalidé quand le frigo change)
+      cachedFetch<any[]>('/api/recipes?limit=300').then(setAllRecipes).catch(() => {});
       if (householdRes.ok) setHousehold(await householdRes.json());
       if (meRes.ok) { const me = await meRes.json(); setCurrentUserId(me.id); }
       if (rappelRes.ok) { const rappels = await rappelRes.json(); setRappelCount(Array.isArray(rappels) ? rappels.length : 0); }
@@ -122,6 +123,7 @@ export default function FridgePage() {
       body: JSON.stringify({ ingredientId }),
     });
     setSearchIngredient(''); setSuggestions([]); setShowAdd(false);
+    invalidate('/api/recipes');   // le frigo a changé → recettes à recalculer
     loadData();
     notifyBadgeUpdate();
   }
@@ -146,6 +148,7 @@ export default function FridgePage() {
 
   async function removeFromFridge(id: string) {
     await fetch(`/api/fridge/${id}`, { method: 'DELETE' });
+    invalidate('/api/recipes');   // le frigo a changé → recettes à recalculer
     loadData();
     notifyBadgeUpdate();
   }
@@ -158,6 +161,7 @@ export default function FridgePage() {
     });
     setSavingExpiry(false);
     setEditExpiryId(null);
+    invalidate('/api/recipes');   // le frigo a changé → recettes à recalculer
     loadData();
     notifyBadgeUpdate();
   }
@@ -179,7 +183,7 @@ export default function FridgePage() {
   if (loading) {
     return (
       <AppShell>
-        <MascotLoader />
+        <PageSkeleton />
       </AppShell>
     );
   }
@@ -536,7 +540,7 @@ export default function FridgePage() {
           itemId={scanItem.id}
           itemName={scanItem.ingredient.name}
           itemEmoji={scanItem.ingredient.emoji}
-          onSaved={() => { setScanItem(null); loadData(); notifyBadgeUpdate(); }}
+          onSaved={() => { setScanItem(null); invalidate('/api/recipes'); loadData(); notifyBadgeUpdate(); }}
           onClose={() => setScanItem(null)}
         />
       )}
