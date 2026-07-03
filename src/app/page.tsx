@@ -53,9 +53,15 @@ function LandingStyles() {
         overflow: hidden;
         animation: hero-in 1.1s ease-out both;
       }
+      /* Couche parallaxe : suit le curseur (transform pilotée en JS) */
+      .page-bg-parallax {
+        position: absolute; inset: 0;
+        transition: transform 0.35s cubic-bezier(0.2, 0.7, 0.3, 1);
+        will-change: transform;
+      }
       /* Image : couvre tout, léger flottement + déplacement du fond */
       .page-bg {
-        position: absolute; inset: -3%;
+        position: absolute; inset: -7%;
         background-image: url('/images/hero-bg.webp');
         background-size: cover;
         background-position: center;
@@ -143,6 +149,7 @@ function LandingStyles() {
         .cursor-light, .click-ripple { display: none; }
         .page-bg-wrap, .page-bg, .page-halo, .page-particles span { animation: none !important; }
         .page-bg { transform: scale(1.02); }
+        .page-bg-parallax { transition: none !important; transform: none !important; }
       }
     `}</style>
   );
@@ -153,6 +160,11 @@ function CursorFX() {
   const lightRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     let raf = 0;
+    // Parallaxe : amplitude max du décalage de l'image (px)
+    const PARALLAX = 34;
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const parallaxEl = document.querySelector<HTMLElement>('.page-bg-parallax');
+
     // Déplace le halo vers (x, y) — souris sur desktop, doigt sur mobile
     const moveLight = (x: number, y: number) => {
       cancelAnimationFrame(raf);
@@ -160,6 +172,13 @@ function CursorFX() {
         if (lightRef.current) {
           lightRef.current.style.background =
             `radial-gradient(520px circle at ${x}px ${y}px, rgba(16,185,129,0.16), transparent 62%)`;
+        }
+        // Fond qui suit le curseur (même direction, doux)
+        if (parallaxEl && !reduceMotion) {
+          const nx = (x / window.innerWidth  - 0.5) * 2;  // -1 → 1
+          const ny = (y / window.innerHeight - 0.5) * 2;  // -1 → 1
+          parallaxEl.style.transform =
+            `translate3d(${(nx * PARALLAX).toFixed(1)}px, ${(ny * PARALLAX).toFixed(1)}px, 0)`;
         }
       });
     };
@@ -588,7 +607,9 @@ export default function LandingPage() {
 
       {/* ── Fond image animé plein écran (remplace l'ancien fond) ── */}
       <div className="page-bg-wrap" aria-hidden>
-        <div className="page-bg" />
+        <div className="page-bg-parallax">
+          <div className="page-bg" />
+        </div>
         <div className="page-veil" />
         <div className="page-halo page-halo-1" />
         <div className="page-halo page-halo-2" />
