@@ -46,8 +46,105 @@ function LandingStyles() {
         animation: ripple 0.62s cubic-bezier(0.2,0.7,0.3,1) forwards;
       }
       @keyframes ripple { to { transform: scale(11); opacity: 0; } }
+
+      /* ── Hero : fond image + animations premium (GPU: transform/opacity) ── */
+      .hero {
+        position: relative;
+        isolation: isolate;
+        overflow: hidden;
+        border-radius: 28px;
+      }
+      /* Wrapper : gère l'apparition au chargement */
+      .hero-bg-wrap {
+        position: absolute; inset: -2%;
+        z-index: -3;
+        animation: hero-in 1s ease-out both;
+      }
+      /* Image : couvre tout, léger flottement + déplacement du fond */
+      .hero-bg {
+        position: absolute; inset: 0;
+        background-image: url('/images/hero-bg.webp');
+        background-size: cover;
+        background-position: center;
+        background-repeat: no-repeat;
+        transform: translateZ(0) scale(1.06);
+        will-change: transform;
+        animation: hero-drift 26s ease-in-out infinite;
+      }
+      /* Voile de lisibilité — s'adapte au thème (clair/sombre) */
+      .hero-veil {
+        position: absolute; inset: 0; z-index: -2; pointer-events: none;
+        background:
+          linear-gradient(to bottom,
+            color-mix(in srgb, var(--bg) 45%, transparent) 0%,
+            color-mix(in srgb, var(--bg) 12%, transparent) 42%,
+            color-mix(in srgb, var(--bg) 78%, transparent) 100%),
+          radial-gradient(120% 70% at 50% 38%,
+            color-mix(in srgb, var(--bg) 40%, transparent) 0%,
+            transparent 68%);
+      }
+      /* Halos flous animés */
+      .hero-halo {
+        position: absolute; z-index: -2; border-radius: 9999px;
+        filter: blur(44px); pointer-events: none;
+        will-change: transform, opacity;
+      }
+      .hero-halo-1 {
+        width: 260px; height: 260px; top: -60px; left: -40px;
+        background: rgba(16,185,129,0.28);
+        animation: hero-halo 14s ease-in-out infinite;
+      }
+      .hero-halo-2 {
+        width: 300px; height: 300px; bottom: -80px; right: -50px;
+        background: rgba(245,158,11,0.20);
+        animation: hero-halo 18s ease-in-out infinite reverse;
+      }
+      .hero-halo-3 {
+        width: 200px; height: 200px; top: 40%; left: 55%;
+        background: rgba(244,114,182,0.16);
+        animation: hero-halo 22s ease-in-out infinite;
+        animation-delay: -6s;
+      }
+      /* Particules lumineuses discrètes */
+      .hero-particles { position: absolute; inset: 0; z-index: -1; pointer-events: none; }
+      .hero-particles span {
+        position: absolute; width: 5px; height: 5px; border-radius: 9999px;
+        background: rgba(255,255,255,0.85);
+        box-shadow: 0 0 8px 2px rgba(255,255,255,0.55);
+        opacity: 0; will-change: transform, opacity;
+        animation: hero-particle 9s ease-in-out infinite;
+      }
+      .hero-particles span:nth-child(1) { left: 18%; top: 68%; animation-delay: 0s;   }
+      .hero-particles span:nth-child(2) { left: 42%; top: 78%; animation-delay: 2.4s; }
+      .hero-particles span:nth-child(3) { left: 63%; top: 60%; animation-delay: 4.1s; }
+      .hero-particles span:nth-child(4) { left: 80%; top: 72%; animation-delay: 1.3s; }
+      .hero-particles span:nth-child(5) { left: 30%; top: 55%; animation-delay: 5.5s; }
+      .hero-particles span:nth-child(6) { left: 72%; top: 48%; animation-delay: 3.2s; }
+
+      @keyframes hero-in {
+        from { opacity: 0; transform: translate3d(0, 18px, 0); }
+        to   { opacity: 1; transform: translate3d(0, 0, 0); }
+      }
+      @keyframes hero-drift {
+        0%   { transform: translate3d(0, 0, 0) scale(1.06); }
+        50%  { transform: translate3d(-14px, -10px, 0) scale(1.08); }
+        100% { transform: translate3d(0, 0, 0) scale(1.06); }
+      }
+      @keyframes hero-halo {
+        0%, 100% { transform: translate3d(0, 0, 0) scale(1);    opacity: 0.5; }
+        50%      { transform: translate3d(18px, -14px, 0) scale(1.18); opacity: 0.8; }
+      }
+      @keyframes hero-particle {
+        0%   { transform: translate3d(0, 0, 0);     opacity: 0; }
+        15%  { opacity: 0.85; }
+        85%  { opacity: 0.5; }
+        100% { transform: translate3d(0, -46px, 0); opacity: 0; }
+      }
+
       @media (prefers-reduced-motion: reduce) {
         .cursor-light, .click-ripple { display: none; }
+        .hero-bg-wrap, .hero-bg, .hero-halo, .hero-particles span { animation: none !important; }
+        .hero-bg { transform: scale(1.02); }
       }
     `}</style>
   );
@@ -536,34 +633,49 @@ export default function LandingPage() {
       <main className="flex-1 max-w-3xl mx-auto w-full px-6 pb-10 relative z-10">
 
         {/* ── Hero ── */}
-        <section className="text-center pt-20 md:pt-28 pb-24">
-          {/* Logo hero */}
-          <div className="flex justify-center mb-9">
-            <LogoAnim size={108} />
+        <section className="hero text-center pt-20 md:pt-28 pb-24 px-5 mt-4">
+          {/* Fond image animé (couche décorative, sous le contenu) */}
+          <div className="hero-bg-wrap" aria-hidden>
+            <div className="hero-bg" />
+          </div>
+          <div className="hero-veil" aria-hidden />
+          <div className="hero-halo hero-halo-1" aria-hidden />
+          <div className="hero-halo hero-halo-2" aria-hidden />
+          <div className="hero-halo hero-halo-3" aria-hidden />
+          <div className="hero-particles" aria-hidden>
+            <span /><span /><span /><span /><span /><span />
           </div>
 
-          <div className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-[13px] font-medium mb-8"
-            style={{ backgroundColor: 'var(--bg-inset)', color: 'var(--text-secondary)', border: '1px solid var(--border)' }}>
-            <Sparkles className="w-3.5 h-3.5" style={{ color: 'rgb(16,185,129)' }} /> {t('landing.badge')}
+          {/* Contenu (inchangé) */}
+          <div className="relative z-10">
+            {/* Logo hero */}
+            <div className="flex justify-center mb-9">
+              <LogoAnim size={108} />
+            </div>
+
+            <div className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-[13px] font-medium mb-8"
+              style={{ backgroundColor: 'var(--bg-inset)', color: 'var(--text-secondary)', border: '1px solid var(--border)' }}>
+              <Sparkles className="w-3.5 h-3.5" style={{ color: 'rgb(16,185,129)' }} /> {t('landing.badge')}
+            </div>
+
+            <h1 className="text-5xl md:text-7xl font-semibold leading-[1.04] tracking-[-0.035em] mb-7">
+              {t('landing.hero.title1')} <span className="shimmer-text">{t('landing.hero.title2')}</span><br />
+              {t('landing.hero.title3')}
+            </h1>
+
+            <p className="text-lg md:text-xl leading-relaxed mb-11 max-w-xl mx-auto" style={{ color: 'var(--text-secondary)' }}>
+              {t('landing.hero.sub')}
+            </p>
+
+            <Link href="/register"
+              className="inline-flex items-center gap-2 px-9 py-4 rounded-full text-base font-semibold transition-all hover:scale-[1.03] active:scale-95"
+              style={{ backgroundColor: 'var(--accent)', color: 'var(--accent-text)' }}>
+              {t('landing.cta')}
+            </Link>
+            <p className="text-[13px] mt-4" style={{ color: 'var(--text-muted)' }}>
+              {t('landing.cta.sub')}
+            </p>
           </div>
-
-          <h1 className="text-5xl md:text-7xl font-semibold leading-[1.04] tracking-[-0.035em] mb-7">
-            {t('landing.hero.title1')} <span className="shimmer-text">{t('landing.hero.title2')}</span><br />
-            {t('landing.hero.title3')}
-          </h1>
-
-          <p className="text-lg md:text-xl leading-relaxed mb-11 max-w-xl mx-auto" style={{ color: 'var(--text-secondary)' }}>
-            {t('landing.hero.sub')}
-          </p>
-
-          <Link href="/register"
-            className="inline-flex items-center gap-2 px-9 py-4 rounded-full text-base font-semibold transition-all hover:scale-[1.03] active:scale-95"
-            style={{ backgroundColor: 'var(--accent)', color: 'var(--accent-text)' }}>
-            {t('landing.cta')}
-          </Link>
-          <p className="text-[13px] mt-4" style={{ color: 'var(--text-muted)' }}>
-            {t('landing.cta.sub')}
-          </p>
         </section>
 
         {/* ── Chiffres clés (ligne épurée, sans cadres) ── */}
