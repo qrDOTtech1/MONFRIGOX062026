@@ -5,6 +5,7 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import { ScanLine, ChefHat, ShoppingCart, Leaf, Barcode, Sparkles, Check, Brain, X, Calendar, MessageSquare, Trophy, Share2, UtensilsCrossed, Volume2, Timer, Globe, Gift, ChevronLeft, ChevronRight, Copy, Star, Users, Clock, Zap } from 'lucide-react';
 import LogoAnim from '@/components/LogoAnim';
 import { useT, LANGUAGES } from '@/lib/i18n';
+import { PROMO } from '@/config/promo';
 
 /* ── Landing-specific styles ─────────────────────────────────────────── */
 function LandingStyles() {
@@ -465,6 +466,64 @@ const WC_TEAMS = [
   { flag: '🇳🇿', name: 'Nouvelle-Zélande', code: 'CM26-NZL', percent: 10 },
 ];
 
+// ── Bannière promo SIMPLE (texte + code + bouton) ──
+// Utilisée quand la config promo est en variant: 'simple'.
+// Reprend le même style que la bannière Coupe du Monde pour rester cohérent.
+function SimplePromo() {
+  const [copied, setCopied] = useState(false);
+
+  function copyCode() {
+    if (!PROMO.code) return;
+    navigator.clipboard.writeText(PROMO.code).catch(() => {});
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  }
+
+  return (
+    <div className="mb-6 fade-in">
+      <div className="relative overflow-hidden rounded-2xl p-4"
+        style={{
+          background: 'linear-gradient(135deg, #052e1a 0%, #0b6b3a 52%, #b45309 100%)',
+          boxShadow: '0 8px 28px rgba(6,78,59,0.32)',
+        }}>
+        <div className="absolute -right-3 -top-4 text-[86px] opacity-[0.16] select-none pointer-events-none leading-none">🎁</div>
+
+        <div className="relative">
+          <h3 className="text-lg font-extrabold text-white leading-tight mb-1">{PROMO.title}</h3>
+          <p className="text-xs text-white/80 mb-3 max-w-md leading-relaxed">{PROMO.subtitle}</p>
+
+          <div className="flex items-center gap-2 flex-wrap">
+            {/* Code promo (affiché seulement s'il existe) */}
+            {PROMO.code && (
+              <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg"
+                style={{ backgroundColor: 'rgba(255,255,255,0.16)', border: '1px solid rgba(255,255,255,0.22)' }}>
+                <span className="font-mono font-bold text-sm tracking-wider text-white">{PROMO.code}</span>
+                <button onClick={copyCode} className="transition-all hover:scale-110 active:scale-90 text-white/80">
+                  {copied ? <Check className="w-3.5 h-3.5 text-emerald-300" /> : <Copy className="w-3.5 h-3.5" />}
+                </button>
+              </span>
+            )}
+            {/* Bouton d'action */}
+            <Link href={PROMO.ctaHref}
+              className="px-4 py-1.5 rounded-lg text-xs font-bold text-white transition-all hover:scale-[1.03] active:scale-95"
+              style={{ background: 'linear-gradient(135deg, #059669, #b45309)' }}>
+              {PROMO.ctaLabel}
+            </Link>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Sélecteur de bannière : lit la config et affiche la bonne promo ──
+// enabled=false → rien | 'worldcup' → Coupe du Monde | 'simple' → bannière simple
+function PromoBanner({ t }: { t: (k: string, v?: Record<string, string | number>) => string }) {
+  if (!PROMO.enabled) return null;
+  if (PROMO.variant === 'worldcup') return <WorldCupOffer t={t} />;
+  return <SimplePromo />;
+}
+
 // Bannière promotionnelle « Coupe du Monde 2026 » — offre limitée, % par équipe
 type WcTeam = { flag: string; name: string; code: string; percent: number };
 function WorldCupOffer({ t }: { t: (k: string, v?: Record<string, string | number>) => string }) {
@@ -828,8 +887,8 @@ export default function LandingPage() {
               {t('landing.pricing.sub')}
             </p>
 
-            {/* ── Offre Coupe du Monde 2026 (compacte, au-dessus des prix) ── */}
-            <WorldCupOffer t={t} />
+            {/* ── Bannière promo (gérée depuis src/config/promo.ts) ── */}
+            <PromoBanner t={t} />
 
             <div className="space-y-3">
               {plans.map((plan, pi) => (
