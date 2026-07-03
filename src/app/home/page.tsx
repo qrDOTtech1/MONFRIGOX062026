@@ -184,17 +184,30 @@ export default function HomePage() {
   const [allRecipes, setAllRecipes] = useState<any[]>([]);
 
   const load = useCallback(async () => {
+    setLoading(true);
     try {
-      const [dashRes, recipesRes] = await Promise.all([
-        fetch('/api/dashboard'),
-        fetch('/api/recipes'),
-      ]);
-      if (dashRes.ok) setData(await dashRes.json());
-      if (recipesRes.ok) setAllRecipes(await recipesRes.json());
+      // Dashboard avec 1 retry auto (utile sur data mobile instable, ex: Samsung en 4G)
+      let dashRes: Response | null = null;
+      for (let attempt = 0; attempt < 2; attempt++) {
+        try { dashRes = await fetch('/api/dashboard'); break; }
+        catch { if (attempt === 1) throw new Error('network'); await new Promise(r => setTimeout(r, 800)); }
+      }
+
+      // Session expirée / non connecté → page de connexion (au lieu d'un écran d'erreur mort)
+      if (dashRes && dashRes.status === 401) { router.replace('/login'); return; }
+      if (dashRes && dashRes.ok) setData(await dashRes.json());
+
+      // Recettes : version allégée (le chatbot n'a pas besoin de tout le catalogue) — non bloquant
+      try {
+        const recipesRes = await fetch('/api/recipes?limit=300');
+        if (recipesRes.ok) setAllRecipes(await recipesRes.json());
+      } catch { /* non bloquant : l'accueil s'affiche quand même */ }
+    } catch {
+      /* data reste null → écran d'erreur avec bouton Réessayer */
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [router]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -208,7 +221,14 @@ export default function HomePage() {
     );
   }
 
-  if (!data) return <AppShell><div className="p-8 text-center text-sm" style={{ color: 'var(--text-muted)' }}>{t('home.loadError')}</div></AppShell>;
+  if (!data) return (
+    <AppShell>
+      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-5 text-center px-8">
+        <Mascot variant="worried" size="lg" animate="float" message={t('home.loadError')} />
+        <button onClick={() => load()} className="btn-primary">{t('home.retry')}</button>
+      </div>
+    </AppShell>
+  );
 
   const { greeting, user, mascotVariant, mascotMessage, todayPlans, streak, expiringCount,
     expiringItems, radarScores, weekStats, badges } = data;

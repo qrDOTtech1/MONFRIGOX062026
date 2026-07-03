@@ -809,6 +809,7 @@ const fr: Record<string, string> = {
   // ── Home ──
   'home.loading': 'Chargement…',
   'home.loadError': 'Erreur de chargement',
+  'home.retry': 'Réessayer',
   'home.streak': '{n} jour de succès !',
   'home.streakPlural': '{n} jours de succès !',
   'home.streakSub': 'Continue pour débloquer des récompenses',
