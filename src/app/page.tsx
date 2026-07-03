@@ -62,7 +62,7 @@ function LandingStyles() {
         background-repeat: no-repeat;
         transform: translateZ(0) scale(1.06);
         will-change: transform;
-        animation: hero-drift 28s ease-in-out infinite;
+        animation: hero-drift 20s ease-in-out infinite;
       }
       /* Voile de lisibilité global — s'adapte au thème (clair/sombre) */
       .page-veil {
@@ -120,14 +120,17 @@ function LandingStyles() {
         from { opacity: 0; transform: translate3d(0, 18px, 0); }
         to   { opacity: 1; transform: translate3d(0, 0, 0); }
       }
+      /* Panoramique + zoom lent (Ken Burns), % relatif à la taille du fond */
       @keyframes hero-drift {
         0%   { transform: translate3d(0, 0, 0) scale(1.06); }
-        50%  { transform: translate3d(-14px, -10px, 0) scale(1.08); }
+        25%  { transform: translate3d(-2%, -1.2%, 0) scale(1.10); }
+        50%  { transform: translate3d(-1.2%, -2.4%, 0) scale(1.13); }
+        75%  { transform: translate3d(1.6%, -1%, 0) scale(1.09); }
         100% { transform: translate3d(0, 0, 0) scale(1.06); }
       }
       @keyframes hero-halo {
-        0%, 100% { transform: translate3d(0, 0, 0) scale(1);    opacity: 0.5; }
-        50%      { transform: translate3d(18px, -14px, 0) scale(1.18); opacity: 0.8; }
+        0%, 100% { transform: translate3d(0, 0, 0) scale(1);        opacity: 0.45; }
+        50%      { transform: translate3d(40px, -30px, 0) scale(1.28); opacity: 0.85; }
       }
       @keyframes hero-particle {
         0%   { transform: translate3d(0, 0, 0);     opacity: 0; }
