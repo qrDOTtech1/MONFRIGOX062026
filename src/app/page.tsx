@@ -61,38 +61,36 @@ function LandingStyles() {
         transition: transform 0.35s cubic-bezier(0.2, 0.7, 0.3, 1);
         will-change: transform;
       }
-      /* Couche des ingrédients qui flottent */
+      /* Couche des ingrédients qui tombent (pluie de fruits & légumes) */
       .food-layer { position: absolute; inset: 0; }
       .food-item {
-        position: absolute;
+        position: absolute; top: 0;
         background-repeat: no-repeat;
         background-position: center;
         background-size: contain;
-        opacity: 0.9;
-        filter: drop-shadow(0 12px 26px rgba(0,0,0,0.16));
+        filter: drop-shadow(0 10px 22px rgba(0,0,0,0.18));
         will-change: transform;
-        animation: food-float var(--dur, 22s) ease-in-out infinite;
+        animation: food-fall var(--dur, 15s) linear infinite;
       }
-      /* Voile dépoli (frosted glass) : adoucit les ingrédients, garde le texte lisible.
-         Repli via l'opacité si backdrop-filter non supporté (vieux navigateurs). */
+      /* Voile léger : les ingrédients restent bien lisibles, juste un peu adoucis */
       .page-frost {
         position: absolute; inset: 0; pointer-events: none;
-        background: color-mix(in srgb, var(--bg) 55%, transparent);
-        background: rgba(248, 249, 250, 0.5);                     /* repli clair */
-        background: color-mix(in srgb, var(--bg) 46%, transparent);
-        -webkit-backdrop-filter: blur(15px) saturate(1.05);
-        backdrop-filter: blur(15px) saturate(1.05);
+        background: rgba(248, 249, 250, 0.28);                    /* repli clair */
+        background: color-mix(in srgb, var(--bg) 26%, transparent);
+        -webkit-backdrop-filter: blur(2px);
+        backdrop-filter: blur(2px);
       }
 
       @keyframes hero-in {
         from { opacity: 0; transform: translate3d(0, 18px, 0); }
         to   { opacity: 1; transform: translate3d(0, 0, 0); }
       }
-      /* Flottement lent des ingrédients (variables par élément) */
-      @keyframes food-float {
-        0%, 100% { transform: translate3d(0, 0, 0) rotate(var(--rot, 0deg)); }
-        50%      { transform: translate3d(var(--dx, 20px), var(--dy, -24px), 0)
-                              rotate(calc(var(--rot, 0deg) + 8deg)); }
+      /* Chute continue façon "pluie" : du haut hors écran vers le bas, en tournant */
+      @keyframes food-fall {
+        0%   { transform: translate3d(0, -22vh, 0) rotate(0deg);              opacity: 0; }
+        8%   { opacity: 0.92; }
+        92%  { opacity: 0.92; }
+        100% { transform: translate3d(0, 118vh, 0) rotate(var(--spin, 300deg)); opacity: 0; }
       }
 
       /* ── Bannière promo Coupe du Monde : fond stade + animations ── */
@@ -151,7 +149,8 @@ function LandingStyles() {
 
       @media (prefers-reduced-motion: reduce) {
         .cursor-light, .click-ripple { display: none; }
-        .page-bg-wrap, .food-item { animation: none !important; }
+        .page-bg-wrap { animation: none !important; }
+        .food-layer { display: none; }
         .page-bg-parallax { transition: none !important; transform: none !important; }
         .promo-wc-bg, .promo-wc-glow, .promo-wc-beam { animation: none !important; }
         .promo-wc-beam { display: none; }
@@ -617,20 +616,26 @@ function WorldCupOffer({ t }: { t: (k: string, v?: Record<string, string | numbe
   );
 }
 
-// Ingrédients détourés qui flottent en fond (défilent lentement).
-// pos = position, s = taille (px), dur/dx/dy/rot = paramètres d'animation.
+// Pluie d'ingrédients détourés : chacun tombe du haut vers le bas en tournant.
+// left = colonne, s = taille (px), dur = durée de chute (s, + court = + rapide),
+// delay = décalage (négatif = déjà en cours au chargement), spin = rotation totale.
 // hideSm = masqué sur très petits écrans (allège le mobile).
-const FLOATING_FOOD = [
-  { src: 'tomate',    top: '10%', left: '7%',  s: 130, dur: 22, dx: 24,  dy: -26, rot: -8 },
-  { src: 'carotte',   top: '26%', left: '80%', s: 155, dur: 25, dx: -20, dy: 28,  rot: 10 },
-  { src: 'poireau',   top: '66%', left: '74%', s: 165, dur: 28, dx: -26, dy: -20, rot: -6 },
-  { src: 'pomme',     top: '60%', left: '10%', s: 125, dur: 24, dx: 22,  dy: 22,  rot: 7  },
-  { src: 'concombre', top: '6%',  left: '58%', s: 150, dur: 26, dx: 20,  dy: 18,  rot: 4,  hideSm: true },
-  { src: 'pitaya',    top: '44%', left: '46%', s: 135, dur: 30, dx: -18, dy: -24, rot: 8,  hideSm: true },
-  { src: 'oignon',    top: '84%', left: '38%', s: 120, dur: 21, dx: 20,  dy: -18, rot: -5 },
-  { src: 'tomate',    top: '22%', left: '30%', s: 85,  dur: 27, dx: -16, dy: 20,  rot: 5,  hideSm: true },
-  { src: 'carotte',   top: '86%', left: '86%', s: 100, dur: 23, dx: -18, dy: 16,  rot: -7, hideSm: true },
-  { src: 'pomme',     top: '38%', left: '2%',  s: 95,  dur: 29, dx: 18,  dy: -22, rot: 6,  hideSm: true },
+const FALLING_FOOD = [
+  { src: 'tomate',    left: '4%',  s: 90,  dur: 13, delay: 0,   spin: 220 },
+  { src: 'carotte',   left: '17%', s: 120, dur: 17, delay: -4,  spin: -180 },
+  { src: 'pomme',     left: '30%', s: 82,  dur: 11, delay: -8,  spin: 300 },
+  { src: 'poireau',   left: '43%', s: 130, dur: 19, delay: -2,  spin: 160 },
+  { src: 'oignon',    left: '56%', s: 86,  dur: 14, delay: -10, spin: -240 },
+  { src: 'concombre', left: '68%', s: 112, dur: 16, delay: -6,  spin: 200 },
+  { src: 'pitaya',    left: '80%', s: 96,  dur: 12, delay: -3,  spin: -160 },
+  { src: 'tomate',    left: '90%', s: 70,  dur: 18, delay: -9,  spin: 260 },
+  // 2ᵉ vague pour densifier la pluie (desktop)
+  { src: 'pomme',     left: '11%', s: 64,  dur: 15, delay: -12, spin: -200, hideSm: true },
+  { src: 'carotte',   left: '36%', s: 74,  dur: 21, delay: -14, spin: 180,  hideSm: true },
+  { src: 'oignon',    left: '61%', s: 68,  dur: 13, delay: -7,  spin: 240,  hideSm: true },
+  { src: 'poireau',   left: '84%', s: 100, dur: 22, delay: -17, spin: -140, hideSm: true },
+  { src: 'concombre', left: '49%', s: 60,  dur: 12, delay: -5,  spin: 300,  hideSm: true },
+  { src: 'pitaya',    left: '24%', s: 80,  dur: 20, delay: -11, spin: -220, hideSm: true },
 ];
 
 export default function LandingPage() {
@@ -682,20 +687,18 @@ export default function LandingPage() {
       <div className="page-bg-wrap" aria-hidden>
         <div className="page-bg-parallax">
           <div className="food-layer">
-            {FLOATING_FOOD.map((f, i) => (
+            {FALLING_FOOD.map((f, i) => (
               <div
                 key={i}
                 className={`food-item ${f.hideSm ? 'hidden sm:block' : ''}`}
                 style={{
-                  top: f.top, left: f.left,
+                  left: f.left,
                   width: `${f.s}px`, height: `${f.s}px`,
                   backgroundImage: `url('/images/food/${f.src}.webp')`,
-                  // Variables lues par l'animation food-float
+                  // Variables lues par l'animation food-fall
                   ['--dur' as any]: `${f.dur}s`,
-                  ['--dx' as any]: `${f.dx}px`,
-                  ['--dy' as any]: `${f.dy}px`,
-                  ['--rot' as any]: `${f.rot}deg`,
-                  animationDelay: `${-i * 1.7}s`,
+                  ['--spin' as any]: `${f.spin}deg`,
+                  animationDelay: `${f.delay}s`,
                 }}
               />
             ))}
