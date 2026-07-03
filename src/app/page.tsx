@@ -4,7 +4,6 @@ import Link from 'next/link';
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { ScanLine, ChefHat, ShoppingCart, Leaf, Barcode, Sparkles, Check, Brain, X, Calendar, MessageSquare, Trophy, Share2, UtensilsCrossed, Volume2, Timer, Globe, Gift, ChevronLeft, ChevronRight, Copy, Star, Users, Clock, Zap } from 'lucide-react';
 import LogoAnim from '@/components/LogoAnim';
-import FloatingEmojis from '@/components/FloatingEmojis';
 import { useT, LANGUAGES } from '@/lib/i18n';
 
 /* ── Landing-specific styles ─────────────────────────────────────────── */
@@ -33,7 +32,7 @@ function LandingStyles() {
 
       /* Fond lumineux qui suit le curseur / le doigt */
       .cursor-light {
-        position: fixed; inset: 0; z-index: 0; pointer-events: none;
+        position: fixed; inset: 0; z-index: 1; pointer-events: none;
         transition: background 0.2s ease-out;
         background: radial-gradient(520px circle at 50% 12%, rgba(16,185,129,0.16), transparent 62%);
       }
@@ -47,79 +46,75 @@ function LandingStyles() {
       }
       @keyframes ripple { to { transform: scale(11); opacity: 0; } }
 
-      /* ── Hero : fond image + animations premium (GPU: transform/opacity) ── */
-      .hero {
-        position: relative;
-        isolation: isolate;
+      /* ── Fond image plein écran animé (GPU: transform/opacity) ── */
+      /* Wrapper fixe : couvre tout le viewport, gère l'apparition */
+      .page-bg-wrap {
+        position: fixed; inset: 0; z-index: 0; pointer-events: none;
         overflow: hidden;
-        border-radius: 28px;
-      }
-      /* Wrapper : gère l'apparition au chargement */
-      .hero-bg-wrap {
-        position: absolute; inset: -2%;
-        z-index: -3;
-        animation: hero-in 1s ease-out both;
+        animation: hero-in 1.1s ease-out both;
       }
       /* Image : couvre tout, léger flottement + déplacement du fond */
-      .hero-bg {
-        position: absolute; inset: 0;
+      .page-bg {
+        position: absolute; inset: -3%;
         background-image: url('/images/hero-bg.webp');
         background-size: cover;
         background-position: center;
         background-repeat: no-repeat;
         transform: translateZ(0) scale(1.06);
         will-change: transform;
-        animation: hero-drift 26s ease-in-out infinite;
+        animation: hero-drift 28s ease-in-out infinite;
       }
-      /* Voile de lisibilité — s'adapte au thème (clair/sombre) */
-      .hero-veil {
-        position: absolute; inset: 0; z-index: -2; pointer-events: none;
+      /* Voile de lisibilité global — s'adapte au thème (clair/sombre) */
+      .page-veil {
+        position: absolute; inset: 0; pointer-events: none;
         background:
           linear-gradient(to bottom,
-            color-mix(in srgb, var(--bg) 45%, transparent) 0%,
-            color-mix(in srgb, var(--bg) 12%, transparent) 42%,
-            color-mix(in srgb, var(--bg) 78%, transparent) 100%),
-          radial-gradient(120% 70% at 50% 38%,
-            color-mix(in srgb, var(--bg) 40%, transparent) 0%,
-            transparent 68%);
+            color-mix(in srgb, var(--bg) 28%, transparent) 0%,
+            color-mix(in srgb, var(--bg) 52%, transparent) 50%,
+            color-mix(in srgb, var(--bg) 80%, transparent) 100%),
+          radial-gradient(130% 60% at 50% 22%,
+            color-mix(in srgb, var(--bg) 35%, transparent) 0%,
+            transparent 70%);
       }
       /* Halos flous animés */
-      .hero-halo {
-        position: absolute; z-index: -2; border-radius: 9999px;
-        filter: blur(44px); pointer-events: none;
+      .page-halo {
+        position: absolute; border-radius: 9999px;
+        filter: blur(52px); pointer-events: none;
         will-change: transform, opacity;
       }
-      .hero-halo-1 {
-        width: 260px; height: 260px; top: -60px; left: -40px;
-        background: rgba(16,185,129,0.28);
-        animation: hero-halo 14s ease-in-out infinite;
+      .page-halo-1 {
+        width: 320px; height: 320px; top: -70px; left: -50px;
+        background: rgba(16,185,129,0.26);
+        animation: hero-halo 15s ease-in-out infinite;
       }
-      .hero-halo-2 {
-        width: 300px; height: 300px; bottom: -80px; right: -50px;
-        background: rgba(245,158,11,0.20);
-        animation: hero-halo 18s ease-in-out infinite reverse;
+      .page-halo-2 {
+        width: 360px; height: 360px; top: 30%; right: -70px;
+        background: rgba(245,158,11,0.18);
+        animation: hero-halo 19s ease-in-out infinite reverse;
       }
-      .hero-halo-3 {
-        width: 200px; height: 200px; top: 40%; left: 55%;
-        background: rgba(244,114,182,0.16);
-        animation: hero-halo 22s ease-in-out infinite;
+      .page-halo-3 {
+        width: 280px; height: 280px; bottom: 6%; left: 40%;
+        background: rgba(244,114,182,0.15);
+        animation: hero-halo 23s ease-in-out infinite;
         animation-delay: -6s;
       }
       /* Particules lumineuses discrètes */
-      .hero-particles { position: absolute; inset: 0; z-index: -1; pointer-events: none; }
-      .hero-particles span {
+      .page-particles { position: absolute; inset: 0; pointer-events: none; }
+      .page-particles span {
         position: absolute; width: 5px; height: 5px; border-radius: 9999px;
         background: rgba(255,255,255,0.85);
         box-shadow: 0 0 8px 2px rgba(255,255,255,0.55);
         opacity: 0; will-change: transform, opacity;
-        animation: hero-particle 9s ease-in-out infinite;
+        animation: hero-particle 10s ease-in-out infinite;
       }
-      .hero-particles span:nth-child(1) { left: 18%; top: 68%; animation-delay: 0s;   }
-      .hero-particles span:nth-child(2) { left: 42%; top: 78%; animation-delay: 2.4s; }
-      .hero-particles span:nth-child(3) { left: 63%; top: 60%; animation-delay: 4.1s; }
-      .hero-particles span:nth-child(4) { left: 80%; top: 72%; animation-delay: 1.3s; }
-      .hero-particles span:nth-child(5) { left: 30%; top: 55%; animation-delay: 5.5s; }
-      .hero-particles span:nth-child(6) { left: 72%; top: 48%; animation-delay: 3.2s; }
+      .page-particles span:nth-child(1) { left: 14%; top: 30%; animation-delay: 0s;   }
+      .page-particles span:nth-child(2) { left: 38%; top: 62%; animation-delay: 2.4s; }
+      .page-particles span:nth-child(3) { left: 60%; top: 24%; animation-delay: 4.1s; }
+      .page-particles span:nth-child(4) { left: 82%; top: 55%; animation-delay: 1.3s; }
+      .page-particles span:nth-child(5) { left: 26%; top: 78%; animation-delay: 5.5s; }
+      .page-particles span:nth-child(6) { left: 70%; top: 82%; animation-delay: 3.2s; }
+      .page-particles span:nth-child(7) { left: 50%; top: 12%; animation-delay: 6.8s; }
+      .page-particles span:nth-child(8) { left: 90%; top: 20%; animation-delay: 8.0s; }
 
       @keyframes hero-in {
         from { opacity: 0; transform: translate3d(0, 18px, 0); }
@@ -143,8 +138,8 @@ function LandingStyles() {
 
       @media (prefers-reduced-motion: reduce) {
         .cursor-light, .click-ripple { display: none; }
-        .hero-bg-wrap, .hero-bg, .hero-halo, .hero-particles span { animation: none !important; }
-        .hero-bg { transform: scale(1.02); }
+        .page-bg-wrap, .page-bg, .page-halo, .page-particles span { animation: none !important; }
+        .page-bg { transform: scale(1.02); }
       }
     `}</style>
   );
@@ -585,9 +580,20 @@ export default function LandingPage() {
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLdApp }} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLdFaq }} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLdOrg }} />
-      <FloatingEmojis />
       <LandingStyles />
       <CursorFX />
+
+      {/* ── Fond image animé plein écran (remplace l'ancien fond) ── */}
+      <div className="page-bg-wrap" aria-hidden>
+        <div className="page-bg" />
+        <div className="page-veil" />
+        <div className="page-halo page-halo-1" />
+        <div className="page-halo page-halo-2" />
+        <div className="page-halo page-halo-3" />
+        <div className="page-particles">
+          <span /><span /><span /><span /><span /><span /><span /><span />
+        </div>
+      </div>
 
       {/* ── Header ── */}
       <header className="flex items-center justify-between px-6 py-4 sticky top-0 z-20"
@@ -633,20 +639,8 @@ export default function LandingPage() {
       <main className="flex-1 max-w-3xl mx-auto w-full px-6 pb-10 relative z-10">
 
         {/* ── Hero ── */}
-        <section className="hero text-center pt-20 md:pt-28 pb-24 px-5 mt-4">
-          {/* Fond image animé (couche décorative, sous le contenu) */}
-          <div className="hero-bg-wrap" aria-hidden>
-            <div className="hero-bg" />
-          </div>
-          <div className="hero-veil" aria-hidden />
-          <div className="hero-halo hero-halo-1" aria-hidden />
-          <div className="hero-halo hero-halo-2" aria-hidden />
-          <div className="hero-halo hero-halo-3" aria-hidden />
-          <div className="hero-particles" aria-hidden>
-            <span /><span /><span /><span /><span /><span />
-          </div>
-
-          {/* Contenu (inchangé) */}
+        <section className="text-center pt-20 md:pt-28 pb-24">
+          {/* Contenu (le fond animé est global, derrière toute la page) */}
           <div className="relative z-10">
             {/* Logo hero */}
             <div className="flex justify-center mb-9">
