@@ -9,51 +9,47 @@
 }
 
 /* ============================================================
-   PALETTE NATURELLE & CHALEUREUSE — "cuisine vivante"
-   Mode clair : papier / lin / lumière du jour
-   Mode sombre : cuisine du soir, bois + feuillage
+   PALETTE SOBRE & MODERNE
+   Neutres propres (blanc / gris / anthracite) + accent émeraude
    ============================================================ */
 :root {
-  --bg: #f6f1e7;              /* beige lin, lumière naturelle */
-  --bg-raised: #fffdf7;       /* papier chaud (cartes) */
-  --bg-inset: #eee7d8;        /* creux, papier recyclé */
-  --border: #e0d7c3;
-  --border-subtle: #eae2d0;
-  --text: #2c2519;            /* brun café foncé (contraste AA) */
-  --text-secondary: #5d5340;
-  --text-muted: #8b7f66;
-  --accent: #2f7a52;          /* vert feuille profond — boutons */
-  --accent-hover: #276847;
+  --bg: #f8f9fa;              /* gris très clair, propre */
+  --bg-raised: #ffffff;       /* cartes blanches */
+  --bg-inset: #f0f2f1;
+  --border: #e4e7e5;
+  --border-subtle: #eef0ef;
+  --text: #17191b;            /* quasi noir neutre (contraste AA) */
+  --text-secondary: #4d5350;
+  --text-muted: #8b918e;
+  --accent: #0e9f6e;          /* émeraude — boutons */
+  --accent-hover: #0b8a5f;
   --accent-text: #ffffff;
-  --ring: rgba(47, 122, 82, 0.18);
-  /* Teinte "signature" (feuille) : focus, halos, nav active */
-  --brand: #3d9968;
-  --brand-ring: rgba(76, 175, 119, 0.20);
-  /* Touche terracotta pour les moments chaleureux */
-  --warm: #e07a4f;
-  /* Ombres douces "comme la lumière du jour" */
-  --card-shadow: 0 1px 2px rgba(76, 60, 32, 0.05), 0 6px 18px rgba(76, 60, 32, 0.07);
-  --card-shadow-hover: 0 8px 20px rgba(76, 175, 119, 0.12), 0 16px 38px rgba(76, 60, 32, 0.12);
+  --ring: rgba(14, 159, 110, 0.18);
+  /* Teinte "signature" : focus, halos, nav active */
+  --brand: #10b981;
+  --brand-ring: rgba(16, 185, 129, 0.18);
+  /* Ombres douces neutres */
+  --card-shadow: 0 1px 2px rgba(20, 24, 22, 0.04), 0 6px 18px rgba(20, 24, 22, 0.06);
+  --card-shadow-hover: 0 8px 20px rgba(16, 185, 129, 0.10), 0 16px 38px rgba(20, 24, 22, 0.10);
 }
 
 .dark {
-  --bg: #14150f;              /* nuit chaude, brun-vert profond */
-  --bg-raised: #1d1f16;       /* bois sombre (cartes) */
-  --bg-inset: #191b12;
-  --border: #303328;
-  --border-subtle: #24261c;
-  --text: #f1ecdf;            /* blanc chaud */
-  --text-secondary: #b3ab97;
-  --text-muted: #7d7663;
-  --accent: #4caf77;          /* vert feuille lumineux */
-  --accent-hover: #5fbe88;
-  --accent-text: #0e1a12;
-  --ring: rgba(76, 175, 119, 0.20);
-  --brand: #4caf77;
-  --brand-ring: rgba(76, 175, 119, 0.24);
-  --warm: #e08a5f;
+  --bg: #0e1110;              /* anthracite propre, pointe verte à peine perceptible */
+  --bg-raised: #161a18;       /* cartes charbon */
+  --bg-inset: #121514;
+  --border: #262b29;
+  --border-subtle: #1d2220;
+  --text: #f3f5f4;            /* blanc neutre */
+  --text-secondary: #a6ada9;
+  --text-muted: #6b716e;
+  --accent: #10b981;          /* émeraude lumineux */
+  --accent-hover: #34d399;
+  --accent-text: #07130e;
+  --ring: rgba(16, 185, 129, 0.20);
+  --brand: #10b981;
+  --brand-ring: rgba(16, 185, 129, 0.24);
   --card-shadow: 0 1px 2px rgba(0, 0, 0, 0.35), 0 8px 22px rgba(0, 0, 0, 0.4);
-  --card-shadow-hover: 0 8px 20px rgba(76, 175, 119, 0.16), 0 18px 44px rgba(0, 0, 0, 0.55);
+  --card-shadow-hover: 0 8px 20px rgba(16, 185, 129, 0.14), 0 18px 44px rgba(0, 0, 0, 0.55);
 }
 
 body {
@@ -233,30 +229,26 @@ h1, h2, h3 {
   letter-spacing: -0.01em;
 }
 
-/* ── Fond "cuisine vivante" : lumière naturelle + feuillage flou ── */
+/* ── Fond ambiant sobre : halos émeraude discrets qui respirent ── */
 .app-ambient {
   position: fixed;
   inset: 0;
   z-index: 0;
   pointer-events: none;
   background:
-    /* rayon de lumière chaude (fenêtre de cuisine) */
-    radial-gradient(720px circle at 18% -6%,  rgba(240, 200, 130, 0.16), transparent 55%),
-    /* feuillage doux en bas */
-    radial-gradient(780px circle at 108% 106%, rgba(76, 175, 119, 0.15), transparent 58%),
-    radial-gradient(460px circle at -8% 78%,   rgba(139, 178, 130, 0.12), transparent 55%),
-    /* pointe terracotta discrète */
-    radial-gradient(420px circle at 94% 12%,   rgba(224, 122, 79, 0.07), transparent 55%);
+    radial-gradient(720px circle at 15% -6%,   rgba(16, 185, 129, 0.10), transparent 55%),
+    radial-gradient(780px circle at 108% 106%, rgba(16, 185, 129, 0.09), transparent 58%),
+    radial-gradient(460px circle at -8% 78%,   rgba(16, 185, 129, 0.06), transparent 55%);
   animation: app-ambient-drift 18s ease-in-out infinite;
 }
-/* Nappe de feuillage flou qui dérive doucement (coin bas-gauche) */
+/* Nappe floue qui dérive doucement (coin bas-gauche) */
 .app-ambient::before {
   content: '';
   position: absolute;
   width: 360px; height: 360px;
   left: -100px; bottom: -120px;
   border-radius: 50%;
-  background: radial-gradient(closest-side, rgba(76, 175, 119, 0.20), transparent);
+  background: radial-gradient(closest-side, rgba(16, 185, 129, 0.14), transparent);
   filter: blur(28px);
   animation: leaf-drift 26s ease-in-out infinite;
 }
@@ -265,14 +257,14 @@ h1, h2, h3 {
   50%      { transform: translate3d(46px, -34px, 0) scale(1.16); }
 }
 
-/* Grain papier très léger sur toute l'app (texture naturelle) */
+/* Grain très léger (texture premium, neutre) */
 .app-ambient::after {
   content: '';
   position: absolute; inset: 0;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='p'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='2'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.05 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23p)'/%3E%3C/svg%3E");
-  opacity: 0.7;
+  opacity: 0.45;
 }
-.dark .app-ambient::after { opacity: 0.35; }
+.dark .app-ambient::after { opacity: 0.25; }
 @keyframes app-ambient-drift {
   0%, 100% { opacity: 0.85; transform: translate3d(0, 0, 0) scale(1); }
   50%      { opacity: 1;    transform: translate3d(0, -18px, 0) scale(1.05); }
@@ -291,7 +283,7 @@ h1, h2, h3 {
 .app-ripple {
   position: fixed; width: 18px; height: 18px; margin: -9px 0 0 -9px;
   border-radius: 9999px; pointer-events: none; z-index: 9999;
-  background: radial-gradient(circle, rgba(76,175,119,0.45), rgba(76,175,119,0.12) 55%, transparent 70%);
+  background: radial-gradient(circle, rgba(16,185,129,0.45), rgba(16,185,129,0.12) 55%, transparent 70%);
   transform: scale(0);
   animation: appRipple 0.6s cubic-bezier(0.2,0.7,0.3,1) forwards;
 }

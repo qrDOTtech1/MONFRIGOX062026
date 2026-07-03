@@ -87,8 +87,8 @@ export const viewport: Viewport = {
   maximumScale: 1,
   viewportFit: 'cover',   // active les safe-areas (encoches, barre gestuelle) sur mobile
   themeColor: [
-    { media: '(prefers-color-scheme: light)', color: '#f6f1e7' },
-    { media: '(prefers-color-scheme: dark)', color: '#14150f' },
+    { media: '(prefers-color-scheme: light)', color: '#f8f9fa' },
+    { media: '(prefers-color-scheme: dark)', color: '#0e1110' },
   ],
 };
 
