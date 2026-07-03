@@ -13,7 +13,7 @@ export interface JWTPayload {
 export async function createToken(payload: JWTPayload): Promise<string> {
   return new SignJWT(payload as unknown as Record<string, unknown>)
     .setProtectedHeader({ alg: 'HS256' })
-    .setExpirationTime('7d')
+    .setExpirationTime('30d')   // session 30 jours (évite les déconnexions trop fréquentes)
     .sign(secret);
 }
 

@@ -82,11 +82,13 @@ export default function FridgePage() {
     try {
       const [fridgeRes, recipesRes, householdRes, meRes, rappelRes] = await Promise.all([
         fetch('/api/fridge'),
-        fetch('/api/recipes'),
+        fetch('/api/recipes?limit=300'),   // allégé (mobile)
         fetch('/api/household'),
         fetch('/api/auth/me'),
         fetch('/api/rappel-conso'),
       ]);
+      // Session expirée / non connecté → connexion (évite un frigo "vide" trompeur)
+      if (fridgeRes.status === 401) { router.replace('/login'); return; }
       if (fridgeRes.ok) setFridgeItems(await fridgeRes.json());
       if (recipesRes.ok) setAllRecipes(await recipesRes.json());
       if (householdRes.ok) setHousehold(await householdRes.json());
@@ -95,7 +97,7 @@ export default function FridgePage() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [router]);
 
   useEffect(() => { loadData(); }, [loadData]);
 
