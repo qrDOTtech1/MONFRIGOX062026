@@ -8,45 +8,52 @@
   box-sizing: border-box;
 }
 
+/* ============================================================
+   PALETTE NATURELLE & CHALEUREUSE — "cuisine vivante"
+   Mode clair : papier / lin / lumière du jour
+   Mode sombre : cuisine du soir, bois + feuillage
+   ============================================================ */
 :root {
-  --bg: #fafafa;
-  --bg-raised: #ffffff;
-  --bg-inset: #f4f4f5;
-  --border: #e4e4e7;
-  --border-subtle: #f4f4f5;
-  --text: #18181b;
-  --text-secondary: #52525b;
-  --text-muted: #a1a1aa;
-  --accent: #18181b;
-  --accent-hover: #27272a;
+  --bg: #f6f1e7;              /* beige lin, lumière naturelle */
+  --bg-raised: #fffdf7;       /* papier chaud (cartes) */
+  --bg-inset: #eee7d8;        /* creux, papier recyclé */
+  --border: #e0d7c3;
+  --border-subtle: #eae2d0;
+  --text: #2c2519;            /* brun café foncé (contraste AA) */
+  --text-secondary: #5d5340;
+  --text-muted: #8b7f66;
+  --accent: #2f7a52;          /* vert feuille profond — boutons */
+  --accent-hover: #276847;
   --accent-text: #ffffff;
-  --ring: rgba(24, 24, 27, 0.15);
-  /* Teinte "signature" émeraude (rappel de la landing) — usage discret : focus, halo */
-  --brand: #10b981;
-  --brand-ring: rgba(16, 185, 129, 0.18);
-  /* Ombre douce des cartes (mode clair) */
-  --card-shadow: 0 1px 2px rgba(24, 24, 27, 0.04), 0 4px 14px rgba(24, 24, 27, 0.05);
-  --card-shadow-hover: 0 6px 16px rgba(16, 185, 129, 0.10), 0 14px 34px rgba(24, 24, 27, 0.10);
+  --ring: rgba(47, 122, 82, 0.18);
+  /* Teinte "signature" (feuille) : focus, halos, nav active */
+  --brand: #3d9968;
+  --brand-ring: rgba(76, 175, 119, 0.20);
+  /* Touche terracotta pour les moments chaleureux */
+  --warm: #e07a4f;
+  /* Ombres douces "comme la lumière du jour" */
+  --card-shadow: 0 1px 2px rgba(76, 60, 32, 0.05), 0 6px 18px rgba(76, 60, 32, 0.07);
+  --card-shadow-hover: 0 8px 20px rgba(76, 175, 119, 0.12), 0 16px 38px rgba(76, 60, 32, 0.12);
 }
 
 .dark {
-  --bg: #0f0f11;
-  --bg-raised: #18181b;
-  --bg-inset: #111113;
-  --border: #27272a;
-  --border-subtle: #1e1e21;
-  --text: #fafafa;
-  --text-secondary: #a1a1aa;
-  --text-muted: #52525b;
-  --accent: #fafafa;
-  --accent-hover: #e4e4e7;
-  --accent-text: #0f0f11;
-  --ring: rgba(250, 250, 250, 0.1);
-  --brand: #10b981;
-  --brand-ring: rgba(16, 185, 129, 0.22);
-  /* Ombre douce des cartes (mode sombre) */
-  --card-shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 6px 18px rgba(0, 0, 0, 0.35);
-  --card-shadow-hover: 0 6px 16px rgba(16, 185, 129, 0.16), 0 16px 40px rgba(0, 0, 0, 0.5);
+  --bg: #14150f;              /* nuit chaude, brun-vert profond */
+  --bg-raised: #1d1f16;       /* bois sombre (cartes) */
+  --bg-inset: #191b12;
+  --border: #303328;
+  --border-subtle: #24261c;
+  --text: #f1ecdf;            /* blanc chaud */
+  --text-secondary: #b3ab97;
+  --text-muted: #7d7663;
+  --accent: #4caf77;          /* vert feuille lumineux */
+  --accent-hover: #5fbe88;
+  --accent-text: #0e1a12;
+  --ring: rgba(76, 175, 119, 0.20);
+  --brand: #4caf77;
+  --brand-ring: rgba(76, 175, 119, 0.24);
+  --warm: #e08a5f;
+  --card-shadow: 0 1px 2px rgba(0, 0, 0, 0.35), 0 8px 22px rgba(0, 0, 0, 0.4);
+  --card-shadow-hover: 0 8px 20px rgba(76, 175, 119, 0.16), 0 18px 44px rgba(0, 0, 0, 0.55);
 }
 
 body {
@@ -67,11 +74,11 @@ body {
   .card {
     background-color: var(--bg-raised);
     border: 1px solid var(--border);
-    border-radius: 1rem;                       /* coins plus doux */
+    border-radius: 1.25rem;                    /* coins généreux (20px), esprit papier */
     box-shadow: var(--card-shadow);
-    transition: transform 0.22s cubic-bezier(0.2, 0.7, 0.3, 1),
-                box-shadow 0.22s ease,
-                border-color 0.22s ease;
+    transition: transform 0.3s cubic-bezier(0.2, 0.7, 0.3, 1),
+                box-shadow 0.3s ease,
+                border-color 0.3s ease;
   }
   /* Les cartes réagissent : elles se soulèvent au survol (desktop) */
   @media (hover: hover) {
@@ -220,23 +227,52 @@ body {
    Niveau 2 : typographie · Niveau 3 : halo ambiant + apparitions
    ============================================================ */
 
-/* ── Niveau 2 : titres plus nets (tracking resserré, style Apple) ── */
+/* ── Titres ronds et chaleureux (Baloo 2), texte courant inchangé ── */
 h1, h2, h3 {
-  letter-spacing: -0.02em;
+  font-family: var(--font-heading), var(--font-app), system-ui, sans-serif;
+  letter-spacing: -0.01em;
 }
 
-/* ── Halo émeraude ambiant en fond de l'app (bien plus présent) ── */
+/* ── Fond "cuisine vivante" : lumière naturelle + feuillage flou ── */
 .app-ambient {
   position: fixed;
   inset: 0;
   z-index: 0;
   pointer-events: none;
   background:
-    radial-gradient(680px circle at 12% -5%,  rgba(16,185,129,0.16), transparent 55%),
-    radial-gradient(760px circle at 105% 108%, rgba(16,185,129,0.13), transparent 58%),
-    radial-gradient(520px circle at 92% 8%,    rgba(245,158,11,0.07), transparent 55%);
+    /* rayon de lumière chaude (fenêtre de cuisine) */
+    radial-gradient(720px circle at 18% -6%,  rgba(240, 200, 130, 0.16), transparent 55%),
+    /* feuillage doux en bas */
+    radial-gradient(780px circle at 108% 106%, rgba(76, 175, 119, 0.15), transparent 58%),
+    radial-gradient(460px circle at -8% 78%,   rgba(139, 178, 130, 0.12), transparent 55%),
+    /* pointe terracotta discrète */
+    radial-gradient(420px circle at 94% 12%,   rgba(224, 122, 79, 0.07), transparent 55%);
   animation: app-ambient-drift 18s ease-in-out infinite;
 }
+/* Nappe de feuillage flou qui dérive doucement (coin bas-gauche) */
+.app-ambient::before {
+  content: '';
+  position: absolute;
+  width: 360px; height: 360px;
+  left: -100px; bottom: -120px;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(76, 175, 119, 0.20), transparent);
+  filter: blur(28px);
+  animation: leaf-drift 26s ease-in-out infinite;
+}
+@keyframes leaf-drift {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
+  50%      { transform: translate3d(46px, -34px, 0) scale(1.16); }
+}
+
+/* Grain papier très léger sur toute l'app (texture naturelle) */
+.app-ambient::after {
+  content: '';
+  position: absolute; inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='p'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='2'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.05 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23p)'/%3E%3C/svg%3E");
+  opacity: 0.7;
+}
+.dark .app-ambient::after { opacity: 0.35; }
 @keyframes app-ambient-drift {
   0%, 100% { opacity: 0.85; transform: translate3d(0, 0, 0) scale(1); }
   50%      { opacity: 1;    transform: translate3d(0, -18px, 0) scale(1.05); }
@@ -255,7 +291,7 @@ h1, h2, h3 {
 .app-ripple {
   position: fixed; width: 18px; height: 18px; margin: -9px 0 0 -9px;
   border-radius: 9999px; pointer-events: none; z-index: 9999;
-  background: radial-gradient(circle, rgba(16,185,129,0.45), rgba(16,185,129,0.12) 55%, transparent 70%);
+  background: radial-gradient(circle, rgba(76,175,119,0.45), rgba(76,175,119,0.12) 55%, transparent 70%);
   transform: scale(0);
   animation: appRipple 0.6s cubic-bezier(0.2,0.7,0.3,1) forwards;
 }

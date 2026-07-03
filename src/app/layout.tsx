@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from 'next';
-import { Space_Grotesk } from 'next/font/google';
+import { Space_Grotesk, Baloo_2 } from 'next/font/google';
 import ThemeProvider from '@/components/ThemeProvider';
 import { I18nProvider } from '@/lib/i18n';
 import ServiceWorkerRegistrar from '@/components/ServiceWorkerRegistrar';
@@ -9,6 +9,14 @@ const spaceGrotesk = Space_Grotesk({
   subsets: ['latin'],
   weight: ['400', '500', '600', '700'],
   variable: '--font-app',
+  display: 'swap',
+});
+
+// Police des titres : ronde et chaleureuse (ambiance "cuisine humaine")
+const baloo = Baloo_2({
+  subsets: ['latin'],
+  weight: ['500', '600', '700'],
+  variable: '--font-heading',
   display: 'swap',
 });
 
@@ -79,8 +87,8 @@ export const viewport: Viewport = {
   maximumScale: 1,
   viewportFit: 'cover',   // active les safe-areas (encoches, barre gestuelle) sur mobile
   themeColor: [
-    { media: '(prefers-color-scheme: light)', color: '#fafafa' },
-    { media: '(prefers-color-scheme: dark)', color: '#0f0f11' },
+    { media: '(prefers-color-scheme: light)', color: '#f6f1e7' },
+    { media: '(prefers-color-scheme: dark)', color: '#14150f' },
   ],
 };
 
@@ -102,7 +110,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           })();
         ` }} />
       </head>
-      <body className={`antialiased ${spaceGrotesk.variable}`}>
+      <body className={`antialiased ${spaceGrotesk.variable} ${baloo.variable}`}>
         <I18nProvider>
           <ThemeProvider>
             <ServiceWorkerRegistrar />
