@@ -182,12 +182,20 @@ body {
   }
 
   .nav-item {
-    @apply flex flex-col items-center gap-1 text-xs transition-colors;
+    @apply flex flex-col items-center gap-1 text-xs transition-colors rounded-xl;
     color: var(--text-muted);
+    position: relative;
+  }
+
+  .nav-item::after,
+  .nav-item::before {
+    display: none !important;
+    content: none !important;
   }
 
   .nav-item-active {
     color: var(--text);
+    background-color: var(--bg-inset);
   }
 
   .page-container {
