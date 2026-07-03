@@ -21,6 +21,11 @@
   --accent-hover: #27272a;
   --accent-text: #ffffff;
   --ring: rgba(24, 24, 27, 0.15);
+  /* Teinte "signature" émeraude (rappel de la landing) — usage discret : focus, halo */
+  --brand: #10b981;
+  --brand-ring: rgba(16, 185, 129, 0.18);
+  /* Ombre douce des cartes (mode clair) */
+  --card-shadow: 0 1px 2px rgba(24, 24, 27, 0.04), 0 4px 14px rgba(24, 24, 27, 0.05);
 }
 
 .dark {
@@ -36,6 +41,10 @@
   --accent-hover: #e4e4e7;
   --accent-text: #0f0f11;
   --ring: rgba(250, 250, 250, 0.1);
+  --brand: #10b981;
+  --brand-ring: rgba(16, 185, 129, 0.22);
+  /* Ombre douce des cartes (mode sombre) */
+  --card-shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 6px 18px rgba(0, 0, 0, 0.35);
 }
 
 body {
@@ -56,11 +65,12 @@ body {
   .card {
     background-color: var(--bg-raised);
     border: 1px solid var(--border);
-    border-radius: 0.75rem;
+    border-radius: 1rem;                       /* coins plus doux (Niv.1) */
+    box-shadow: var(--card-shadow);            /* ombre légère, aspect premium */
   }
 
   .btn-primary {
-    @apply font-medium px-5 py-2.5 rounded-lg transition-all duration-150 active:scale-[0.98];
+    @apply font-medium px-5 py-2.5 rounded-xl transition-all duration-150 active:scale-[0.98];
     background-color: var(--accent);
     color: var(--accent-text);
   }
@@ -68,7 +78,7 @@ body {
   .btn-primary:disabled { opacity: 0.4; pointer-events: none; }
 
   .btn-secondary {
-    @apply font-medium px-5 py-2.5 rounded-lg transition-all duration-150 active:scale-[0.98];
+    @apply font-medium px-5 py-2.5 rounded-xl transition-all duration-150 active:scale-[0.98];
     background-color: transparent;
     color: var(--text);
     border: 1px solid var(--border);
@@ -76,7 +86,7 @@ body {
   .btn-secondary:hover { background-color: var(--bg-inset); }
 
   .input-field {
-    @apply w-full rounded-lg px-3.5 py-2.5 text-sm transition-all duration-150;
+    @apply w-full rounded-xl px-3.5 py-2.5 text-sm transition-all duration-150;
     background-color: var(--bg);
     border: 1px solid var(--border);
     color: var(--text);
@@ -84,8 +94,8 @@ body {
   .input-field::placeholder { color: var(--text-muted); }
   .input-field:focus {
     outline: none;
-    border-color: var(--text-muted);
-    box-shadow: 0 0 0 3px var(--ring);
+    border-color: var(--brand);                /* focus émeraude (rappel landing) */
+    box-shadow: 0 0 0 3px var(--brand-ring);
   }
 
   .badge {
@@ -166,4 +176,45 @@ body {
 
 .slide-up {
   animation: slideUp 0.28s cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+/* ============================================================
+   RAFFINEMENT INTERFACE APP (inspiré de la landing)
+   Niveau 2 : typographie · Niveau 3 : halo ambiant + apparitions
+   ============================================================ */
+
+/* ── Niveau 2 : titres plus nets (tracking resserré, style Apple) ── */
+h1, h2, h3 {
+  letter-spacing: -0.02em;
+}
+
+/* ── Niveau 3 : halo émeraude ambiant, très discret, fixe en fond ── */
+.app-ambient {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(600px circle at 15% 0%, rgba(16,185,129,0.05), transparent 60%),
+    radial-gradient(700px circle at 100% 100%, rgba(16,185,129,0.04), transparent 62%);
+  animation: app-ambient-drift 24s ease-in-out infinite;
+}
+@keyframes app-ambient-drift {
+  0%, 100% { opacity: 0.8; transform: translate3d(0, 0, 0); }
+  50%      { opacity: 1;   transform: translate3d(0, -12px, 0); }
+}
+
+/* ── Niveau 3 : apparition douce du contenu au chargement ── */
+.app-enter {
+  animation: appEnter 0.4s ease-out both;
+}
+@keyframes appEnter {
+  from { opacity: 0; transform: translate3d(0, 10px, 0); }
+  to   { opacity: 1; transform: translate3d(0, 0, 0); }
+}
+
+/* Respect des préférences d'accessibilité */
+@media (prefers-reduced-motion: reduce) {
+  .app-ambient { animation: none; }
+  .app-enter { animation: none; }
 }

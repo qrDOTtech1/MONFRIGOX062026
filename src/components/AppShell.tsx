@@ -51,6 +51,9 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <>
+      {/* Halo émeraude ambiant, très discret, en fond de toute l'app */}
+      <div className="app-ambient" aria-hidden />
+
       {/* Top bar avec logo */}
       <header className="fixed top-0 left-0 right-0 z-40 flex items-center px-4 h-12"
         style={{
@@ -62,8 +65,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         <LogoAnim size={32} withName nameSize="text-sm" />
       </header>
 
-      {/* Contenu décalé sous le top bar */}
-      <div className="page-container fade-in" style={{ paddingTop: '3rem' }}>{children}</div>
+      {/* Contenu décalé sous le top bar (au-dessus du halo, apparition douce) */}
+      <div className="page-container fade-in app-enter relative z-[1]" style={{ paddingTop: '3rem' }}>{children}</div>
       {pathname !== '/home' && <RecipeChat allRecipes={recipes} />}
       <BottomNav />
     </>
