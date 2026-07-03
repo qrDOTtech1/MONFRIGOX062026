@@ -47,11 +47,12 @@ function LandingStyles() {
       }
       @keyframes ripple { to { transform: scale(11); opacity: 0; } }
 
-      /* ── Fond image plein écran animé (GPU: transform/opacity) ── */
-      /* Wrapper fixe : couvre tout le viewport, gère l'apparition */
+      /* ── Fond uni adaptatif + ingrédients flottants + voile dépoli ── */
+      /* Wrapper fixe : fond uni qui suit le thème (clair/sombre) */
       .page-bg-wrap {
         position: fixed; inset: 0; z-index: 0; pointer-events: none;
         overflow: hidden;
+        background: var(--bg);
         animation: hero-in 1.1s ease-out both;
       }
       /* Couche parallaxe : suit le curseur (transform pilotée en JS) */
@@ -60,90 +61,38 @@ function LandingStyles() {
         transition: transform 0.35s cubic-bezier(0.2, 0.7, 0.3, 1);
         will-change: transform;
       }
-      /* Image : couvre tout, léger flottement + déplacement du fond */
-      .page-bg {
-        position: absolute; inset: -7%;
-        background-image: url('/images/hero-bg.webp');
-        background-size: cover;
-        background-position: center;
+      /* Couche des ingrédients qui flottent */
+      .food-layer { position: absolute; inset: 0; }
+      .food-item {
+        position: absolute;
         background-repeat: no-repeat;
-        transform: translateZ(0) scale(1.06);
+        background-position: center;
+        background-size: contain;
+        opacity: 0.9;
+        filter: drop-shadow(0 12px 26px rgba(0,0,0,0.16));
         will-change: transform;
-        animation: hero-drift 20s ease-in-out infinite;
+        animation: food-float var(--dur, 22s) ease-in-out infinite;
       }
-      /* Voile de lisibilité global — s'adapte au thème (clair/sombre) */
-      .page-veil {
+      /* Voile dépoli (frosted glass) : adoucit les ingrédients, garde le texte lisible.
+         Repli via l'opacité si backdrop-filter non supporté (vieux navigateurs). */
+      .page-frost {
         position: absolute; inset: 0; pointer-events: none;
-        background:
-          linear-gradient(to bottom,
-            color-mix(in srgb, var(--bg) 28%, transparent) 0%,
-            color-mix(in srgb, var(--bg) 52%, transparent) 50%,
-            color-mix(in srgb, var(--bg) 80%, transparent) 100%),
-          radial-gradient(130% 60% at 50% 22%,
-            color-mix(in srgb, var(--bg) 35%, transparent) 0%,
-            transparent 70%);
+        background: color-mix(in srgb, var(--bg) 55%, transparent);
+        background: rgba(248, 249, 250, 0.5);                     /* repli clair */
+        background: color-mix(in srgb, var(--bg) 46%, transparent);
+        -webkit-backdrop-filter: blur(15px) saturate(1.05);
+        backdrop-filter: blur(15px) saturate(1.05);
       }
-      /* Halos flous animés */
-      .page-halo {
-        position: absolute; border-radius: 9999px;
-        filter: blur(52px); pointer-events: none;
-        will-change: transform, opacity;
-      }
-      .page-halo-1 {
-        width: 320px; height: 320px; top: -70px; left: -50px;
-        background: rgba(16,185,129,0.26);
-        animation: hero-halo 15s ease-in-out infinite;
-      }
-      .page-halo-2 {
-        width: 360px; height: 360px; top: 30%; right: -70px;
-        background: rgba(245,158,11,0.18);
-        animation: hero-halo 19s ease-in-out infinite reverse;
-      }
-      .page-halo-3 {
-        width: 280px; height: 280px; bottom: 6%; left: 40%;
-        background: rgba(244,114,182,0.15);
-        animation: hero-halo 23s ease-in-out infinite;
-        animation-delay: -6s;
-      }
-      /* Particules lumineuses discrètes */
-      .page-particles { position: absolute; inset: 0; pointer-events: none; }
-      .page-particles span {
-        position: absolute; width: 5px; height: 5px; border-radius: 9999px;
-        background: rgba(255,255,255,0.85);
-        box-shadow: 0 0 8px 2px rgba(255,255,255,0.55);
-        opacity: 0; will-change: transform, opacity;
-        animation: hero-particle 10s ease-in-out infinite;
-      }
-      .page-particles span:nth-child(1) { left: 14%; top: 30%; animation-delay: 0s;   }
-      .page-particles span:nth-child(2) { left: 38%; top: 62%; animation-delay: 2.4s; }
-      .page-particles span:nth-child(3) { left: 60%; top: 24%; animation-delay: 4.1s; }
-      .page-particles span:nth-child(4) { left: 82%; top: 55%; animation-delay: 1.3s; }
-      .page-particles span:nth-child(5) { left: 26%; top: 78%; animation-delay: 5.5s; }
-      .page-particles span:nth-child(6) { left: 70%; top: 82%; animation-delay: 3.2s; }
-      .page-particles span:nth-child(7) { left: 50%; top: 12%; animation-delay: 6.8s; }
-      .page-particles span:nth-child(8) { left: 90%; top: 20%; animation-delay: 8.0s; }
 
       @keyframes hero-in {
         from { opacity: 0; transform: translate3d(0, 18px, 0); }
         to   { opacity: 1; transform: translate3d(0, 0, 0); }
       }
-      /* Panoramique + zoom lent (Ken Burns), % relatif à la taille du fond */
-      @keyframes hero-drift {
-        0%   { transform: translate3d(0, 0, 0) scale(1.06); }
-        25%  { transform: translate3d(-2%, -1.2%, 0) scale(1.10); }
-        50%  { transform: translate3d(-1.2%, -2.4%, 0) scale(1.13); }
-        75%  { transform: translate3d(1.6%, -1%, 0) scale(1.09); }
-        100% { transform: translate3d(0, 0, 0) scale(1.06); }
-      }
-      @keyframes hero-halo {
-        0%, 100% { transform: translate3d(0, 0, 0) scale(1);        opacity: 0.45; }
-        50%      { transform: translate3d(40px, -30px, 0) scale(1.28); opacity: 0.85; }
-      }
-      @keyframes hero-particle {
-        0%   { transform: translate3d(0, 0, 0);     opacity: 0; }
-        15%  { opacity: 0.85; }
-        85%  { opacity: 0.5; }
-        100% { transform: translate3d(0, -46px, 0); opacity: 0; }
+      /* Flottement lent des ingrédients (variables par élément) */
+      @keyframes food-float {
+        0%, 100% { transform: translate3d(0, 0, 0) rotate(var(--rot, 0deg)); }
+        50%      { transform: translate3d(var(--dx, 20px), var(--dy, -24px), 0)
+                              rotate(calc(var(--rot, 0deg) + 8deg)); }
       }
 
       /* ── Bannière promo Coupe du Monde : fond stade + animations ── */
@@ -202,8 +151,7 @@ function LandingStyles() {
 
       @media (prefers-reduced-motion: reduce) {
         .cursor-light, .click-ripple { display: none; }
-        .page-bg-wrap, .page-bg, .page-halo, .page-particles span { animation: none !important; }
-        .page-bg { transform: scale(1.02); }
+        .page-bg-wrap, .food-item { animation: none !important; }
         .page-bg-parallax { transition: none !important; transform: none !important; }
         .promo-wc-bg, .promo-wc-glow, .promo-wc-beam { animation: none !important; }
         .promo-wc-beam { display: none; }
@@ -669,6 +617,22 @@ function WorldCupOffer({ t }: { t: (k: string, v?: Record<string, string | numbe
   );
 }
 
+// Ingrédients détourés qui flottent en fond (défilent lentement).
+// pos = position, s = taille (px), dur/dx/dy/rot = paramètres d'animation.
+// hideSm = masqué sur très petits écrans (allège le mobile).
+const FLOATING_FOOD = [
+  { src: 'tomate',    top: '10%', left: '7%',  s: 130, dur: 22, dx: 24,  dy: -26, rot: -8 },
+  { src: 'carotte',   top: '26%', left: '80%', s: 155, dur: 25, dx: -20, dy: 28,  rot: 10 },
+  { src: 'poireau',   top: '66%', left: '74%', s: 165, dur: 28, dx: -26, dy: -20, rot: -6 },
+  { src: 'pomme',     top: '60%', left: '10%', s: 125, dur: 24, dx: 22,  dy: 22,  rot: 7  },
+  { src: 'concombre', top: '6%',  left: '58%', s: 150, dur: 26, dx: 20,  dy: 18,  rot: 4,  hideSm: true },
+  { src: 'pitaya',    top: '44%', left: '46%', s: 135, dur: 30, dx: -18, dy: -24, rot: 8,  hideSm: true },
+  { src: 'oignon',    top: '84%', left: '38%', s: 120, dur: 21, dx: 20,  dy: -18, rot: -5 },
+  { src: 'tomate',    top: '22%', left: '30%', s: 85,  dur: 27, dx: -16, dy: 20,  rot: 5,  hideSm: true },
+  { src: 'carotte',   top: '86%', left: '86%', s: 100, dur: 23, dx: -18, dy: 16,  rot: -7, hideSm: true },
+  { src: 'pomme',     top: '38%', left: '2%',  s: 95,  dur: 29, dx: 18,  dy: -22, rot: 6,  hideSm: true },
+];
+
 export default function LandingPage() {
   const { t, lang, setLang } = useT();
   const statsRef    = useFadeIn();
@@ -714,18 +678,31 @@ export default function LandingPage() {
       <LandingStyles />
       <CursorFX />
 
-      {/* ── Fond image animé plein écran (remplace l'ancien fond) ── */}
+      {/* ── Fond uni adaptatif + ingrédients flottants + voile dépoli ── */}
       <div className="page-bg-wrap" aria-hidden>
         <div className="page-bg-parallax">
-          <div className="page-bg" />
+          <div className="food-layer">
+            {FLOATING_FOOD.map((f, i) => (
+              <div
+                key={i}
+                className={`food-item ${f.hideSm ? 'hidden sm:block' : ''}`}
+                style={{
+                  top: f.top, left: f.left,
+                  width: `${f.s}px`, height: `${f.s}px`,
+                  backgroundImage: `url('/images/food/${f.src}.webp')`,
+                  // Variables lues par l'animation food-float
+                  ['--dur' as any]: `${f.dur}s`,
+                  ['--dx' as any]: `${f.dx}px`,
+                  ['--dy' as any]: `${f.dy}px`,
+                  ['--rot' as any]: `${f.rot}deg`,
+                  animationDelay: `${-i * 1.7}s`,
+                }}
+              />
+            ))}
+          </div>
         </div>
-        <div className="page-veil" />
-        <div className="page-halo page-halo-1" />
-        <div className="page-halo page-halo-2" />
-        <div className="page-halo page-halo-3" />
-        <div className="page-particles">
-          <span /><span /><span /><span /><span /><span /><span /><span />
-        </div>
+        {/* Voile dépoli par-dessus le défilement → contenu de la landing bien lisible */}
+        <div className="page-frost" />
       </div>
 
       {/* ── Header ── */}
