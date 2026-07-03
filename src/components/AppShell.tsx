@@ -20,6 +20,25 @@ interface RecipeMini {
 // Pages qui ne déclenchent PAS la redirection onboarding
 const ONBOARDING_SKIP = ['/onboarding', '/login', '/register', '/'];
 
+// Feedback tactile : une ondulation émeraude à chaque clic/tap dans l'app
+function AppRipple() {
+  useEffect(() => {
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (reduce) return;
+    const onPointer = (e: PointerEvent) => {
+      const r = document.createElement('span');
+      r.className = 'app-ripple';
+      r.style.left = `${e.clientX}px`;
+      r.style.top = `${e.clientY}px`;
+      document.body.appendChild(r);
+      setTimeout(() => r.remove(), 640);
+    };
+    window.addEventListener('pointerdown', onPointer, { passive: true });
+    return () => window.removeEventListener('pointerdown', onPointer);
+  }, []);
+  return null;
+}
+
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const router   = useRouter();
   const pathname = usePathname();
@@ -51,8 +70,10 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <>
-      {/* Halo émeraude ambiant, très discret, en fond de toute l'app */}
+      {/* Halo émeraude ambiant en fond de toute l'app */}
       <div className="app-ambient" aria-hidden />
+      {/* Feedback tactile global (ondulation au clic/tap) */}
+      <AppRipple />
 
       {/* Top bar avec logo */}
       <header className="fixed top-0 left-0 right-0 z-40 flex items-center px-4 h-12"

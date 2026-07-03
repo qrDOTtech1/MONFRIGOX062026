@@ -26,6 +26,7 @@
   --brand-ring: rgba(16, 185, 129, 0.18);
   /* Ombre douce des cartes (mode clair) */
   --card-shadow: 0 1px 2px rgba(24, 24, 27, 0.04), 0 4px 14px rgba(24, 24, 27, 0.05);
+  --card-shadow-hover: 0 6px 16px rgba(16, 185, 129, 0.10), 0 14px 34px rgba(24, 24, 27, 0.10);
 }
 
 .dark {
@@ -45,6 +46,7 @@
   --brand-ring: rgba(16, 185, 129, 0.22);
   /* Ombre douce des cartes (mode sombre) */
   --card-shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 6px 18px rgba(0, 0, 0, 0.35);
+  --card-shadow-hover: 0 6px 16px rgba(16, 185, 129, 0.16), 0 16px 40px rgba(0, 0, 0, 0.5);
 }
 
 body {
@@ -65,25 +67,47 @@ body {
   .card {
     background-color: var(--bg-raised);
     border: 1px solid var(--border);
-    border-radius: 1rem;                       /* coins plus doux (Niv.1) */
-    box-shadow: var(--card-shadow);            /* ombre légère, aspect premium */
+    border-radius: 1rem;                       /* coins plus doux */
+    box-shadow: var(--card-shadow);
+    transition: transform 0.22s cubic-bezier(0.2, 0.7, 0.3, 1),
+                box-shadow 0.22s ease,
+                border-color 0.22s ease;
   }
+  /* Les cartes réagissent : elles se soulèvent au survol (desktop) */
+  @media (hover: hover) {
+    .card:hover {
+      transform: translateY(-3px);
+      box-shadow: var(--card-shadow-hover);
+      border-color: color-mix(in srgb, var(--brand) 35%, var(--border));
+    }
+  }
+  /* Feedback tactile au clic (mobile + desktop) */
+  .card:active { transform: scale(0.985); }
 
   .btn-primary {
-    @apply font-medium px-5 py-2.5 rounded-xl transition-all duration-150 active:scale-[0.98];
+    @apply font-semibold px-5 py-2.5 rounded-xl transition-all duration-200 active:scale-[0.96];
     background-color: var(--accent);
     color: var(--accent-text);
+    box-shadow: 0 4px 14px color-mix(in srgb, var(--accent) 22%, transparent);
   }
-  .btn-primary:hover { background-color: var(--accent-hover); }
+  .btn-primary:hover {
+    background-color: var(--accent-hover);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 22px color-mix(in srgb, var(--accent) 30%, transparent);
+  }
   .btn-primary:disabled { opacity: 0.4; pointer-events: none; }
 
   .btn-secondary {
-    @apply font-medium px-5 py-2.5 rounded-xl transition-all duration-150 active:scale-[0.98];
+    @apply font-semibold px-5 py-2.5 rounded-xl transition-all duration-200 active:scale-[0.96];
     background-color: transparent;
     color: var(--text);
     border: 1px solid var(--border);
   }
-  .btn-secondary:hover { background-color: var(--bg-inset); }
+  .btn-secondary:hover {
+    background-color: var(--bg-inset);
+    transform: translateY(-2px);
+    border-color: color-mix(in srgb, var(--brand) 40%, var(--border));
+  }
 
   .input-field {
     @apply w-full rounded-xl px-3.5 py-2.5 text-sm transition-all duration-150;
@@ -188,33 +212,45 @@ h1, h2, h3 {
   letter-spacing: -0.02em;
 }
 
-/* ── Niveau 3 : halo émeraude ambiant, très discret, fixe en fond ── */
+/* ── Halo émeraude ambiant en fond de l'app (bien plus présent) ── */
 .app-ambient {
   position: fixed;
   inset: 0;
   z-index: 0;
   pointer-events: none;
   background:
-    radial-gradient(600px circle at 15% 0%, rgba(16,185,129,0.05), transparent 60%),
-    radial-gradient(700px circle at 100% 100%, rgba(16,185,129,0.04), transparent 62%);
-  animation: app-ambient-drift 24s ease-in-out infinite;
+    radial-gradient(680px circle at 12% -5%,  rgba(16,185,129,0.16), transparent 55%),
+    radial-gradient(760px circle at 105% 108%, rgba(16,185,129,0.13), transparent 58%),
+    radial-gradient(520px circle at 92% 8%,    rgba(245,158,11,0.07), transparent 55%);
+  animation: app-ambient-drift 18s ease-in-out infinite;
 }
 @keyframes app-ambient-drift {
-  0%, 100% { opacity: 0.8; transform: translate3d(0, 0, 0); }
-  50%      { opacity: 1;   transform: translate3d(0, -12px, 0); }
+  0%, 100% { opacity: 0.85; transform: translate3d(0, 0, 0) scale(1); }
+  50%      { opacity: 1;    transform: translate3d(0, -18px, 0) scale(1.05); }
 }
 
-/* ── Niveau 3 : apparition douce du contenu au chargement ── */
+/* ── Apparition franche du contenu à chaque page ── */
 .app-enter {
-  animation: appEnter 0.4s ease-out both;
+  animation: appEnter 0.5s cubic-bezier(0.2, 0.7, 0.3, 1) both;
 }
 @keyframes appEnter {
-  from { opacity: 0; transform: translate3d(0, 10px, 0); }
-  to   { opacity: 1; transform: translate3d(0, 0, 0); }
+  from { opacity: 0; transform: translate3d(0, 18px, 0) scale(0.985); }
+  to   { opacity: 1; transform: translate3d(0, 0, 0) scale(1); }
 }
+
+/* ── Ripple tactile global (feedback à chaque clic/tap) ── */
+.app-ripple {
+  position: fixed; width: 18px; height: 18px; margin: -9px 0 0 -9px;
+  border-radius: 9999px; pointer-events: none; z-index: 9999;
+  background: radial-gradient(circle, rgba(16,185,129,0.45), rgba(16,185,129,0.12) 55%, transparent 70%);
+  transform: scale(0);
+  animation: appRipple 0.6s cubic-bezier(0.2,0.7,0.3,1) forwards;
+}
+@keyframes appRipple { to { transform: scale(10); opacity: 0; } }
 
 /* Respect des préférences d'accessibilité */
 @media (prefers-reduced-motion: reduce) {
   .app-ambient { animation: none; }
   .app-enter { animation: none; }
+  .app-ripple { display: none; }
 }
