@@ -146,11 +146,68 @@ function LandingStyles() {
         100% { transform: translate3d(0, -46px, 0); opacity: 0; }
       }
 
+      /* ── Bannière promo Coupe du Monde : fond stade + animations ── */
+      .promo-wc {
+        position: relative;
+        overflow: hidden;
+        border-radius: 16px;
+        isolation: isolate;
+      }
+      /* Image de fond du stade + respiration lente */
+      .promo-wc-bg {
+        position: absolute; inset: 0; z-index: 0;
+        background-image: url('/images/promo-worldcup.webp');
+        background-size: cover;
+        background-position: center right;
+        transform: scale(1.03);
+        will-change: transform;
+        animation: promo-breathe 16s ease-in-out infinite;
+        transition: transform 0.6s ease;
+      }
+      /* Effet hover subtil (desktop uniquement, appareils avec vrai curseur) */
+      @media (hover: hover) {
+        .promo-wc:hover .promo-wc-bg { transform: scale(1.07); }
+      }
+      /* Overlay sombre — lisibilité du texte (plus dense à gauche) */
+      .promo-wc-overlay {
+        position: absolute; inset: 0; z-index: 1; pointer-events: none;
+        background:
+          linear-gradient(90deg, rgba(3,10,7,0.94) 0%, rgba(3,10,7,0.74) 44%, rgba(3,10,7,0.34) 100%),
+          linear-gradient(0deg, rgba(3,10,7,0.55) 0%, rgba(3,10,7,0.12) 60%);
+      }
+      /* Glow des projecteurs (haut-droite) */
+      .promo-wc-glow {
+        position: absolute; z-index: 1; top: -35%; right: -6%;
+        width: 46%; height: 130%; pointer-events: none;
+        background: radial-gradient(circle at 60% 40%, rgba(255,214,140,0.30), transparent 62%);
+        filter: blur(6px);
+        animation: promo-glow 6.5s ease-in-out infinite;
+      }
+      /* Faisceau lumineux très discret qui traverse lentement */
+      .promo-wc-beam {
+        position: absolute; z-index: 1; top: -40%; left: 0;
+        width: 38%; height: 180%; pointer-events: none;
+        background: linear-gradient(90deg, transparent, rgba(255,255,255,0.06), transparent);
+        transform: translateX(-60%) rotate(12deg);
+        animation: promo-beam 12s ease-in-out infinite;
+      }
+      @keyframes promo-breathe { 0%,100% { transform: scale(1.03); } 50% { transform: scale(1.07); } }
+      @keyframes promo-glow    { 0%,100% { opacity: 0.35; } 50% { opacity: 0.65; } }
+      @keyframes promo-beam {
+        0%   { transform: translateX(-60%) rotate(12deg); opacity: 0; }
+        35%  { opacity: 0.7; }
+        65%  { opacity: 0.45; }
+        100% { transform: translateX(320%) rotate(12deg); opacity: 0; }
+      }
+
       @media (prefers-reduced-motion: reduce) {
         .cursor-light, .click-ripple { display: none; }
         .page-bg-wrap, .page-bg, .page-halo, .page-particles span { animation: none !important; }
         .page-bg { transform: scale(1.02); }
         .page-bg-parallax { transition: none !important; transform: none !important; }
+        .promo-wc-bg, .promo-wc-glow, .promo-wc-beam { animation: none !important; }
+        .promo-wc-beam { display: none; }
+        .promo-wc-bg { transform: scale(1.02); }
       }
     `}</style>
   );
@@ -540,22 +597,15 @@ function WorldCupOffer({ t }: { t: (k: string, v?: Record<string, string | numbe
 
   return (
     <div className="mb-6 fade-in">
-      <div className="relative overflow-hidden rounded-2xl p-4"
-        style={{
-          background: 'linear-gradient(135deg, #052e1a 0%, #0b6b3a 52%, #b45309 100%)',
-          boxShadow: '0 8px 28px rgba(6,78,59,0.32)',
-        }}>
-        {/* Ambiance terrain de foot : lignes blanches très subtiles */}
-        <div className="absolute inset-0 pointer-events-none select-none" aria-hidden
-          style={{
-            backgroundImage:
-              'repeating-linear-gradient(90deg, rgba(255,255,255,0.035) 0 2px, transparent 2px 64px)',
-          }} />
-        {/* Trophée Coupe du Monde + plat à la place du ballon */}
-        <div className="absolute -right-3 -top-4 text-[86px] opacity-[0.16] select-none pointer-events-none leading-none">🏆</div>
-        <div className="absolute right-9 -bottom-3 text-[46px] opacity-[0.12] select-none pointer-events-none">🍽️</div>
+      <div className="promo-wc p-4" style={{ boxShadow: '0 8px 28px rgba(3,10,7,0.45)' }}>
+        {/* Fond image stade + animations premium (couches décoratives) */}
+        <div className="promo-wc-bg" aria-hidden />        {/* image de fond + respiration */}
+        <div className="promo-wc-overlay" aria-hidden />   {/* overlay sombre pour lisibilité */}
+        <div className="promo-wc-glow" aria-hidden />      {/* glow des projecteurs */}
+        <div className="promo-wc-beam" aria-hidden />      {/* faisceau lumineux discret */}
 
-        <div className="relative">
+        {/* Contenu (inchangé) */}
+        <div className="relative z-10">
           <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold mb-2 tracking-wide"
             style={{ backgroundColor: 'rgba(255,255,255,0.18)', color: '#fff', backdropFilter: 'blur(4px)' }}>
             🏆 {t('landing.wc.tag')}
