@@ -47,11 +47,6 @@ export default function BottomNav() {
                 }}>
                 {label}
               </span>
-              {/* Petit point lumineux sous l'onglet actif */}
-              {active && (
-                <span className="absolute -bottom-0.5 w-1 h-1 rounded-full"
-                  style={{ backgroundColor: 'var(--brand)', boxShadow: '0 0 6px 1px var(--brand)' }} />
-              )}
             </Link>
           );
         })}

@@ -194,8 +194,8 @@ body {
   }
 
   .nav-item-active {
-    color: var(--text);
-    background-color: var(--bg-inset);
+    color: var(--accent);
+    background-color: var(--brand-ring);
   }
 
   .page-container {
