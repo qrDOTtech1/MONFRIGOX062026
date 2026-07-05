@@ -12,6 +12,7 @@ import {
   Euro, ExternalLink, Wand2, Crown, AlertTriangle, Ban, CalendarPlus, FolderHeart, Share2,
 } from 'lucide-react';
 import { ALLERGEN_LABELS } from '@/lib/dietary';
+import { translateUnit } from '@/lib/units';
 
 interface RevisitResult {
   title?: string; description?: string;
@@ -1140,7 +1141,7 @@ export default function RecipeDetailPage() {
                     {loc(ing.ingredient.name, ing.ingredient.nameEn)}
                   </span>
                   <span className="text-xs font-mono tabular-nums" style={{ color: 'var(--text-muted)' }}>
-                    {adjustQuantity(ing.quantity)} {ing.unit}
+                    {adjustQuantity(ing.quantity)} {translateUnit(ing.unit, lang)}
                   </span>
                   {!ing.inFridge && !sub && (
                     <button
@@ -1159,7 +1160,7 @@ export default function RecipeDetailPage() {
                     style={{ backgroundColor: 'rgba(99,102,241,0.06)', border: '1px solid rgba(99,102,241,0.12)' }}>
                     <span style={{ color: '#818cf8' }}>✂️</span>
                     <span className="flex-1">
-                      <strong>{sub.substitute}</strong> ({sub.quantity} {sub.unit})
+                      <strong>{sub.substitute}</strong> ({sub.quantity} {translateUnit(sub.unit, lang)})
                       {sub.inFridge && <span className="ml-1 text-emerald-500">{t('recipe.ingredients.inFridge')}</span>}
                       <span className="block text-[10px] mt-0.5" style={{ color: 'var(--text-muted)' }}>{sub.reason}</span>
                     </span>

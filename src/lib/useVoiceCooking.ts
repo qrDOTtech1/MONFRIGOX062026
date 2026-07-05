@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { LANG_TO_BCP47 } from '@/lib/units';
 
 declare global {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -41,12 +42,13 @@ interface UseVoiceCookingOptions {
   waitingForConfirm?: boolean;
   allStepsTexts?: string[];
   musicActive?: boolean;
+  lang?: string;
 }
 
 type TTSEngine = 'elevenlabs' | 'native' | 'none';
 type STTEngine = 'elevenlabs' | 'native' | 'none';
 
-export function useVoiceCooking({ onNext, onPrev, onRepeat, onConfirm, onAskAI, onRepeatStep, onSelectOption, onHelp, onTimerStart, onTimerStop, onTimerReset, onFinish, onPlayMusic, onPlayMatchingMusic, onPauseMusic, onResumeMusic, onNextMusic, onPrevMusic, onSurpriseMusic, onWhichMusic, onVolumeUpMusic, onVolumeDownMusic, onMaxVolumeMusic, onStopMusic, onPlayQuiz, currentStepText, currentStep, totalSteps, ingredientsText, waitingForConfirm, allStepsTexts, musicActive }: UseVoiceCookingOptions) {
+export function useVoiceCooking({ onNext, onPrev, onRepeat, onConfirm, onAskAI, onRepeatStep, onSelectOption, onHelp, onTimerStart, onTimerStop, onTimerReset, onFinish, onPlayMusic, onPlayMatchingMusic, onPauseMusic, onResumeMusic, onNextMusic, onPrevMusic, onSurpriseMusic, onWhichMusic, onVolumeUpMusic, onVolumeDownMusic, onMaxVolumeMusic, onStopMusic, onPlayQuiz, currentStepText, currentStep, totalSteps, ingredientsText, waitingForConfirm, allStepsTexts, musicActive, lang = 'fr' }: UseVoiceCookingOptions) {
   const [isListening, setIsListening] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [lastCommand, setLastCommand] = useState('');
@@ -128,7 +130,7 @@ export function useVoiceCooking({ onNext, onPrev, onRepeat, onConfirm, onAskAI, 
         const testRes = await fetch('/api/tts', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ text: firstText, lang: 'fr' }),
+          body: JSON.stringify({ text: firstText, lang }),
         });
         if (!testRes.ok) {
           console.warn('[VoiceCooking] Pre-cache skipped — TTS returned', testRes.status);
@@ -148,7 +150,7 @@ export function useVoiceCooking({ onNext, onPrev, onRepeat, onConfirm, onAskAI, 
           const res = await fetch('/api/tts', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ text, lang: 'fr', voice: 'cuisine' }),
+            body: JSON.stringify({ text, lang, voice: 'cuisine' }),
           });
           if (res.ok) {
             const blob = await res.blob();
@@ -304,7 +306,7 @@ export function useVoiceCooking({ onNext, onPrev, onRepeat, onConfirm, onAskAI, 
           const res = await fetch('/api/tts', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ text, lang: 'fr', voice: voiceChannel }),
+            body: JSON.stringify({ text, lang, voice: voiceChannel }),
           });
           if (res.ok) {
             blob = await res.blob();
@@ -326,7 +328,7 @@ export function useVoiceCooking({ onNext, onPrev, onRepeat, onConfirm, onAskAI, 
     // Fallback native
     if ('speechSynthesis' in window) {
       const utterance = new SpeechSynthesisUtterance(text);
-      utterance.lang = 'fr-FR';
+      utterance.lang = LANG_TO_BCP47[lang] ?? 'fr-FR';
       utterance.rate = 0.9;
       utterance.pitch = 1;
       utterance.onend = () => markSpeaking(false);
@@ -610,7 +612,7 @@ export function useVoiceCooking({ onNext, onPrev, onRepeat, onConfirm, onAskAI, 
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const recognition: any = new SR();
-    recognition.lang = 'fr-FR';
+    recognition.lang = LANG_TO_BCP47[lang] ?? 'fr-FR';
     recognition.continuous = true;
     recognition.interimResults = false;
 

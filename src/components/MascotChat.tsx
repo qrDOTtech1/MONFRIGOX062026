@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useT } from '@/lib/i18n';
+import { LANG_TO_BCP47 } from '@/lib/units';
 import Mascot, { MascotVariant } from './Mascot';
 import { Send, Mic, MicOff, Trash2, Clock, Flame, Volume2, VolumeX, X, Check, Crown } from 'lucide-react';
 
@@ -68,7 +69,7 @@ function stripMarkdown(text: string): string {
 let _elConfigured: boolean | null = null;
 let _currentMascotAudio: HTMLAudioElement | null = null;
 
-async function speak(text: string) {
+async function speak(text: string, lang = 'fr') {
   if (typeof window === 'undefined') return;
   // Stop any playing audio
   if (_currentMascotAudio) { _currentMascotAudio.pause(); _currentMascotAudio = null; }
@@ -91,13 +92,13 @@ async function speak(text: string) {
     } catch { _elConfigured = false; }
   }
 
-  // Try ElevenLabs
+  // Try ElevenLabs (voix ia — indépendant de la langue, ElevenLabs est multilingue)
   if (_elConfigured) {
     try {
       const res = await fetch('/api/tts', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: clean, lang: 'fr', voice: 'ia' }),
+        body: JSON.stringify({ text: clean, lang, voice: 'ia' }),
       });
       if (res.ok) {
         const blob = await res.blob();
@@ -112,15 +113,16 @@ async function speak(text: string) {
     } catch {}
   }
 
-  // Fallback native
+  // Fallback synthèse native — on choisit la voix qui correspond à la langue
   if (!window.speechSynthesis) return;
   const utt = new SpeechSynthesisUtterance(clean);
-  utt.lang = 'fr-FR';
+  const bcp47 = LANG_TO_BCP47[lang] ?? 'fr-FR';
+  utt.lang = bcp47;
   utt.rate = 1.05;
   utt.pitch = 1;
   const voices = window.speechSynthesis.getVoices();
-  const frVoice = voices.find(v => v.lang.startsWith('fr'));
-  if (frVoice) utt.voice = frVoice;
+  const matchVoice = voices.find(v => v.lang.startsWith(lang)) ?? voices.find(v => v.lang.startsWith('fr'));
+  if (matchVoice) utt.voice = matchVoice;
   window.speechSynthesis.speak(utt);
 }
 
@@ -338,7 +340,7 @@ export default function MascotChat({ allRecipes, embedded = false }: { allRecipe
         let speakText = reply;
         if (actionResults.length > 0) speakText += '. ' + actionResults.join('. ');
         if (navTo) speakText += ` Je t'emmène maintenant.`;
-        speak(speakText);
+        speak(speakText, lang);
       }
 
       if (navTo) setPendingNav(navTo);
@@ -346,7 +348,7 @@ export default function MascotChat({ allRecipes, embedded = false }: { allRecipe
       const errMsg = err instanceof Error ? err.message : 'Une erreur est survenue, réessaie !';
       setMessages(prev => [...prev, { role: 'assistant', content: errMsg, timestamp: Date.now() }]);
       setMascotState('worried');
-      if (ttsEnabled) speak(errMsg);
+      if (ttsEnabled) speak(errMsg, lang);
       setTimeout(() => setMascotState('wink'), 4000);
     } finally {
       setLoading(false);
@@ -359,7 +361,7 @@ export default function MascotChat({ allRecipes, embedded = false }: { allRecipe
     const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (!SR || recognitionRef.current) return;
     const recognition = new SR();
-    recognition.lang = 'fr-FR';
+    recognition.lang = LANG_TO_BCP47[lang] ?? 'fr-FR';
     recognition.interimResults = true;
     recognition.maxAlternatives = 1;
     recognition.onresult = (e: any) => {

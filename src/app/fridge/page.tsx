@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import AppShell from '@/components/AppShell';
-import PageSkeleton from '@/components/PageSkeleton';
+import MascotLoader from '@/components/MascotLoader';
 import Mascot from '@/components/Mascot';
 import RecipeCard from '@/components/RecipeCard';
 import {
@@ -183,7 +183,7 @@ export default function FridgePage() {
   if (loading) {
     return (
       <AppShell>
-        <PageSkeleton />
+        <MascotLoader fullPage variant="thinking" message={t('loading.waking')} />
       </AppShell>
     );
   }

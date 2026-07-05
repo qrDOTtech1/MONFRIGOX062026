@@ -116,18 +116,17 @@ async function setCursor(value: number): Promise<void> {
   });
 }
 
-/** Statut courant pour l'admin : progression (vers le plafond) + activé/désactivé. */
-export async function getImportStatus(): Promise<{ cursor: number; total: number; enabled: boolean; recipeCount: number; cap: number }> {
-  const [cursorRow, enabledRow, recipeCount] = await Promise.all([
-    prisma.appConfig.findUnique({ where: { key: CURSOR_KEY } }),
+/** Statut courant pour l'admin : progression (recettes importées / total dispo) + activé/désactivé. */
+export async function getImportStatus(): Promise<{ cursor: number; total: number; enabled: boolean; recipeCount: number }> {
+  const [enabledRow, recipeCount, urls] = await Promise.all([
     prisma.appConfig.findUnique({ where: { key: ENABLED_KEY } }),
     prisma.recipe.count(),
+    getUrlList().catch(() => urlListCache ?? []),
   ]);
   return {
-    cursor: recipeCount,   // progression = nb de recettes actuelles
-    total: MAX_CATALOG_RECIPES, // objectif = plafond
+    cursor: recipeCount,        // progression = nb de recettes actuelles
+    total: urls.length,          // objectif = catalogue complet disponible
     recipeCount,
-    cap: MAX_CATALOG_RECIPES,
     enabled: enabledRow ? enabledRow.value !== 'false' : true, // activé par défaut
   };
 }
@@ -151,18 +150,8 @@ export async function setImportEnabled(enabled: boolean): Promise<void> {
  * repart de zéro — les nouvelles recettes ajoutées entre-temps sont ainsi récupérées aussi,
  * et les doublons sont naturellement ignorés (déduplication par nom).
  */
-// Plafond de recettes dans le catalogue : on s'arrête d'importer une fois atteint,
-// pour garder un catalogue soigné et éviter de surcharger la base.
-export const MAX_CATALOG_RECIPES = 7000;
-
-export async function importNextBatch(batchSize = 5): Promise<{ imported: number; skipped: number; failed: number; cursor: number; total: number; reachedCap?: boolean }> {
+export async function importNextBatch(batchSize = 5): Promise<{ imported: number; skipped: number; failed: number; cursor: number; total: number }> {
   if (!(await isImportEnabled())) return { imported: 0, skipped: 0, failed: 0, cursor: await getCursor(), total: urlListCache?.length ?? 0 };
-
-  // Cap atteint → on arrête l'import (le job continue de tourner mais ne fait rien).
-  const currentCount = await prisma.recipe.count();
-  if (currentCount >= MAX_CATALOG_RECIPES) {
-    return { imported: 0, skipped: 0, failed: 0, cursor: await getCursor(), total: urlListCache?.length ?? 0, reachedCap: true };
-  }
 
   const urls = await getUrlList();
   if (urls.length === 0) return { imported: 0, skipped: 0, failed: 0, cursor: 0, total: 0 };
@@ -171,10 +160,8 @@ export async function importNextBatch(batchSize = 5): Promise<{ imported: number
   if (cursor >= urls.length) cursor = 0; // on reboucle, capte les nouveautés du site
 
   let imported = 0, skipped = 0, failed = 0;
-  const remainingSlots = MAX_CATALOG_RECIPES - currentCount;
 
   for (let i = 0; i < batchSize && cursor + i < urls.length; i++) {
-    if (imported >= remainingSlots) break; // on ne dépasse pas le plafond
     if (i > 0) await new Promise(r => setTimeout(r, 300)); // léger espacement entre requêtes
     const url = urls[cursor + i];
     try {

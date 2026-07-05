@@ -4,6 +4,8 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { MessageCircle, X, Send, Loader2, ChefHat, Sparkles, Mic, MicOff } from 'lucide-react';
 import RecipeCard from './RecipeCard';
+import { useT } from '@/lib/i18n';
+import { LANG_TO_BCP47 } from '@/lib/units';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -34,6 +36,7 @@ const SUGGESTIONS = [
 ];
 
 export default function RecipeChat({ allRecipes }: { allRecipes: RecipeMini[] }) {
+  const { lang } = useT();
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
@@ -80,6 +83,7 @@ export default function RecipeChat({ allRecipes }: { allRecipes: RecipeMini[] })
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           messages: newMessages.map(m => ({ role: m.role, content: m.content })),
+          lang,
         }),
       });
 
@@ -114,7 +118,7 @@ export default function RecipeChat({ allRecipes }: { allRecipes: RecipeMini[] })
     if (!SR) return;
     if (recognitionRef.current) { recognitionRef.current.stop(); setListening(false); return; }
     const recognition = new SR();
-    recognition.lang = 'fr-FR';
+    recognition.lang = LANG_TO_BCP47[lang] ?? 'fr-FR';
     recognition.interimResults = false;
     recognition.maxAlternatives = 1;
     recognition.onresult = (e: any) => {

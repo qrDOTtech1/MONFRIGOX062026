@@ -4,6 +4,7 @@ import { getCurrentUser } from '@/lib/auth';
 import { analyzeRecipeDietary } from '@/lib/dietary';
 import { estimateRecipeCost } from '@/lib/recipe-cost';
 import { countSeasonalIngredients } from '@/lib/seasonal';
+import { FREE_RECIPE_LIMIT } from '@/lib/plan';
 
 const CUISINE_MAP: Record<string, string[]> = {
   'Française':       ['FR'],
@@ -56,10 +57,12 @@ export async function GET(req: NextRequest) {
   let userAllergens: string[] = [];
   let dietMode = '';
   let tasteProfile: { cuisines?: string[]; skillLevel?: string; timePref?: string; goals?: string[] } = {};
+  let userRole = 'USER';
+  let effectivePlan = 'FREE';
   try {
     const prefs = await prisma.user.findUnique({
       where: { id: user.id },
-      select: { allergens: true, dietMode: true, tasteProfile: true },
+      select: { allergens: true, dietMode: true, tasteProfile: true, role: true, plan: true, planExpiresAt: true },
     });
     if (prefs?.allergens) {
       try { userAllergens = JSON.parse(prefs.allergens); } catch { userAllergens = []; }
@@ -68,7 +71,14 @@ export async function GET(req: NextRequest) {
     if (prefs?.tasteProfile) {
       try { tasteProfile = JSON.parse(prefs.tasteProfile); } catch { /* ignore */ }
     }
+    userRole = prefs?.role || 'USER';
+    effectivePlan = (prefs?.planExpiresAt && prefs.planExpiresAt < new Date()) ? 'FREE' : (prefs?.plan || 'FREE');
   } catch { /* colonnes pas encore migrées */ }
+
+  // Catalogue complet réservé aux payants : les FREE accèdent aux FREE_RECIPE_LIMIT recettes
+  // les plus anciennes (pool stable). Le reste du catalogue (qui grossit) est un levier de conversion.
+  const isFreeUser = userRole !== 'ADMIN' && effectivePlan === 'FREE';
+  const freePoolLimit = isFreeUser ? FREE_RECIPE_LIMIT : undefined;
 
   const prefCuisines = tasteProfile.cuisines ?? [];
   const prefSkill    = tasteProfile.skillLevel ?? '';
@@ -108,7 +118,9 @@ export async function GET(req: NextRequest) {
       favorites: { where: { userId: user.id } },
       author: { select: { name: true } },
     },
-    orderBy: { name: 'asc' },
+    // FREE : pool borné aux plus anciennes recettes (stable). Payants/admin : catalogue complet.
+    orderBy: freePoolLimit ? { createdAt: 'asc' } : { name: 'asc' },
+    ...(freePoolLimit ? { take: freePoolLimit } : {}),
   });
 
   const result = recipes.map(r => {
@@ -189,13 +201,10 @@ export async function GET(req: NextRequest) {
 
   filtered.sort((a, b) => b._score - a._score);
 
-  const userRecord = await prisma.user.findUnique({ where: { id: user.id }, select: { role: true, plan: true, planExpiresAt: true } });
-  const effectivePlan = (userRecord?.planExpiresAt && userRecord.planExpiresAt < new Date()) ? 'FREE' : (userRecord?.plan || 'FREE');
-
   // Verrouillage freemium : les FREE voient la moitié haute (triée par pertinence), le reste est
   // verrouillé. On applique le lock sur la liste complète triée AVANT de paginer, pour que le
   // statut soit stable d'une page à l'autre.
-  const isFreeLocked = userRecord?.role !== 'ADMIN' && effectivePlan === 'FREE' && !favOnly;
+  const isFreeLocked = isFreeUser && !favOnly;
   const lockThreshold = Math.ceil(filtered.length / 2);
   const withLock = filtered.map((r, i) => ({
     ...r,

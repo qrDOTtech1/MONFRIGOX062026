@@ -7,31 +7,36 @@ interface CookQuizRequest {
   stepText: string;
   ingredientsText: string;
   askedQuestions: string[];
+  lang?: string;
 }
+
+const LANG_NAMES: Record<string, string> = { fr: 'français', en: 'English', es: 'español', de: 'Deutsch', it: 'italiano', pt: 'português', nl: 'Nederlands', ru: 'русский', ar: 'العربية', zh: '中文', ja: '日本語', ko: '한국어', tr: 'Türkçe', pl: 'polski', sv: 'svenska', hi: 'हिन्दी' };
 
 export async function POST(req: NextRequest) {
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: 'Non autorisé' }, { status: 401 });
 
   const body = await req.json() as CookQuizRequest;
-  const { recipeName, stepText, ingredientsText, askedQuestions } = body;
+  const { recipeName, stepText, ingredientsText, askedQuestions, lang } = body;
+  const langName = LANG_NAMES[lang ?? 'fr'] ?? 'français';
 
-  const systemPrompt = `Tu génères UNE question de quiz culinaire éclair, courte et amusante, en lien avec la recette en cours ou la culture culinaire générale. Le joueur cuisine en ce moment et répond à voix haute — reste simple, une question par tour, jamais de piège absurde.
+  const systemPrompt = `You generate ONE short, fun culinary quiz question related to the recipe in progress or general food culture. The player is cooking and will answer out loud — keep it simple, one question per turn, no absurd tricks.
+LANGUAGE: You MUST write ALL text (question, options, funFact) in ${langName}. Do not use any other language.
 
-CONTEXTE :
-Recette : "${recipeName}"
-Étape en cours : "${stepText}"
-Ingrédients : ${ingredientsText}
-${askedQuestions.length > 0 ? `Questions déjà posées cette partie (ne les répète pas) : ${askedQuestions.join(' | ')}` : ''}
+CONTEXT:
+Recipe: "${recipeName}"
+Current step: "${stepText}"
+Ingredients: ${ingredientsText}
+${askedQuestions.length > 0 ? `Questions already asked this game (do not repeat): ${askedQuestions.join(' | ')}` : ''}
 
-RÉPONDS UNIQUEMENT EN JSON STRICT :
-{"question":"Question courte et claire (1 phrase)","options":[{"text":"Option A","correct":false},{"text":"Option B","correct":true},{"text":"Option C","correct":false}],"funFact":"1 phrase rigolote ou instructive révélée après la réponse, quel que soit le résultat"}
+RESPOND ONLY IN STRICT JSON:
+{"question":"Short clear question (1 sentence)","options":[{"text":"Option A","correct":false},{"text":"Option B","correct":true},{"text":"Option C","correct":false}],"funFact":"1 fun or instructive sentence revealed after the answer, whatever the result"}
 
-RÈGLES :
-- Exactement 3 options, une seule correcte.
-- Mélange questions sur LA recette en cours (temps de cuisson, ingrédient clé, technique de l'étape) et culture culinaire générale amusante (origine d'un plat, record, anecdote) — varie d'un tour à l'autre.
-- Ton léger, jamais scolaire. Pas de markdown.
-- "funFact" doit être vrai et intéressant, pas juste "bravo".`;
+RULES:
+- Exactly 3 options, exactly one correct.
+- Mix questions about THIS recipe (cook time, key ingredient, technique) and fun general food culture (dish origins, records, anecdotes) — vary each round.
+- Light tone, never academic. No markdown.
+- "funFact" must be true and interesting, not just "well done".`;
 
   try {
     const resp = await chatCompletion(

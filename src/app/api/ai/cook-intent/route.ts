@@ -19,11 +19,15 @@ export async function POST(req: NextRequest) {
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: 'Non autorisé' }, { status: 401 });
 
-  const body = await req.json() as CookIntentRequest;
-  const { transcript, recipeName, stepIndex, totalSteps, stepText, allSteps, ingredientsText, waitingForConfirm } = body;
+  const body = await req.json() as CookIntentRequest & { lang?: string };
+  const { transcript, recipeName, stepIndex, totalSteps, stepText, allSteps, ingredientsText, waitingForConfirm, lang } = body;
   if (!transcript?.trim()) return NextResponse.json({ error: 'transcript requis' }, { status: 400 });
 
+  const LANG_NAMES: Record<string, string> = { fr: 'français', en: 'English', es: 'español', de: 'Deutsch', it: 'italiano', pt: 'português', nl: 'Nederlands', ru: 'русский', ar: 'العربية', zh: '中文', ja: '日本語', ko: '한국어', tr: 'Türkçe', pl: 'polski', sv: 'svenska', hi: 'हिन्दी' };
+  const langName = LANG_NAMES[lang ?? 'fr'] ?? 'français';
+
   const systemPrompt = `Tu es le cerveau vocal du mode cuisine mains libres de MonFrigo. Tu n'es PAS un chatbot — tu es un contrôleur d'interface piloté par la voix. L'utilisateur a les mains sales/occupées et te parle pendant qu'il cuisine.
+LANGUE DE RÉPONSE : réponds TOUJOURS en ${langName} (y compris le champ "voiceReply" et les textes des cartes).
 
 CONTEXTE ACTUEL :
 Recette : "${recipeName}"

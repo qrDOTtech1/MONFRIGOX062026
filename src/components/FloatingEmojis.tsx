@@ -1,5 +1,8 @@
 'use client';
 
+import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
+
 const FOOD_EMOJIS = [
   '🍎','🥑','🧀','🥕','🍋','🥦','🍅','🥚','🧅','🫑',
   '🍇','🍓','🥩','🍞','🧄','🫐','🥜','🫒','🥐','🍳',
@@ -16,7 +19,14 @@ const PARTICLES = Array.from({ length: 28 }, (_, i) => ({
 }));
 
 export default function FloatingEmojis() {
-  return (
+  // Portail vers document.body : évite que l'animation "app-enter" (qui applique un transform
+  // sur le conteneur parent) ne transforme ce fixed en positionnement relatif à sa largeur max-w-lg
+  // au lieu du viewport entier de l'utilisateur.
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  if (!mounted) return null;
+
+  return createPortal(
     <>
       <style>{`
         @keyframes floatUp {
@@ -45,6 +55,7 @@ export default function FloatingEmojis() {
           background: 'linear-gradient(to bottom, var(--bg) 0%, transparent 18%, transparent 80%, var(--bg) 100%)',
         }} />
       </div>
-    </>
+    </>,
+    document.body,
   );
 }

@@ -5,6 +5,8 @@ import { useParams, useRouter } from 'next/navigation';
 import { ArrowLeft, ArrowRight, ChefHat, Clock, X, Timer, Check, Users, Camera, Refrigerator, Loader2, Globe, Lock, Mic, MicOff, Volume2, HelpCircle, Pause, Play, Music } from 'lucide-react';
 import { useVoiceCooking } from '@/lib/useVoiceCooking';
 import Mascot, { MascotVariant } from '@/components/Mascot';
+import { useT } from '@/lib/i18n';
+import { translateUnit } from '@/lib/units';
 
 const ENCOURAGEMENTS = [
   '🌟 Tu t\'en sors bien !',
@@ -122,6 +124,7 @@ function cleanSteps(steps: string[]): string[] {
 export default function CookModePage() {
   const { id } = useParams();
   const router = useRouter();
+  const { lang } = useT();
   const [recipe, setRecipe] = useState<Recipe | null>(null);
   const [step, setStep] = useState(-1);
   const [steps, setSteps] = useState<string[]>([]);
@@ -348,6 +351,7 @@ export default function CookModePage() {
           stepText: steps[step] || '',
           ingredientsText: allIngredientsContext,
           askedQuestions: quizAskedRef.current,
+          lang,
         }),
       });
       const data = await res.json();
@@ -502,6 +506,7 @@ export default function CookModePage() {
             allSteps: steps,
             ingredientsText: allIngredientsContext,
             waitingForConfirm,
+            lang,
           }),
         });
         const data = await res.json();
@@ -573,6 +578,7 @@ export default function CookModePage() {
     waitingForConfirm,
     allStepsTexts: steps,
     musicActive: radioPlaying,
+    lang,
   });
 
   // Ducking : la musique baisse pendant que l'IA/TTS parle, remonte ensuite
@@ -1026,7 +1032,7 @@ export default function CookModePage() {
                   <span className={`flex-1 text-sm ${checkedIngredients.has(i) ? 'line-through' : ''}`} style={{ color: checkedIngredients.has(i) ? 'var(--text-muted)' : 'var(--text)' }}>
                     {ing.ingredient.name}
                   </span>
-                  <span className="text-xs" style={{ color: 'var(--text-muted)' }}>{ing.quantity} {ing.unit}</span>
+                  <span className="text-xs" style={{ color: 'var(--text-muted)' }}>{ing.quantity} {translateUnit(ing.unit, lang)}</span>
                 </button>
               ))}
             </div>

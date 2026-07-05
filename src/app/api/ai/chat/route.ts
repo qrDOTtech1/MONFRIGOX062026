@@ -199,7 +199,7 @@ CATALOGUE — extrait de ${recipes.length} recettes les plus pertinentes (sur ${
 ${recipeContext}
 
 RÈGLES DE RÉPONSE :
-- ${lang === 'en' ? 'Respond in English. Warm, clear, conversational tone. No jargon.' : 'Français conversationnel, chaleureux, clair. Pas de jargon.'}
+- Réponds TOUJOURS en ${lang === 'fr' ? 'français' : lang === 'en' ? 'English' : lang === 'es' ? 'español' : lang === 'de' ? 'Deutsch' : lang === 'it' ? 'italiano' : lang === 'pt' ? 'português' : lang === 'nl' ? 'Nederlands' : lang === 'ru' ? 'русском' : lang === 'ar' ? 'العربية' : lang === 'zh' ? '中文' : lang === 'ja' ? '日本語' : lang === 'ko' ? '한국어' : lang === 'tr' ? 'Türkçe' : lang === 'pl' ? 'polsku' : lang === 'sv' ? 'svenska' : lang === 'hi' ? 'हिन्दी' : 'français'}. Ton chaleureux, naturel, sans jargon.
 - N'utilise JAMAIS de markdown ni de puces (pas de **, *, _, #, •, - en début de ligne pour les listes). Écris en phrases naturelles, comme si tu parlais à voix haute. Si tu donnes plusieurs idées, enchaîne-les en phrases, jamais en liste à puces.
 - Reste concis : 1-2 phrases si tu suggères des recettes, 3-4 si c'est une question sans recette. Jamais de pavé de texte.
 - ⚠️ [NAV:/dashboard] N'EST JAMAIS UNE RÉPONSE VALABLE à une demande de recette. Si l'utilisateur demande une recette (même avec une contrainte comme "moins de 15 minutes" ou "avec mon frigo"), tu DOIS répondre par des [ID:xxx] du catalogue (cohérents avec le frigo) OU inventer une recette avec [RECIPE:...] (voir plus bas). Ne renvoie JAMAIS l'utilisateur vers /dashboard pour "qu'il cherche lui-même" — c'est un échec, pas une réponse.

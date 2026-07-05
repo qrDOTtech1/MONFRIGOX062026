@@ -3,6 +3,10 @@ import { getCurrentUser } from './auth';
 
 export type EffectivePlan = 'FREE' | 'PREMIUM' | 'VIP' | 'ADMIN';
 
+// Nombre de recettes accessibles aux utilisateurs FREE. Le catalogue complet (qui grossit
+// en continu) reste réservé aux plans payants — c'est un argument de conversion.
+export const FREE_RECIPE_LIMIT = 7000;
+
 /** Plan effectif de l'utilisateur courant (expiration prise en compte, ADMIN = accès total). */
 export async function getEffectivePlan(): Promise<{ plan: EffectivePlan; userId: string | null }> {
   const user = await getCurrentUser();
