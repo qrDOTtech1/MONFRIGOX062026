@@ -38,6 +38,15 @@ const FALLING_FOOD = [
   { src: 'pitaya',    left: '84%', s: 66,  dur: 22, delay: -12,  spin: -220 },
   { src: 'tomate',    left: '70%', s: 54,  dur: 19, delay: -25,  spin: 200 },
   { src: 'poireau',   left: '2%',  s: 60,  dur: 26, delay: -18,  spin: -170 },
+  // 3ᵉ vague — tout au fond, petits et lents (densité sans surcharge)
+  { src: 'oignon',    left: '36%', s: 50,  dur: 27, delay: -8,   spin: 160 },
+  { src: 'pitaya',    left: '10%', s: 52,  dur: 24, delay: -21,  spin: -200 },
+  { src: 'carotte',   left: '64%', s: 56,  dur: 28, delay: -3,   spin: 220 },
+  { src: 'pomme',     left: '46%', s: 48,  dur: 22, delay: -15,  spin: -260 },
+  { src: 'concombre', left: '82%', s: 54,  dur: 25, delay: -27,  spin: 180 },
+  { src: 'tomate',    left: '24%', s: 46,  dur: 29, delay: -11,  spin: -180 },
+  { src: 'poireau',   left: '56%', s: 58,  dur: 23, delay: -30,  spin: 240 },
+  { src: 'oignon',    left: '95%', s: 48,  dur: 26, delay: -6,   spin: -160 },
 ];
 
 export default function FoodBackground() {
