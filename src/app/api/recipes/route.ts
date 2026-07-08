@@ -45,6 +45,20 @@ const TIME_TO_MAX: Record<string, number> = {
   rapide: 15, court: 30, modere: 60, long: 9999,
 };
 
+// ── Solution 2 : cache serveur par utilisateur ──────────────────────────────
+// On garde en mémoire, 60 s, la liste des recettes DÉJÀ notées et triées pour
+// un utilisateur. Les pages suivantes ("charger plus") et les retours sur
+// l'onglet réutilisent ce cache → instantané, sans re-scanner tout le catalogue.
+// Le tri/score dépend du frigo et des préférences ; le TTL court borne l'écart.
+type ScoredEntry = {
+  r: any;                                        // recette brute (avec ingrédients)
+  matchPercent: number; available: number; total: number;
+  dietary: ReturnType<typeof analyzeRecipeDietary>;
+  usesExpiring: number; seasonalCount: number; score: number;
+};
+const SCORE_TTL = 60_000;
+const scoredCache = new Map<string, { list: ScoredEntry[]; ts: number }>();
+
 export async function GET(req: NextRequest) {
   const user = await getCurrentUser();
   if (!user) return NextResponse.json([], { status: 401 });
@@ -88,91 +102,120 @@ export async function GET(req: NextRequest) {
   const maxPrepTime  = prefTime  ? (TIME_TO_MAX[prefTime] ?? 9999) : 9999;
   const prefCodes    = prefCuisines.flatMap((c: string) => (CUISINE_MAP[c] ?? []).map((x: string) => x.toUpperCase()));
 
-  const userFridge = await prisma.fridgeItem.findMany({
-    where: { userId: user.id },
-    select: { ingredientId: true, expiresAt: true },
-  });
-  const fridgeIds = new Set(userFridge.map(f => f.ingredientId));
-  const now = Date.now();
-  const expiringIds = new Set(
-    userFridge
-      .filter(f => f.expiresAt && (new Date(f.expiresAt).getTime() - now) / 86400000 <= 4 && new Date(f.expiresAt).getTime() > now)
-      .map(f => f.ingredientId),
-  );
+  // ── Solution 2 : liste notée + triée, en cache 60 s par utilisateur ──
+  // Clé = user + favoris + pool (FREE/payant), car le jeu de recettes diffère.
+  const cacheKey = `${user.id}:${favOnly ? 'fav' : 'all'}:${isFreeUser ? 'free' : 'paid'}`;
+  const cachedEntry = scoredCache.get(cacheKey);
+  let scored: ScoredEntry[];
 
-  const visibility = {
-    OR: [
-      { authorId: null },
-      { isPublic: true },
-      { authorId: user.id },
-    ],
-  };
-  const where = favOnly
-    ? { AND: [{ favorites: { some: { userId: user.id } } }, visibility] }
-    : visibility;
-
-  const recipes = await prisma.recipe.findMany({
-    where,
-    include: {
-      ingredients: { include: { ingredient: true } },
-      favorites: { where: { userId: user.id } },
-      author: { select: { name: true } },
-    },
-    // FREE : pool borné aux plus anciennes recettes (stable). Payants/admin : catalogue complet.
-    orderBy: freePoolLimit ? { createdAt: 'asc' } : { name: 'asc' },
-    ...(freePoolLimit ? { take: freePoolLimit } : {}),
-  });
-
-  const result = recipes.map(r => {
-    const total     = r.ingredients.length;
-    const available = r.ingredients.filter(i => fridgeIds.has(i.ingredientId)).length;
-    const matchPercent = total > 0 ? Math.round((available / total) * 100) : 0;
-    const ingredientNames = r.ingredients.map(i => i.ingredient.name);
-    const dietary = analyzeRecipeDietary(ingredientNames, userAllergens, dietMode, r.carbs);
-    const usesExpiring = r.ingredients.filter(i => expiringIds.has(i.ingredientId)).length;
-    const seasonalCount = countSeasonalIngredients(ingredientNames);
-
-    // Coût estimé (table de prix, synchrone)
-    const cost = estimateRecipeCost(
-      r.ingredients.map(i => ({ name: i.ingredient.name, emoji: i.ingredient.emoji, quantity: i.quantity, unit: i.unit })),
-      r.servings,
+  if (cachedEntry && Date.now() - cachedEntry.ts < SCORE_TTL) {
+    scored = cachedEntry.list;                     // cache frais → on saute tout le gros calcul
+  } else {
+    const userFridge = await prisma.fridgeItem.findMany({
+      where: { userId: user.id },
+      select: { ingredientId: true, expiresAt: true },
+    });
+    const fridgeIds = new Set(userFridge.map(f => f.ingredientId));
+    const now = Date.now();
+    const expiringIds = new Set(
+      userFridge
+        .filter(f => f.expiresAt && (new Date(f.expiresAt).getTime() - now) / 86400000 <= 4 && new Date(f.expiresAt).getTime() > now)
+        .map(f => f.ingredientId),
     );
 
-    // Taste-profile bonus
-    let prefScore = 0;
-    if (prefCodes.length > 0 && prefCodes.includes(r.cuisine?.toUpperCase() ?? '')) prefScore += 30;
-    if (allowedDiff) {
-      prefScore += allowedDiff.includes(r.difficulty) ? 20 : -10;
+    const visibility = {
+      OR: [
+        { authorId: null },
+        { isPublic: true },
+        { authorId: user.id },
+      ],
+    };
+    const where = favOnly
+      ? { AND: [{ favorites: { some: { userId: user.id } } }, visibility] }
+      : visibility;
+
+    const recipes = await prisma.recipe.findMany({
+      where,
+      include: {
+        ingredients: { include: { ingredient: true } },
+        favorites: { where: { userId: user.id } },
+        author: { select: { name: true } },
+      },
+      // FREE : pool borné aux plus anciennes recettes (stable). Payants/admin : catalogue complet.
+      orderBy: freePoolLimit ? { createdAt: 'asc' } : { name: 'asc' },
+      ...(freePoolLimit ? { take: freePoolLimit } : {}),
+    });
+
+    // Solution 1 : ici on ne calcule QUE le score (léger). Le coût (lourd) est
+    // calculé plus bas, uniquement pour les recettes réellement renvoyées.
+    scored = recipes.map((r): ScoredEntry => {
+      const total     = r.ingredients.length;
+      const available = r.ingredients.filter((i: any) => fridgeIds.has(i.ingredientId)).length;
+      const matchPercent = total > 0 ? Math.round((available / total) * 100) : 0;
+      const ingredientNames = r.ingredients.map((i: any) => i.ingredient.name);
+      const dietary = analyzeRecipeDietary(ingredientNames, userAllergens, dietMode, r.carbs);
+      const usesExpiring = r.ingredients.filter((i: any) => expiringIds.has(i.ingredientId)).length;
+      const seasonalCount = countSeasonalIngredients(ingredientNames);
+
+      let prefScore = 0;
+      if (prefCodes.length > 0 && prefCodes.includes(r.cuisine?.toUpperCase() ?? '')) prefScore += 30;
+      if (allowedDiff) prefScore += allowedDiff.includes(r.difficulty) ? 20 : -10;
+      if (r.prepTime <= maxPrepTime) prefScore += 20; else prefScore -= 15;
+      if ((prefGoals.includes('sante') || prefGoals.includes('poids')) && r.calories && r.calories < 400) prefScore += 15;
+      if (prefGoals.includes('rapide') && r.prepTime <= 20) prefScore += 15;
+      if (prefGoals.includes('budget') && r.difficulty === 'FACILE') prefScore += 10;
+
+      const seasonalBonus = seasonalCount >= 3 ? 25 : seasonalCount >= 1 ? 10 : 0;
+      const score = usesExpiring * 50 + matchPercent * 3
+        + Math.max(-30, Math.min(60, prefScore)) + seasonalBonus
+        + (dietary.dietConflict ? -50 : 0);
+
+      return { r, matchPercent, available, total, dietary, usesExpiring, seasonalCount, score };
+    });
+
+    scored.sort((a, b) => b.score - a.score);
+
+    // Nettoyage léger du cache (évite une croissance illimitée en mémoire)
+    if (scoredCache.size > 100) {
+      for (const [k, v] of scoredCache) if (Date.now() - v.ts > SCORE_TTL) scoredCache.delete(k);
     }
-    if (r.prepTime <= maxPrepTime) prefScore += 20; else prefScore -= 15;
-    if ((prefGoals.includes('sante') || prefGoals.includes('poids')) && r.calories && r.calories < 400) prefScore += 15;
-    if (prefGoals.includes('rapide') && r.prepTime <= 20) prefScore += 15;
-    if (prefGoals.includes('budget') && r.difficulty === 'FACILE') prefScore += 10;
+    scoredCache.set(cacheKey, { list: scored, ts: Date.now() });
+  }
 
-    const seasonalBonus = seasonalCount >= 3 ? 25 : seasonalCount >= 1 ? 10 : 0;
-    const score = usesExpiring * 50
-      + matchPercent * 3
-      + Math.max(-30, Math.min(60, prefScore))
-      + seasonalBonus
-      + (dietary.dietConflict ? -50 : 0);
+  // ── Recherche (sur la liste déjà triée) ──
+  let filtered = scored;
+  if (search) {
+    filtered = scored.filter(s =>
+      s.r.name.toLowerCase().includes(search) ||
+      (s.r.cuisine || '').toLowerCase().includes(search) ||
+      (s.r.description || '').toLowerCase().includes(search),
+    );
+  }
 
+  // Verrouillage freemium : les FREE voient la moitié haute (triée par pertinence), le reste est
+  // verrouillé. Le lock est calculé sur la position dans la liste triée complète.
+  const isFreeLocked = isFreeUser && !favOnly;
+  const lockThreshold = Math.ceil(filtered.length / 2);
+
+  // Solution 1 : payload complet (avec coût) UNIQUEMENT pour les recettes renvoyées.
+  const buildPayload = (s: ScoredEntry, globalIndex: number) => {
+    const r = s.r;
+    const cost = estimateRecipeCost(
+      r.ingredients.map((i: any) => ({ name: i.ingredient.name, emoji: i.ingredient.emoji, quantity: i.quantity, unit: i.unit })),
+      r.servings,
+    );
     return {
-      id: r.id,
-      name: r.name,
-      description: r.description,
-      difficulty: r.difficulty,
-      prepTime: r.prepTime,
-      cuisine: r.cuisine,
-      imageUrl: r.imageUrl || '',
+      id: r.id, name: r.name, description: r.description, difficulty: r.difficulty,
+      prepTime: r.prepTime, cuisine: r.cuisine, imageUrl: r.imageUrl || '',
       calories: r.calories ?? null,
-      matchPercent,
-      matchCount: `${available}/${total} ingrédients`,
+      matchPercent: s.matchPercent,
+      matchCount: `${s.available}/${s.total} ingrédients`,
       isFavorite: r.favorites.length > 0,
       ingredients: r.ingredients,
-      allergenWarnings: dietary.allergenWarnings,
-      dietConflict: dietary.dietConflict,
-      dietLabel: dietary.dietLabel,
-      usesExpiring,
+      allergenWarnings: s.dietary.allergenWarnings,
+      dietConflict: s.dietary.dietConflict,
+      dietLabel: s.dietary.dietLabel,
+      usesExpiring: s.usesExpiring,
       nutriScore: r.nutriScore,
       kidFriendly: r.kidFriendly,
       babyFriendly: r.babyFriendly,
@@ -185,50 +228,28 @@ export async function GET(req: NextRequest) {
       costTotal: cost.total,
       costPerServing: cost.perServing,
       costConfidence: cost.confidence,
-      seasonalCount,
-      _score: score,
+      seasonalCount: s.seasonalCount,
+      isLocked: isFreeLocked && globalIndex >= lockThreshold,
     };
-  });
-
-  let filtered = result;
-  if (search) {
-    filtered = result.filter(r =>
-      r.name.toLowerCase().includes(search) ||
-      r.cuisine.toLowerCase().includes(search) ||
-      r.description.toLowerCase().includes(search),
-    );
-  }
-
-  filtered.sort((a, b) => b._score - a._score);
-
-  // Verrouillage freemium : les FREE voient la moitié haute (triée par pertinence), le reste est
-  // verrouillé. On applique le lock sur la liste complète triée AVANT de paginer, pour que le
-  // statut soit stable d'une page à l'autre.
-  const isFreeLocked = isFreeUser && !favOnly;
-  const lockThreshold = Math.ceil(filtered.length / 2);
-  const withLock = filtered.map((r, i) => ({
-    ...r,
-    isLocked: isFreeLocked && i >= lockThreshold,
-    _score: undefined,
-  }));
+  };
 
   // Mode paginé (chargement progressif 100 par 100) : renvoie un objet { recipes, total, hasMore }.
   if (page >= 1) {
     const lim = Math.min(limitParam || 100, 200);
     const start = (page - 1) * lim;
-    const slice = withLock.slice(start, start + lim);
+    const slice = filtered.slice(start, start + lim);
     return NextResponse.json({
-      recipes: slice,
-      total: withLock.length,
+      recipes: slice.map((s, idx) => buildPayload(s, start + idx)),
+      total: filtered.length,
       page,
-      hasMore: start + lim < withLock.length,
+      hasMore: start + lim < filtered.length,
     });
   }
 
   // Mode legacy (tableau) : borné pour ne jamais renvoyer tout le catalogue d'un coup.
   // Les favoris sont peu nombreux → pas de cap. Sinon top 250 par pertinence.
-  const legacyLimit = favOnly ? withLock.length : (limitParam ? Math.min(limitParam, 500) : 250);
-  return NextResponse.json(withLock.slice(0, legacyLimit));
+  const legacyLimit = favOnly ? filtered.length : (limitParam ? Math.min(limitParam, 500) : 250);
+  return NextResponse.json(filtered.slice(0, legacyLimit).map((s, idx) => buildPayload(s, idx)));
 }
 
 export async function POST(req: NextRequest) {
