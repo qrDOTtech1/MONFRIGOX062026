@@ -20,6 +20,31 @@ export default function Celebration() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
+    // Petit carillon de félicitations (Web Audio, aucun fichier à télécharger).
+    // Best-effort : si le navigateur bloque l'audio sans geste, on ignore.
+    try {
+      const AC = window.AudioContext || (window as any).webkitAudioContext;
+      if (AC) {
+        const ac = new AC();
+        const now = ac.currentTime;
+        // Arpège ascendant joyeux (do - mi - sol - do)
+        [523.25, 659.25, 783.99, 1046.5].forEach((freq, i) => {
+          const t = now + i * 0.11;
+          const osc = ac.createOscillator();
+          const gain = ac.createGain();
+          osc.type = 'triangle';
+          osc.frequency.value = freq;
+          gain.gain.setValueAtTime(0.0001, t);
+          gain.gain.exponentialRampToValueAtTime(0.16, t + 0.03);
+          gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.45);
+          osc.connect(gain).connect(ac.destination);
+          osc.start(t);
+          osc.stop(t + 0.5);
+        });
+        setTimeout(() => ac.close().catch(() => {}), 1400);
+      }
+    } catch { /* audio bloqué → tant pis, le visuel suffit */ }
+
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
     const canvas = canvasRef.current;
     if (!canvas) return;

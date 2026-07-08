@@ -135,6 +135,7 @@ export default function CookModePage() {
   const [timerRunning, setTimerRunning] = useState(false);
   const [timerSeconds, setTimerSeconds] = useState(0);
   const [done, setDone] = useState(false);
+  const [congrats, setCongrats] = useState<string | null>(null);
   const [resultPhoto, setResultPhoto] = useState<string | null>(null);
   const [deducting, setDeducting] = useState(false);
   const [deducted, setDeducted] = useState(false);
@@ -614,7 +615,24 @@ export default function CookModePage() {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ recipeId: recipe.id, servings: recipe.servings }),
-    }).catch(() => {});
+    })
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (!data) return;
+        const total = data.stats?.total ?? 0;
+        const week = data.stats?.thisWeek ?? 0;
+        const distinct = data.stats?.distinct ?? 0;
+        const hasBadge = Array.isArray(data.newBadges) && data.newBadges.length > 0;
+        // Phrase choisie du plus "fort" au plus doux → toujours pertinente
+        let msg: string;
+        if (hasBadge)          msg = '🏅 Nouveau badge débloqué !';
+        else if (total === 1)  msg = '🎉 Ta toute première recette cuisinée !';
+        else if (week >= 2)    msg = `🔥 ${week}ᵉ recette cuisinée cette semaine !`;
+        else if (distinct >= 5 && total % 5 === 0) msg = `🌍 ${distinct} recettes différentes à ton actif !`;
+        else                   msg = `👏 ${total}ᵉ recette cuisinée. Continue comme ça !`;
+        setCongrats(msg);
+      })
+      .catch(() => {});
     // Arrêter le micro quand c'est terminé
     stopListening();
   }, [done, recipe, stopListening]);
@@ -734,7 +752,15 @@ export default function CookModePage() {
           <div className="text-5xl mb-5">🎉</div>
           <h1 className="text-2xl font-semibold mb-2">Bon appétit!</h1>
           <p className="text-sm mb-1" style={{ color: 'var(--text-secondary)' }}>{recipe.name} est prêt</p>
-          <p className="text-xs mb-6" style={{ color: 'var(--text-muted)' }}>Pour {recipe.servings} personne{recipe.servings > 1 ? 's' : ''}</p>
+          <p className="text-xs mb-3" style={{ color: 'var(--text-muted)' }}>Pour {recipe.servings} personne{recipe.servings > 1 ? 's' : ''}</p>
+
+          {/* Phrase de félicitations dynamique */}
+          {congrats && (
+            <div className="inline-flex items-center gap-2 px-3.5 py-2 rounded-full text-sm font-semibold mb-6 fade-in"
+              style={{ backgroundColor: 'var(--brand-ring)', color: 'var(--brand)' }}>
+              {congrats}
+            </div>
+          )}
 
           {!shared ? (
             <div className="w-full mb-5">

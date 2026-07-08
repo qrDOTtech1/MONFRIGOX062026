@@ -24,17 +24,20 @@ const BADGE_RULES: Array<{ code: string; check: (userId: string) => Promise<bool
   }},
 ];
 
-async function checkBadges(userId: string) {
+async function checkBadges(userId: string): Promise<string[]> {
   const existing = await prisma.badge.findMany({ where: { userId }, select: { code: true } });
   const owned = new Set(existing.map(b => b.code));
+  const newlyAwarded: string[] = [];
   for (const rule of BADGE_RULES) {
     if (owned.has(rule.code)) continue;
     try {
       if (await rule.check(userId)) {
         await prisma.badge.create({ data: { userId, code: rule.code } }).catch(() => {});
+        newlyAwarded.push(rule.code);
       }
     } catch {}
   }
+  return newlyAwarded;
 }
 
 // POST /api/cook-log  { recipeId, servings?, rating? }
@@ -69,10 +72,26 @@ export async function POST(req: NextRequest) {
     }).catch(() => {});
   }
 
-  // Check & award badges
-  await checkBadges(user.id);
+  // Check & award badges (renvoie les nouveaux badges débloqués)
+  const newBadges = await checkBadges(user.id);
 
-  return NextResponse.json(log);
+  // Stats pour la phrase de félicitations dynamique
+  const weekStart = new Date();
+  const dow = weekStart.getDay() === 0 ? -6 : 1 - weekStart.getDay();
+  weekStart.setDate(weekStart.getDate() + dow);
+  weekStart.setHours(0, 0, 0, 0);
+
+  const [total, thisWeek, distinctRows] = await Promise.all([
+    prisma.cookLog.count({ where: { userId: user.id } }),
+    prisma.cookLog.count({ where: { userId: user.id, cookedAt: { gte: weekStart } } }),
+    prisma.cookLog.findMany({ where: { userId: user.id }, distinct: ['recipeId'], select: { recipeId: true } }),
+  ]);
+
+  return NextResponse.json({
+    ...log,
+    stats: { total, thisWeek, distinct: distinctRows.length },
+    newBadges,
+  });
 }
 
 // GET /api/cook-log?limit=20
