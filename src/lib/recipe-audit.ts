@@ -73,11 +73,46 @@ export function splitSteps(raw: string): string[] {
 // --- Détection d'un nom d'ingrédient douteux --------------------------------
 const EN_FOOD = /\b(chicken|beef|pork|sugar|salt|flour|water|onion|garlic|butter|oil|egg|eggs|milk|cheese|pepper|rice|beans|tomato|potato|carrot|chopped|sliced|fresh|ground)\b/i;
 
-function ingredientNameIssue(name: string): string | null {
+// Dictionnaire des corrections EN → FR les plus fréquentes (Outil A — nettoyage).
+// La clé est en minuscules ; la valeur est le nom canonique français attendu.
+export const EN_FR_INGREDIENT: Record<string, string> = {
+  salt: 'Sel', sugar: 'Sucre', 'brown sugar': 'Sucre roux', 'icing sugar': 'Sucre glace',
+  onion: 'Oignon', onions: 'Oignon', 'red onion': 'Oignon rouge', 'spring onion': 'Oignon nouveau',
+  garlic: 'Ail', butter: 'Beurre', oil: 'Huile', 'olive oil': 'Huile d\'olive',
+  'vegetable oil': 'Huile végétale', 'sunflower oil': 'Huile de tournesol',
+  flour: 'Farine', 'plain flour': 'Farine', water: 'Eau', egg: 'Œuf', eggs: 'Œuf',
+  milk: 'Lait', cream: 'Crème', 'heavy cream': 'Crème liquide', cheese: 'Fromage',
+  rice: 'Riz', beans: 'Haricots', tomato: 'Tomate', tomatoes: 'Tomate',
+  potato: 'Pomme de terre', potatoes: 'Pomme de terre', carrot: 'Carotte', carrots: 'Carotte',
+  chicken: 'Poulet', beef: 'Bœuf', pork: 'Porc', fish: 'Poisson',
+  pepper: 'Poivre', 'black pepper': 'Poivre noir', 'bell pepper': 'Poivron',
+  parsley: 'Persil', basil: 'Basilic', thyme: 'Thym', bay: 'Laurier',
+  honey: 'Miel', vinegar: 'Vinaigre', mustard: 'Moutarde', lemon: 'Citron', lime: 'Citron vert',
+};
+
+/** Propose un nom FR pour un ingrédient mal nommé, ou null si aucune suggestion sûre. */
+export function suggestIngredientName(name: string): string | null {
+  const raw = (name || '').trim();
+  if (!raw) return null;
+  const lower = raw.toLowerCase();
+  if (EN_FR_INGREDIENT[lower]) return EN_FR_INGREDIENT[lower];
+  // Retire une mesure/poids collé en tête : "397 g lait" ou "2 cups sugar"
+  const stripped = lower.replace(/^\s*[\d.,/]+\s*(g|kg|mg|ml|cl|dl|l|oz|lb|cups?|tbsp|tsp)?\s*/i, '').trim();
+  if (stripped && EN_FR_INGREDIENT[stripped]) return EN_FR_INGREDIENT[stripped];
+  // Nom tout en majuscules : renvoie une version capitalisée proprement (suggestion douce).
+  if (raw === raw.toUpperCase() && /[A-ZÀ-Þ]/.test(raw)) {
+    return raw.charAt(0) + raw.slice(1).toLowerCase();
+  }
+  return null;
+}
+
+/** Renvoie la raison si le nom d'ingrédient est douteux, sinon null. Exporté pour l'Outil A. */
+export function ingredientNameIssue(name: string): string | null {
   const n = (name || '').trim();
   if (!n) return 'nom vide';
-  if (/\d/.test(n)) return 'contient un chiffre (mesure collée au nom ?)';
-  if (n.length > 40) return 'nom anormalement long (phrase entière ?)';
+  // Mesure/poids collé au nom (ex : "397 g", "2 cups") — pas un simple chiffre ("Mélange 4 épices" est OK).
+  if (/(^|\s)[\d.,/]+\s?(g|kg|mg|ml|cl|dl|l|oz|lb|cups?|tbsp|tsp)\b/i.test(n)) return 'contient une mesure/poids collé au nom';
+  if (n.length > 35) return 'nom anormalement long (phrase entière ?)';
   if (/[<>{}]|&nbsp;|https?:\/\//i.test(n)) return 'contient un artefact (HTML / URL)';
   if (n === n.toUpperCase() && /[A-Z]/.test(n) && n.length > 3) return 'tout en majuscules';
   if (EN_FOOD.test(n) && !ACCENTS.test(n)) return 'nom en anglais (import non traduit ?)';
@@ -113,8 +148,9 @@ export function auditRecipe(r: RecipeAuditInput): RecipeAuditResult {
     } else if (steps.length < 2) {
       push('steps-too-few', 'Moins de 2 étapes', 'medium', `${steps.length} étape(s)`);
     }
-    if (steps.some(s => s.length < 10)) {
-      push('steps-tiny', 'Étape(s) trop courte(s)', 'low');
+    // On ne flagge que les étapes quasi vides (< 3 car.) : "Servir." ou "Déguster !" sont légitimes.
+    if (steps.some(s => s.length < 3)) {
+      push('steps-tiny', 'Étape(s) vide(s) ou tronquée(s)', 'low');
     }
     if (/<[a-z/]|&nbsp;|&amp;|&#\d+;/i.test(instr)) {
       push('steps-html', 'Artefact HTML dans les étapes', 'medium');

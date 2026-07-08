@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import Link from 'next/link';
 import {
   ClipboardCheck, AlertTriangle, AlertCircle, Info, CheckCircle2,
-  Loader2, ArrowLeft, Pencil,
+  Loader2, ArrowLeft, Pencil, Carrot,
 } from 'lucide-react';
 
 type Severity = 'high' | 'medium' | 'low';
@@ -64,9 +64,14 @@ export default function RecipeAuditPage() {
       <h1 style={{ display: 'flex', alignItems: 'center', gap: 10, fontFamily: '"Baloo 2", sans-serif', fontSize: 26, marginBottom: 6 }}>
         <ClipboardCheck size={26} style={{ color: 'var(--brand, #2563EB)' }} /> Audit qualité des recettes
       </h1>
-      <p style={{ color: 'var(--text-secondary)', fontSize: 14, marginBottom: 24 }}>
+      <p style={{ color: 'var(--text-secondary)', fontSize: 14, marginBottom: 16 }}>
         Analyse en lecture seule : rien n’est modifié. Les recettes les plus défectueuses sont en haut.
       </p>
+
+      <Link href="/admin/recipes/ingredients" className="btn-primary !py-2 !px-4 text-sm"
+        style={{ display: 'inline-flex', alignItems: 'center', gap: 8, marginBottom: 24 }}>
+        <Carrot size={16} /> Nettoyer les ingrédients (le plus rentable)
+      </Link>
 
       {loading && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, color: 'var(--text-muted)' }}>
