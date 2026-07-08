@@ -211,7 +211,11 @@ export async function GET(req: NextRequest) {
       matchPercent: s.matchPercent,
       matchCount: `${s.available}/${s.total} ingrédients`,
       isFavorite: r.favorites.length > 0,
-      ingredients: r.ingredients,
+      // Payload allégé pour la LISTE : la carte n'a besoin que du nom (filtres
+      // invité) et du 1er emoji (affichage). On retire quantité/unité/id/catégorie
+      // → JSON beaucoup plus léger, chargement mobile nettement plus rapide.
+      // (La fiche recette /api/recipes/[id] renvoie, elle, les données complètes.)
+      ingredients: r.ingredients.map((i: any) => ({ ingredient: { name: i.ingredient.name, emoji: i.ingredient.emoji } })),
       allergenWarnings: s.dietary.allergenWarnings,
       dietConflict: s.dietary.dietConflict,
       dietLabel: s.dietary.dietLabel,

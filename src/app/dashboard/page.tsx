@@ -167,8 +167,10 @@ function ExplorerContent() {
   // Chargement progressif : on n'affiche pas toutes les recettes d'un coup
   const [visibleLimit, setVisibleLimit]     = useState(PAGE_SIZE);
   const sentinelRef = useRef<HTMLDivElement>(null);
-  // Pagination serveur (chargement progressif 100 par 100)
-  const SERVER_PAGE = 100;
+  // Pagination serveur : premier lot allégé (60) pour un affichage mobile
+  // rapide, puis chargement progressif au scroll. Trié par pertinence → les
+  // 60 premières sont les plus pertinentes.
+  const SERVER_PAGE = 60;
   const serverPageRef = useRef(1);
   const [serverHasMore, setServerHasMore] = useState(false);
   const loadingMoreRef = useRef(false);
