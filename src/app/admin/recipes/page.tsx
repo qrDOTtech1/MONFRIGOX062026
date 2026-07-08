@@ -1,11 +1,12 @@
 'use client';
 
 import MascotLoader from '@/components/MascotLoader';
+import Link from 'next/link';
 import { useState, useEffect, useCallback } from 'react';
 import {
   ChefHat, Trash2, Plus, Clock, Pencil, X, Check,
   Sparkles, Loader2, Languages, Flame, AlertCircle,
-  Download, PackagePlus, Globe,
+  Download, PackagePlus, Globe, ClipboardCheck,
 } from 'lucide-react';
 
 interface Recipe {
@@ -203,9 +204,14 @@ export default function AdminRecipesPage() {
           <ChefHat className="w-5 h-5" style={{ color: 'var(--text-secondary)' }} />
           <h1 className="text-xl font-semibold">Recettes ({recipes.length})</h1>
         </div>
-        <button onClick={() => setShowAdd(!showAdd)} className="btn-primary !py-1.5 !px-3 text-xs flex items-center gap-1.5">
-          <Plus className="w-3.5 h-3.5" /> Ajouter
-        </button>
+        <div className="flex items-center gap-2">
+          <Link href="/admin/recipes/audit" className="btn-secondary !py-1.5 !px-3 text-xs flex items-center gap-1.5">
+            <ClipboardCheck className="w-3.5 h-3.5" /> Audit qualité
+          </Link>
+          <button onClick={() => setShowAdd(!showAdd)} className="btn-primary !py-1.5 !px-3 text-xs flex items-center gap-1.5">
+            <Plus className="w-3.5 h-3.5" /> Ajouter
+          </button>
+        </div>
       </div>
 
       {/* ── Import & Seed ── */}
