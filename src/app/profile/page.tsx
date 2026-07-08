@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import AppShell from '@/components/AppShell';
+import FoodBackground from '@/components/FoodBackground';
 import NotificationsToggle from '@/components/NotificationsToggle';
 import { useTheme } from '@/components/ThemeProvider';
 import InfoBubble from '@/components/InfoBubble';
@@ -271,6 +272,8 @@ export default function ProfilePage() {
 
   return (
     <AppShell>
+      {/* Fond "pluie d'ingrédients" — uniquement sur le profil pour l'instant */}
+      <FoodBackground />
       <div className="flex items-center gap-2.5 mb-6">
         <UserCircle className="w-5 h-5" style={{ color: 'var(--text-secondary)' }} />
         <h1 className="text-lg font-semibold">{t('profile.title')}</h1>

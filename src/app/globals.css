@@ -352,3 +352,45 @@ h1, h2, h3 {
 @media (prefers-reduced-motion: reduce) {
   .skeleton::after { animation: none; }
 }
+
+/* ============================================================
+   FOND "PLUIE D'INGRÉDIENTS" — réutilisable dans l'app
+   Repris de la landing. Pour l'activer sur une page : monter
+   le composant <FoodBackground /> dans cette page.
+   Empilement : sol uni (var --bg) → ingrédients qui tombent →
+   voile dépoli léger → (contenu de la page par-dessus).
+   ============================================================ */
+.food-bg {
+  /* Rendu via portal dans <body> → contexte racine. z-index 0 : au-dessus du
+     halo d'ambiance (.app-ambient, z-0, plus tôt dans le DOM), et sous le
+     contenu de la page (conteneur en z-1). */
+  position: fixed; inset: 0; z-index: 0; pointer-events: none;
+  overflow: hidden;
+  background: var(--bg);
+}
+.food-bg-item {
+  position: absolute; top: 0;
+  background-repeat: no-repeat; background-position: center; background-size: contain;
+  filter: drop-shadow(0 10px 22px rgba(0, 0, 0, 0.20));
+  opacity: 0.9;
+  will-change: transform;
+  animation: food-bg-fall var(--dur, 15s) linear infinite;
+}
+/* Voile dépoli : adoucit les ingrédients, garde le contenu lisible */
+.food-bg-frost {
+  position: absolute; inset: 0;
+  background: rgba(13, 15, 20, 0.30);                        /* repli sombre */
+  background: color-mix(in srgb, var(--bg) 32%, transparent);
+  -webkit-backdrop-filter: blur(3px);
+  backdrop-filter: blur(3px);
+}
+@keyframes food-bg-fall {
+  0%   { transform: translate3d(0, -22vh, 0) rotate(0deg);                opacity: 0; }
+  8%   { opacity: 0.9; }
+  92%  { opacity: 0.9; }
+  100% { transform: translate3d(0, 118vh, 0) rotate(var(--spin, 300deg)); opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .food-bg-item { animation: none; }
+  .food-bg .food-bg-layer { display: none; }   /* pas de pluie figée en haut */
+}
