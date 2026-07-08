@@ -9,47 +9,76 @@
 }
 
 /* ============================================================
-   PALETTE SOBRE & MODERNE
-   Neutres propres (blanc / gris / anthracite) + accent émeraude
+   PALETTE SOBRE & MODERNE — accent bleu encre
+   ------------------------------------------------------------
+   Deux rôles bien séparés, ne jamais les confondre :
+     --brand / --accent  → la MARQUE (boutons, nav active, focus, halos)
+     --success           → le SENS (économies, anti-gaspi, "Facile")
+   Les neutres sont légèrement biaisés bleu pour s'accorder à l'accent.
+   Changer la couleur de marque = éditer les 4 lignes --accent/--brand.
    ============================================================ */
 :root {
-  --bg: #f8f9fa;              /* gris très clair, propre */
+  --bg: #f7f8fa;              /* gris très clair, nuance bleutée */
   --bg-raised: #ffffff;       /* cartes blanches */
-  --bg-inset: #f0f2f1;
-  --border: #e4e7e5;
-  --border-subtle: #eef0ef;
-  --text: #17191b;            /* quasi noir neutre (contraste AA) */
-  --text-secondary: #4d5350;
-  --text-muted: #8b918e;
-  --accent: #0e9f6e;          /* émeraude — boutons */
-  --accent-hover: #0b8a5f;
+  --bg-inset: #eef1f5;
+  --border: #e2e6ec;
+  --border-subtle: #eef1f5;
+  --text: #161920;            /* quasi noir neutre (contraste AA) */
+  --text-secondary: #4c5563;
+  --text-muted: #8a919e;
+
+  /* ── MARQUE : bleu encre ── */
+  --accent: #2563eb;
+  --accent-hover: #1d4ed8;
   --accent-text: #ffffff;
-  --ring: rgba(14, 159, 110, 0.18);
-  /* Teinte "signature" : focus, halos, nav active */
-  --brand: #10b981;
-  --brand-ring: rgba(16, 185, 129, 0.18);
+  --ring: rgba(37, 99, 235, 0.18);
+  --brand: #2563eb;
+  --brand-ring: rgba(37, 99, 235, 0.16);
+
+  /* ── SENS : vert (économies, anti-gaspi, "Facile") ── */
+  --success: #0f9d63;
+  --success-ring: rgba(15, 157, 99, 0.12);
+
+  /* Halos d'ambiance + ondulation au clic (suivent la marque) */
+  --ambient-1: rgba(37, 99, 235, 0.10);
+  --ambient-2: rgba(37, 99, 235, 0.09);
+  --ambient-3: rgba(37, 99, 235, 0.06);
+  --ripple: rgba(37, 99, 235, 0.42);
+
   /* Ombres douces neutres */
-  --card-shadow: 0 1px 2px rgba(20, 24, 22, 0.04), 0 6px 18px rgba(20, 24, 22, 0.06);
-  --card-shadow-hover: 0 8px 20px rgba(16, 185, 129, 0.10), 0 16px 38px rgba(20, 24, 22, 0.10);
+  --card-shadow: 0 1px 2px rgba(20, 24, 30, 0.04), 0 6px 18px rgba(20, 24, 30, 0.06);
+  --card-shadow-hover: 0 8px 20px rgba(37, 99, 235, 0.12), 0 16px 38px rgba(20, 24, 30, 0.10);
 }
 
 .dark {
-  --bg: #0e1110;              /* anthracite propre, pointe verte à peine perceptible */
-  --bg-raised: #161a18;       /* cartes charbon */
-  --bg-inset: #121514;
-  --border: #262b29;
-  --border-subtle: #1d2220;
-  --text: #f3f5f4;            /* blanc neutre */
-  --text-secondary: #a6ada9;
-  --text-muted: #6b716e;
-  --accent: #10b981;          /* émeraude lumineux */
-  --accent-hover: #34d399;
-  --accent-text: #07130e;
-  --ring: rgba(16, 185, 129, 0.20);
-  --brand: #10b981;
-  --brand-ring: rgba(16, 185, 129, 0.24);
+  --bg: #0d0f14;              /* anthracite, pointe bleutée */
+  --bg-raised: #151922;       /* cartes charbon */
+  --bg-inset: #11141b;
+  --border: #252b36;
+  --border-subtle: #1c212a;
+  --text: #f2f4f7;            /* blanc neutre */
+  --text-secondary: #a4abb8;
+  --text-muted: #69707d;
+
+  /* ── MARQUE : bleu clair sur fond sombre, texte foncé dessus ── */
+  --accent: #7aa2f7;
+  --accent-hover: #93b4f9;
+  --accent-text: #08111f;
+  --ring: rgba(122, 162, 247, 0.22);
+  --brand: #7aa2f7;
+  --brand-ring: rgba(122, 162, 247, 0.20);
+
+  /* ── SENS : vert lumineux ── */
+  --success: #34d399;
+  --success-ring: rgba(52, 211, 153, 0.16);
+
+  --ambient-1: rgba(122, 162, 247, 0.12);
+  --ambient-2: rgba(122, 162, 247, 0.10);
+  --ambient-3: rgba(122, 162, 247, 0.07);
+  --ripple: rgba(122, 162, 247, 0.45);
+
   --card-shadow: 0 1px 2px rgba(0, 0, 0, 0.35), 0 8px 22px rgba(0, 0, 0, 0.4);
-  --card-shadow-hover: 0 8px 20px rgba(16, 185, 129, 0.14), 0 18px 44px rgba(0, 0, 0, 0.55);
+  --card-shadow-hover: 0 8px 20px rgba(122, 162, 247, 0.16), 0 18px 44px rgba(0, 0, 0, 0.55);
 }
 
 body {
@@ -237,16 +266,16 @@ h1, h2, h3 {
   letter-spacing: -0.01em;
 }
 
-/* ── Fond ambiant sobre : halos émeraude discrets qui respirent ── */
+/* ── Fond ambiant sobre : halos discrets qui respirent (suivent la marque) ── */
 .app-ambient {
   position: fixed;
   inset: 0;
   z-index: 0;
   pointer-events: none;
   background:
-    radial-gradient(720px circle at 15% -6%,   rgba(16, 185, 129, 0.10), transparent 55%),
-    radial-gradient(780px circle at 108% 106%, rgba(16, 185, 129, 0.09), transparent 58%),
-    radial-gradient(460px circle at -8% 78%,   rgba(16, 185, 129, 0.06), transparent 55%);
+    radial-gradient(720px circle at 15% -6%,   var(--ambient-1), transparent 55%),
+    radial-gradient(780px circle at 108% 106%, var(--ambient-2), transparent 58%),
+    radial-gradient(460px circle at -8% 78%,   var(--ambient-3), transparent 55%);
   animation: app-ambient-drift 18s ease-in-out infinite;
 }
 /* Nappe floue qui dérive doucement (coin bas-gauche) */
@@ -256,7 +285,7 @@ h1, h2, h3 {
   width: 360px; height: 360px;
   left: -100px; bottom: -120px;
   border-radius: 50%;
-  background: radial-gradient(closest-side, rgba(16, 185, 129, 0.14), transparent);
+  background: radial-gradient(closest-side, var(--ambient-1), transparent);
   filter: blur(28px);
   animation: leaf-drift 26s ease-in-out infinite;
 }
@@ -291,7 +320,7 @@ h1, h2, h3 {
 .app-ripple {
   position: fixed; width: 18px; height: 18px; margin: -9px 0 0 -9px;
   border-radius: 9999px; pointer-events: none; z-index: 9999;
-  background: radial-gradient(circle, rgba(16,185,129,0.45), rgba(16,185,129,0.12) 55%, transparent 70%);
+  background: radial-gradient(circle, var(--ripple), color-mix(in srgb, var(--ripple) 30%, transparent) 55%, transparent 70%);
   transform: scale(0);
   animation: appRipple 0.6s cubic-bezier(0.2,0.7,0.3,1) forwards;
 }

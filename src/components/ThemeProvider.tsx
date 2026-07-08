@@ -17,14 +17,16 @@ export default function ThemeProvider({ children }: { children: React.ReactNode 
   const [theme, setTheme] = useState<Theme>('dark');
 
   useEffect(() => {
+    // Sombre par défaut : c'est l'identité de l'app. L'utilisateur garde le
+    // bouton pour passer en clair (utile en cuisine, en plein jour).
     const stored = localStorage.getItem('theme') as Theme | null;
-    const preferred = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-    setTheme(stored || preferred);
+    setTheme(stored || 'dark');
   }, []);
 
   useEffect(() => {
     document.documentElement.classList.toggle('dark', theme === 'dark');
-    document.documentElement.style.background = theme === 'dark' ? '#0f0f11' : '#fafafa';
+    // Doit rester aligné sur --bg dans globals.css
+    document.documentElement.style.background = theme === 'dark' ? '#0d0f14' : '#f7f8fa';
     localStorage.setItem('theme', theme);
   }, [theme]);
 

@@ -87,8 +87,8 @@ export const viewport: Viewport = {
   maximumScale: 1,
   viewportFit: 'cover',   // active les safe-areas (encoches, barre gestuelle) sur mobile
   themeColor: [
-    { media: '(prefers-color-scheme: light)', color: '#f8f9fa' },
-    { media: '(prefers-color-scheme: dark)', color: '#0e1110' },
+    { media: '(prefers-color-scheme: light)', color: '#f7f8fa' },
+    { media: '(prefers-color-scheme: dark)', color: '#0d0f14' },
   ],
 };
 
@@ -101,9 +101,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           (function(){
             try {
               var t = localStorage.getItem('theme');
-              var dark = t ? t === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches;
+              var dark = t ? t === 'dark' : true;   // sombre par défaut
               document.documentElement.classList.toggle('dark', dark);
-              document.documentElement.style.background = dark ? '#0f0f11' : '#fafafa';
+              document.documentElement.style.background = dark ? '#0d0f14' : '#f7f8fa';
               var lang = localStorage.getItem('lang') || (navigator.language && navigator.language.slice(0,2) === 'fr' ? 'fr' : 'en');
               document.documentElement.lang = lang;
             } catch(e){}

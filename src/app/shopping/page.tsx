@@ -370,7 +370,7 @@ export default function ShoppingPage() {
             </button>
             <div className="flex-1 text-center">
               <p className="text-xs font-semibold">{weekLabel}</p>
-              <p className="text-[10px]" style={{ color: weekOffset === 0 ? 'rgb(16,185,129)' : 'var(--text-muted)' }}>
+              <p className="text-[10px]" style={{ color: weekOffset === 0 ? 'var(--brand)' : 'var(--text-muted)' }}>
                 {weekOffset === 0 ? `● ${t('shopping.currentWeek')}` : weekOffset < 0 ? (Math.abs(weekOffset) > 1 ? t('shopping.weeksPastPlural', { n: Math.abs(weekOffset) }) : t('shopping.weeksPast', { n: Math.abs(weekOffset) })) : t('shopping.weeksAhead', { n: weekOffset })}
               </p>
             </div>

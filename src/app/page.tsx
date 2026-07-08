@@ -35,13 +35,13 @@ function LandingStyles() {
       .cursor-light {
         position: fixed; inset: 0; z-index: 1; pointer-events: none;
         transition: background 0.2s ease-out;
-        background: radial-gradient(520px circle at 50% 12%, rgba(16,185,129,0.16), transparent 62%);
+        background: radial-gradient(520px circle at 50% 12%, rgba(59,130,246,0.16), transparent 62%);
       }
       /* Ripple au clic / toucher */
       .click-ripple {
         position: fixed; width: 16px; height: 16px; margin: -8px 0 0 -8px;
         border-radius: 9999px;
-        background: radial-gradient(circle, rgba(16,185,129,0.55), rgba(16,185,129,0.12) 60%, transparent 70%);
+        background: radial-gradient(circle, rgba(59,130,246,0.55), rgba(59,130,246,0.12) 60%, transparent 70%);
         pointer-events: none; transform: scale(0); z-index: 9999;
         animation: ripple 0.62s cubic-bezier(0.2,0.7,0.3,1) forwards;
       }
@@ -176,7 +176,7 @@ function CursorFX() {
       raf = requestAnimationFrame(() => {
         if (lightRef.current) {
           lightRef.current.style.background =
-            `radial-gradient(520px circle at ${x}px ${y}px, rgba(16,185,129,0.16), transparent 62%)`;
+            `radial-gradient(520px circle at ${x}px ${y}px, rgba(59,130,246,0.16), transparent 62%)`;
         }
         // Fond qui suit le curseur (même direction, doux)
         if (parallaxEl && !reduceMotion) {
@@ -762,7 +762,7 @@ export default function LandingPage() {
 
             <div className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-[13px] font-medium mb-8"
               style={{ backgroundColor: 'var(--bg-inset)', color: 'var(--text-secondary)', border: '1px solid var(--border)' }}>
-              <Sparkles className="w-3.5 h-3.5" style={{ color: 'rgb(16,185,129)' }} /> {t('landing.badge')}
+              <Sparkles className="w-3.5 h-3.5" style={{ color: 'var(--brand)' }} /> {t('landing.badge')}
             </div>
 
             <h1 className="text-5xl md:text-7xl font-semibold leading-[1.04] tracking-[-0.035em] mb-7">
@@ -818,8 +818,8 @@ export default function LandingPage() {
                     transitionDelay: `${i * 50}ms`,
                   }}>
                   <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
-                    style={{ backgroundColor: 'rgba(16,185,129,0.08)' }}>
-                    <f.icon className="w-5 h-5" style={{ color: 'rgb(16,185,129)' }} />
+                    style={{ backgroundColor: 'var(--brand-ring)' }}>
+                    <f.icon className="w-5 h-5" style={{ color: 'var(--brand)' }} />
                   </div>
                   <div>
                     <h3 className="font-semibold text-[15px] mb-1">{f.title}</h3>
@@ -893,7 +893,7 @@ export default function LandingPage() {
                           {v === true ? (
                             isHero
                               ? <span className="inline-flex items-center justify-center w-6 h-6 rounded-full text-white" style={{ backgroundColor: 'var(--accent)' }}><Check className="w-3.5 h-3.5" /></span>
-                              : <Check className="w-3.5 h-3.5 inline" style={{ color: 'rgb(16,185,129)' }} />
+                              : <Check className="w-3.5 h-3.5 inline" style={{ color: 'var(--success)' }} />
                           ) : v === false ? (
                             <X className="w-3 h-3 inline opacity-30" />
                           ) : (
