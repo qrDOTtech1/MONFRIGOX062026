@@ -49,13 +49,17 @@ const FALLING_FOOD = [
   { src: 'oignon',    left: '95%', s: 48,  dur: 26, delay: -6,   spin: -160 },
 ];
 
-export default function FoodBackground() {
+// variant 'fixed' (défaut) : couche fixe plein écran via portal → fond de page.
+// variant 'inline'         : couche absolue rendue sur place → à mettre comme
+//                            1er enfant d'un conteneur en position:relative
+//                            (ex. l'écran de félicitations, qui est déjà en z-50).
+export default function FoodBackground({ variant = 'fixed' }: { variant?: 'fixed' | 'inline' }) {
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
-  if (!mounted) return null;   // portal côté client uniquement
+  if (!mounted) return null;   // rendu côté client uniquement
 
-  return createPortal(
-    <div className="food-bg" aria-hidden>
+  const layer = (
+    <div className={`food-bg${variant === 'inline' ? ' food-bg--inline' : ''}`} aria-hidden>
       <div className="food-bg-layer" style={{ position: 'absolute', inset: 0 }}>
         {FALLING_FOOD.map((f, i) => (
           <div
@@ -75,7 +79,10 @@ export default function FoodBackground() {
       </div>
       {/* Voile dépoli par-dessus la pluie → contenu bien lisible */}
       <div className="food-bg-frost" />
-    </div>,
-    document.body,
+    </div>
   );
+
+  // 'fixed' : portal vers <body> pour échapper aux ancêtres transformés.
+  // 'inline' : rendu sur place (le conteneur parent gère le positionnement).
+  return variant === 'inline' ? layer : createPortal(layer, document.body);
 }

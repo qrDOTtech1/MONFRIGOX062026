@@ -368,6 +368,10 @@ h1, h2, h3 {
   overflow: hidden;
   background: var(--bg);
 }
+/* Variante inline : posée dans un conteneur relatif (ex. écran félicitations) */
+.food-bg--inline {
+  position: absolute; z-index: 0;
+}
 .food-bg-item {
   position: absolute; top: 0;
   background-repeat: no-repeat; background-position: center; background-size: contain;

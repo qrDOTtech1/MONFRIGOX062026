@@ -5,6 +5,8 @@ import { useParams, useRouter } from 'next/navigation';
 import { ArrowLeft, ArrowRight, ChefHat, Clock, X, Timer, Check, Users, Camera, Refrigerator, Loader2, Globe, Lock, Mic, MicOff, Volume2, HelpCircle, Pause, Play, Music } from 'lucide-react';
 import { useVoiceCooking } from '@/lib/useVoiceCooking';
 import Mascot, { MascotVariant } from '@/components/Mascot';
+import FoodBackground from '@/components/FoodBackground';
+import Celebration from '@/components/Celebration';
 import { useT } from '@/lib/i18n';
 import { translateUnit } from '@/lib/units';
 
@@ -724,8 +726,11 @@ export default function CookModePage() {
 
   if (done) {
     return (
-      <div className="fixed inset-0 flex items-center justify-center z-50 px-6" style={{ backgroundColor: 'var(--bg)' }}>
-        <div className="text-center fade-in w-full max-w-sm">
+      <div className="fixed inset-0 flex items-center justify-center z-50 px-6 overflow-hidden" style={{ backgroundColor: 'var(--bg)' }}>
+        {/* Fond pluie d'ingrédients + confettis de félicitations */}
+        <FoodBackground variant="inline" />
+        <Celebration />
+        <div className="text-center fade-in w-full max-w-sm relative z-10">
           <div className="text-5xl mb-5">🎉</div>
           <h1 className="text-2xl font-semibold mb-2">Bon appétit!</h1>
           <p className="text-sm mb-1" style={{ color: 'var(--text-secondary)' }}>{recipe.name} est prêt</p>
