@@ -349,6 +349,52 @@ export interface ExpiryRecipe {
 }
 
 /**
+ * Génère UNE recette de DÉMO cohérente pour l'essai sans compte (/essai).
+ * Contrairement à generateExpiryRecipe (anti-gaspi, qui case tout), ici on veut
+ * un plat appétissant et RÉALISTE : le chef choisit un sous-ensemble cohérent
+ * des ingrédients proposés plutôt que de tout mélanger. Prompt court = plus rapide.
+ */
+export async function generateTrialRecipe(userIngredients: string[]): Promise<ExpiryRecipe | null> {
+  const response = await chatCompletion([
+    {
+      role: 'system',
+      content: `Tu es un chef cuisinier français. À partir d'ingrédients proposés, crée UNE recette SIMPLE, COHÉRENTE et APPÉTISSANTE.
+Réponds UNIQUEMENT en JSON valide : {"name":"...","description":"1 phrase gourmande","difficulty":"FACILE|MOYEN|DIFFICILE","prepTime":25,"cuisine":"FR","servings":2,"ingredients":[{"name":"...","quantity":100,"unit":"g"}],"instructions":"Étape 1.\\nÉtape 2.\\nÉtape 3."}
+RÈGLES IMPORTANTES :
+- Choisis un SOUS-ENSEMBLE cohérent des ingrédients : n'utilise PAS forcément tout. Un bon plat vaut mieux qu'un fourre-tout.
+- Ne mets JAMAIS deux féculents ensemble (pâtes + riz) sauf si c'est logique.
+- Tu peux supposer sel, poivre et huile disponibles, mais ne rajoute pas d'autres ingrédients absents.
+- 3 à 5 étapes claires séparées par \\n, sans numéros.
+- Nom court et alléchant (pas une liste d'ingrédients).`,
+    },
+    {
+      role: 'user',
+      content: `Ingrédients dispo : ${userIngredients.join(', ')}. Propose une recette gourmande et réaliste.`,
+    },
+  ], { temperature: 0.5 });
+
+  const content = response.message?.content || '';
+  try {
+    const jsonMatch = content.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) return null;
+    const parsed = JSON.parse(jsonMatch[0]);
+    if (!parsed.name || !parsed.instructions) return null;
+    return {
+      name: parsed.name,
+      description: parsed.description || '',
+      difficulty: ['FACILE', 'MOYEN', 'DIFFICILE'].includes(parsed.difficulty) ? parsed.difficulty : 'FACILE',
+      prepTime: parseInt(parsed.prepTime) || 20,
+      cuisine: parsed.cuisine || 'FR',
+      servings: parseInt(parsed.servings) || 2,
+      instructions: parsed.instructions,
+      ingredients: Array.isArray(parsed.ingredients) ? parsed.ingredients : [],
+    };
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Génère UNE seule recette anti-gaspi ciblée sur des ingrédients qui périment.
  * Volontairement plus légère que suggestRecipes (1 recette, prompt court) — utilisée par
  * le cron de notifications proactives, réservée aux utilisateurs VIP pour limiter le coût token.

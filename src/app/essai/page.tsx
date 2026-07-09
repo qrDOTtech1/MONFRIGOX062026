@@ -80,22 +80,30 @@ export default function EssaiPage() {
               ))}
             </div>
 
-            <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
+            <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 6 }}>
+              Tape tes vrais ingrédients 👇
+            </label>
+            <div style={{ display: 'flex', gap: 8, marginBottom: 6 }}>
               <input
                 value={input}
                 onChange={e => setInput(e.target.value)}
                 onKeyDown={e => { if (e.key === 'Enter') addItem(input); }}
-                placeholder="Ex : poulet, tomate, riz…"
+                placeholder="Ex : saumon, épinards, citron…"
+                autoFocus
                 style={{ flex: 1, padding: '11px 14px', borderRadius: 12, border: '1px solid var(--border)', background: 'var(--bg-inset)', color: 'var(--text)', fontSize: 15 }}
               />
               <button onClick={() => addItem(input)} className="btn-secondary !px-3" style={{ display: 'inline-flex', alignItems: 'center' }}>
                 <Plus size={18} />
               </button>
             </div>
+            <p style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 14 }}>
+              Appuie sur Entrée après chaque ingrédient. Le plus réaliste : mets ce que tu as vraiment chez toi.
+            </p>
 
-            {/* Suggestions rapides */}
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 18 }}>
-              {SUGGESTIONS.filter(s => !items.includes(s)).map(s => (
+            {/* Exemples rapides (optionnels) */}
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 18, alignItems: 'center' }}>
+              <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>ou pioche un exemple :</span>
+              {SUGGESTIONS.filter(s => !items.includes(s)).slice(0, 5).map(s => (
                 <button key={s} onClick={() => addItem(s)} style={{ fontSize: 13, padding: '5px 11px', borderRadius: 999, border: '1px dashed var(--border)', color: 'var(--text-secondary)', background: 'transparent' }}>
                   + {s}
                 </button>

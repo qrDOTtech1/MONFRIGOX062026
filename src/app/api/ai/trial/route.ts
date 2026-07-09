@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
-import { generateExpiryRecipe } from '@/lib/ollama';
+import { generateTrialRecipe } from '@/lib/ollama';
 
 // POST /api/ai/trial  { ingredients: string[] }
 // Génère UNE recette IA pour un visiteur NON connecté — le « waouh » avant
@@ -40,7 +40,7 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const recipe = await generateExpiryRecipe(list);
+    const recipe = await generateTrialRecipe(list);
     if (!recipe) {
       return NextResponse.json({ error: 'L’IA n’a pas réussi cette fois, réessaie avec d’autres ingrédients.' }, { status: 502 });
     }
