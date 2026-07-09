@@ -65,7 +65,8 @@ function verifyStripeSignature(
  * Stripe envoie les événements ici.
  * Configuration dans Stripe Dashboard → Webhooks → Ajouter endpoint :
  *   URL : https://votre-domaine.railway.app/api/billing/webhook
- *   Événements : checkout.session.completed, customer.subscription.deleted
+ *   Événements : checkout.session.completed, invoice.payment_succeeded,
+ *                customer.subscription.deleted
  *
  * Metadata attendue sur les Stripe Payment Links :
  *   plan     : PREMIUM | VIP          (pour abonnements)
@@ -153,6 +154,44 @@ export async function POST(req: NextRequest) {
         },
       });
       console.log(`[Billing] Plan ${plan} (${months}mo) activé pour user ${userId}`);
+    }
+  }
+
+  // ─── invoice.payment_succeeded / invoice.paid ───
+  // Renouvellement mensuel/annuel : Stripe prélève automatiquement chaque
+  // période et envoie cet événement. On PROLONGE l'accès jusqu'à la fin de la
+  // période payée. Sans ça, un abonné payant repasserait en FREE après 1 mois.
+  if ((type === 'invoice.payment_succeeded' || type === 'invoice.paid') && obj) {
+    const o = obj as Record<string, unknown>;
+    const customerId = o['customer'] as string | undefined;
+    if (customerId) {
+      const user = await prisma.user.findFirst({ where: { stripeCustomerId: customerId } });
+      if (user) {
+        // Récupère le priceId et la fin de période depuis la 1re ligne de facture.
+        const lines = (o['lines'] as Record<string, unknown>)?.['data'] as Array<Record<string, unknown>> | undefined;
+        const line = lines?.[0];
+        const price = line?.['price'] as Record<string, unknown> | undefined;
+        const priceId = (price?.['id'] as string) || '';
+        const periodEnd = ((line?.['period'] as Record<string, unknown>)?.['end'] as number) || 0;
+
+        // Reverse-map priceId → plan via AppConfig (mêmes clés que la checkout).
+        const priceConfigs = await prisma.appConfig.findMany({ where: { key: { startsWith: 'stripe_price_id_' } } });
+        const keyForPrice = priceConfigs.find(c => c.value === priceId)?.key || '';
+        const planFromKey = keyForPrice.includes('vip') ? 'VIP'
+          : keyForPrice.includes('premium') ? 'PREMIUM' : null;
+
+        if (planFromKey) {
+          // Fin de période fournie par Stripe (fiable) sinon repli +1 mois.
+          const expires = periodEnd > 0
+            ? new Date(periodEnd * 1000)
+            : (() => { const d = new Date(); d.setMonth(d.getMonth() + 1); return d; })();
+          await prisma.user.update({
+            where: { id: user.id },
+            data: { plan: planFromKey, planExpiresAt: expires },
+          });
+          console.log(`[Billing] Renouvellement ${planFromKey} pour user ${user.id} → ${expires.toISOString()}`);
+        }
+      }
     }
   }
 
