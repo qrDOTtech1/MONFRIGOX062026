@@ -3,6 +3,13 @@ import bcrypt from 'bcryptjs';
 import { prisma } from '@/lib/db';
 import { createToken } from '@/lib/auth';
 
+// ── Promo de lancement : mois offert à l'inscription ─────────────────────────
+// Chaque nouveau compte démarre avec un plan payant gratuit pendant N jours.
+// À l'expiration, la logique de plan repasse automatiquement en FREE (paywall).
+// Pour désactiver la promo : mettre TRIAL_PLAN à 'FREE'.
+const TRIAL_PLAN: 'FREE' | 'PREMIUM' | 'VIP' = 'PREMIUM';
+const TRIAL_DAYS = 30;
+
 export async function POST(req: NextRequest) {
   try {
     const { name, email, password } = await req.json();
@@ -22,9 +29,19 @@ export async function POST(req: NextRequest) {
 
     const isAdminEmail = process.env.ADMIN_EMAIL && email === process.env.ADMIN_EMAIL;
 
+    // Mois offert : plan payant avec date d'expiration (sauf pour l'admin).
+    const trialExpires = TRIAL_PLAN !== 'FREE' && !isAdminEmail
+      ? new Date(Date.now() + TRIAL_DAYS * 24 * 60 * 60 * 1000)
+      : null;
+
     const hashed = await bcrypt.hash(password, 12);
     const user = await prisma.user.create({
-      data: { name, email, password: hashed, role: isAdminEmail ? 'ADMIN' : 'USER' },
+      data: {
+        name, email, password: hashed,
+        role: isAdminEmail ? 'ADMIN' : 'USER',
+        plan: trialExpires ? TRIAL_PLAN : 'FREE',
+        planExpiresAt: trialExpires,
+      },
       select: { id: true, email: true, name: true, role: true },
     });
 

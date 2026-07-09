@@ -774,11 +774,18 @@ export default function LandingPage() {
               {t('landing.hero.sub')}
             </p>
 
-            <Link href="/register"
-              className="inline-flex items-center gap-2 px-9 py-4 rounded-full text-base font-semibold transition-all hover:scale-[1.03] active:scale-95"
-              style={{ backgroundColor: 'var(--accent)', color: 'var(--accent-text)' }}>
-              {t('landing.cta')}
-            </Link>
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+              <Link href="/register"
+                className="inline-flex items-center gap-2 px-9 py-4 rounded-full text-base font-semibold transition-all hover:scale-[1.03] active:scale-95"
+                style={{ backgroundColor: 'var(--accent)', color: 'var(--accent-text)' }}>
+                {t('landing.cta')}
+              </Link>
+              <Link href="/essai"
+                className="inline-flex items-center gap-2 px-7 py-4 rounded-full text-base font-semibold transition-all hover:scale-[1.03] active:scale-95"
+                style={{ border: '1px solid var(--border)', color: 'var(--text)' }}>
+                {t('landing.cta.trial')}
+              </Link>
+            </div>
             <p className="text-[13px] mt-4" style={{ color: 'var(--text-muted)' }}>
               {t('landing.cta.sub')}
             </p>
