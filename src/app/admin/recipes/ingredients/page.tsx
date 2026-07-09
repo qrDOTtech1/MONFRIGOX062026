@@ -72,8 +72,13 @@ export default function IngredientsCleanupPage() {
         body: JSON.stringify({ name: item.name }),
       });
       const data = await res.json();
-      if (res.ok && data.suggestion) setEdits(e => ({ ...e, [item.id]: data.suggestion }));
-    } catch { /* silencieux */ }
+      if (res.ok && data.suggestion) {
+        setEdits(e => ({ ...e, [item.id]: data.suggestion }));
+        flash(data.source === 'ia' ? `✨ Proposition IA : « ${data.suggestion} »` : `💡 Proposition : « ${data.suggestion} »`);
+      } else {
+        flash('❌ Impossible d’obtenir une suggestion');
+      }
+    } catch { flash('❌ Erreur réseau pendant la suggestion'); }
     finally { setBusy(b => ({ ...b, [item.id]: false })); }
   }
 

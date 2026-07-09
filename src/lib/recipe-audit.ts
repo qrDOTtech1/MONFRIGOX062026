@@ -88,7 +88,41 @@ export const EN_FR_INGREDIENT: Record<string, string> = {
   pepper: 'Poivre', 'black pepper': 'Poivre noir', 'bell pepper': 'Poivron',
   parsley: 'Persil', basil: 'Basilic', thyme: 'Thym', bay: 'Laurier',
   honey: 'Miel', vinegar: 'Vinaigre', mustard: 'Moutarde', lemon: 'Citron', lime: 'Citron vert',
+  // Multi-mots courants (imports anglais)
+  'coconut milk': 'Lait de coco', coconut: 'Noix de coco', 'soy sauce': 'Sauce soja',
+  'tomato sauce': 'Sauce tomate', 'chicken breast': 'Blanc de poulet', 'ground beef': 'Bœuf haché',
+  'green onion': 'Oignon nouveau', 'sour cream': 'Crème aigre',
+  'baking powder': 'Levure chimique', 'baking soda': 'Bicarbonate', 'vanilla extract': 'Extrait de vanille',
+  'coconut oil': 'Huile de coco', 'sesame oil': 'Huile de sésame',
 };
+
+// Marques et mentions marketing à retirer d'un nom d'ingrédient (scan code-barres).
+const KNOWN_BRANDS = [
+  'nestlé', 'nestle', 'herta', 'fleury michon', 'fleury', 'michon', 'président', 'president',
+  'bonne maman', 'panzani', 'barilla', 'lustucru', 'findus', 'bjorg', 'bonduelle', 'daddy',
+  'lipton', 'knorr', 'maggi', 'la laitière', 'la laitiere', 'yoplait', 'danone', 'activia',
+  'elle & vire', 'paysan breton', 'le moelleux', 'trésor de grand-mère', 'tresor de grand-mere',
+  'le bon végétal', 'le bon vegetal', 'végétal', 'vegetal', 'saint môret', 'saint moret',
+];
+const PACKAGING_PREFIX = /^(bo[iî]te|sachet|paquet|pack|b[aâ]tonnets?|barquette|pot|bocal|tranches?|filets?|portions?)\s+(de\s+|d['’]\s*)?/i;
+
+/**
+ * Nettoyage LOCAL et déterministe d'un nom d'ingrédient issu d'un scan :
+ * retire symboles ®™, poids/quantités, marques connues et préfixe de conditionnement.
+ * Ex : "Boîte de lait concentré sucré nestlé 397 g" → "Lait concentré sucré".
+ */
+export function simplifyIngredientName(raw: string): string {
+  let s = (raw || '').trim();
+  s = s.replace(/[®™©]/g, ' ');
+  s = s.replace(/\b[\d.,/]+\s?(g|kg|mg|ml|cl|dl|l|oz|lb|cups?|tbsp|tsp)\b/gi, ' ');
+  for (const b of KNOWN_BRANDS) {
+    s = s.replace(new RegExp('\\b' + b.replace(/[.*+?^${}()|[\]\\&]/g, '\\$&') + '\\b', 'gi'), ' ');
+  }
+  s = s.replace(PACKAGING_PREFIX, '');
+  s = s.replace(/\s{2,}/g, ' ').trim();
+  if (!s) return raw.trim();
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
 
 /** Propose un nom FR pour un ingrédient mal nommé, ou null si aucune suggestion sûre. */
 export function suggestIngredientName(name: string): string | null {
@@ -96,10 +130,14 @@ export function suggestIngredientName(name: string): string | null {
   if (!raw) return null;
   const lower = raw.toLowerCase();
   if (EN_FR_INGREDIENT[lower]) return EN_FR_INGREDIENT[lower];
-  // Retire une mesure/poids collé en tête : "397 g lait" ou "2 cups sugar"
-  const stripped = lower.replace(/^\s*[\d.,/]+\s*(g|kg|mg|ml|cl|dl|l|oz|lb|cups?|tbsp|tsp)?\s*/i, '').trim();
-  if (stripped && EN_FR_INGREDIENT[stripped]) return EN_FR_INGREDIENT[stripped];
-  // Nom tout en majuscules : renvoie une version capitalisée proprement (suggestion douce).
+
+  // Nettoyage local (marques/poids/conditionnement).
+  const simplified = simplifyIngredientName(raw);
+  const simpLower = simplified.toLowerCase();
+  if (EN_FR_INGREDIENT[simpLower]) return EN_FR_INGREDIENT[simpLower];
+  if (simplified && simpLower !== lower) return simplified;
+
+  // Nom tout en majuscules : version capitalisée proprement.
   if (raw === raw.toUpperCase() && /[A-ZÀ-Þ]/.test(raw)) {
     return raw.charAt(0) + raw.slice(1).toLowerCase();
   }
