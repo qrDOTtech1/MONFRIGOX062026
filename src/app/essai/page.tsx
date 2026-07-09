@@ -2,12 +2,12 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { Sparkles, Loader2, ChefHat, Clock, Users, ArrowRight, Plus, X, PiggyBank, Leaf, RotateCcw, Recycle } from 'lucide-react';
+import { Sparkles, Loader2, ChefHat, Clock, Users, ArrowRight, Plus, X, PiggyBank, Leaf, RotateCcw, Recycle, Wallet } from 'lucide-react';
 
-// Estimation simple des économies : cuisiner ce plat maison plutôt que
-// commander une livraison équivalente. Volontairement prudent pour rester crédible.
-const DELIVERY_PER_SERVING = 12; // € : un plat livré type
-const HOME_PER_SERVING = 3;      // € : coût maison estimé
+// Prix moyen d'un plat équivalent livré (Uber Eats / Deliveroo, plat + frais),
+// par personne. Comparé au coût RÉEL de cuisson calculé depuis les ingrédients.
+const DELIVERY_PER_SERVING = 13; // €/pers.
+const HOME_PER_SERVING_FALLBACK = 3; // € si le coût réel n'a pas pu être estimé
 
 interface TrialRecipe {
   name: string;
@@ -18,6 +18,7 @@ interface TrialRecipe {
   instructions: string;
   ingredients: Array<{ name: string; quantity: number; unit: string }>;
   kind?: 'chef' | 'vide-frigo';
+  cost?: number; // coût réel estimé de cuisson (€, plat entier)
 }
 
 const SUGGESTIONS = ['Poulet', 'Tomate', 'Pâtes', 'Œufs', 'Courgette', 'Riz', 'Fromage', 'Oignon'];
@@ -58,8 +59,13 @@ export default function EssaiPage() {
     finally { setLoading(false); }
   }
 
-  const saved = Math.max(6, Math.round((DELIVERY_PER_SERVING - HOME_PER_SERVING) * servings));
   const hasResult = recipes.length > 0;
+  // Coût réel de cuisson (recette du chef) ; repli forfaitaire si non estimable.
+  const realCookCost = recipes[0]?.cost && recipes[0].cost > 0.5
+    ? Math.round(recipes[0].cost)
+    : HOME_PER_SERVING_FALLBACK * servings;
+  const deliveryCost = DELIVERY_PER_SERVING * servings;
+  const saved = Math.max(5, deliveryCost - realCookCost);
 
   return (
     <div style={{ minHeight: '100vh', padding: '32px 16px 64px' }}>
@@ -169,6 +175,11 @@ export default function EssaiPage() {
                     <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}><Clock size={14} /> {recipe.prepTime} min</span>
                     <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}><Users size={14} /> {recipe.servings} pers.</span>
                     <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}><ChefHat size={14} /> {recipe.difficulty}</span>
+                    {typeof recipe.cost === 'number' && recipe.cost > 0.5 && (
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, color: 'var(--success, #16a34a)', fontWeight: 600 }}>
+                        <Wallet size={14} /> ≈ {recipe.cost.toFixed(2).replace('.', ',')}€ d’ingrédients
+                      </span>
+                    )}
                   </div>
 
                   <h3 style={{ fontSize: 14, fontWeight: 600, marginBottom: 8 }}>Ingrédients</h3>
@@ -188,17 +199,30 @@ export default function EssaiPage() {
               );
             })}
 
-            {/* Économies — effet anti-gaspi */}
-            <div style={{ background: 'color-mix(in srgb, var(--success, #22c55e) 12%, transparent)', border: '1px solid color-mix(in srgb, var(--success, #22c55e) 35%, transparent)', borderRadius: 20, padding: 18, marginBottom: 20 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+            {/* Économies — effet anti-gaspi, chiffres crédibles */}
+            <div style={{ background: 'color-mix(in srgb, var(--success, #22c55e) 12%, transparent)', border: '1px solid color-mix(in srgb, var(--success, #22c55e) 35%, transparent)', borderRadius: 20, padding: 20, marginBottom: 20 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
                 <PiggyBank size={22} style={{ color: 'var(--success, #22c55e)' }} />
                 <span style={{ fontFamily: '"Baloo 2", sans-serif', fontSize: 18 }}>
-                  En cuisinant plutôt que commander, tu économises <b style={{ color: 'var(--success, #16a34a)' }}>≈ {saved}€</b>
+                  Tu économises <b style={{ color: 'var(--success, #16a34a)' }}>≈ {saved}€</b> sur ce repas
                 </span>
               </div>
-              <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 5, fontSize: 13.5, color: 'var(--text-secondary)' }}>
-                <li style={{ display: 'flex', alignItems: 'center', gap: 7 }}><ArrowRight size={13} style={{ color: 'var(--success, #22c55e)' }} /> vs une livraison pour {servings} (~{DELIVERY_PER_SERVING}€/pers.)</li>
-                <li style={{ display: 'flex', alignItems: 'center', gap: 7 }}><Leaf size={13} style={{ color: 'var(--success, #22c55e)' }} /> et <b>0 gaspillage</b> : tes ingrédients finissent dans l’assiette, pas à la poubelle</li>
+
+              {/* Comparatif chiffré */}
+              <div style={{ display: 'flex', gap: 10, marginBottom: 14 }}>
+                <div style={{ flex: 1, background: 'var(--bg-inset)', borderRadius: 12, padding: '10px 12px', textAlign: 'center' }}>
+                  <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 2 }}>À cuisiner</div>
+                  <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--success, #16a34a)' }}>≈ {realCookCost}€</div>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', color: 'var(--text-muted)' }}>vs</div>
+                <div style={{ flex: 1, background: 'var(--bg-inset)', borderRadius: 12, padding: '10px 12px', textAlign: 'center' }}>
+                  <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 2 }}>Livré ({servings} pers.)</div>
+                  <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-secondary)', textDecoration: 'line-through' }}>≈ {deliveryCost}€</div>
+                </div>
+              </div>
+
+              <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 6, fontSize: 13.5, color: 'var(--text-secondary)' }}>
+                <li style={{ display: 'flex', alignItems: 'center', gap: 7 }}><Leaf size={14} style={{ color: 'var(--success, #22c55e)', flexShrink: 0 }} /> Et tu cuisines tes ingrédients <b>avant qu’ils périment</b> — un foyer français jette en moyenne ~<b>500€ de nourriture par an</b>. 🗑️</li>
               </ul>
             </div>
 

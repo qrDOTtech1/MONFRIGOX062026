@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { generateTrialRecipe } from '@/lib/ollama';
+import { estimateRecipeCost } from '@/lib/recipe-cost';
 
 // POST /api/ai/trial  { ingredients: string[] }
 // Génère UNE recette IA pour un visiteur NON connecté — le « waouh » avant
@@ -12,7 +13,7 @@ const DAILY_GLOBAL_CAP = 300;
 // ⚙️ INTERRUPTEUR : limiter l'essai à 1 par navigateur.
 //    false = champ libre (phase de test) · true = limite active (production).
 //    Repasser à true quand on veut re-limiter.
-const ONE_TRY_PER_BROWSER = false;
+const ONE_TRY_PER_BROWSER = true;
 
 function todayKey() { return new Date().toISOString().slice(0, 10); }
 
@@ -52,9 +53,15 @@ export async function POST(req: NextRequest) {
       generateTrialRecipe(list, servings, false),
       generateTrialRecipe(list, servings, true),
     ]);
+    // Coût RÉEL de cuisson estimé depuis les ingrédients (crédibilité).
+    const withCost = (r: import('@/lib/ollama').ExpiryRecipe) => ({
+      ...r,
+      cost: estimateRecipeCost(r.ingredients.map(i => ({ ...i, emoji: '' })), r.servings).total,
+    });
+
     const recipes = [
-      chef && { ...chef, kind: 'chef' as const },
-      videFrigo && { ...videFrigo, kind: 'vide-frigo' as const },
+      chef && { ...withCost(chef), kind: 'chef' as const },
+      videFrigo && { ...withCost(videFrigo), kind: 'vide-frigo' as const },
     ].filter(Boolean);
 
     if (recipes.length === 0) {
