@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Mail, Lock, User, Eye, EyeOff, ShieldCheck } from 'lucide-react';
 import { useT } from '@/lib/i18n';
+import { trackSignup } from '@/lib/track';
 
 export default function RegisterPage() {
   const { t } = useT();
@@ -29,6 +30,8 @@ export default function RegisterPage() {
       });
       const data = await res.json();
       if (!res.ok) { setError(data.error); return; }
+      // Signale la conversion aux pixels (Meta/TikTok/GA) → optimisation des pubs.
+      trackSignup();
       // Onboarding lancé automatiquement juste après la création du compte
       router.push('/onboarding');
     } catch {

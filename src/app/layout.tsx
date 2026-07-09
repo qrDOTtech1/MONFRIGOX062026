@@ -3,6 +3,7 @@ import { Space_Grotesk, Baloo_2 } from 'next/font/google';
 import ThemeProvider from '@/components/ThemeProvider';
 import { I18nProvider } from '@/lib/i18n';
 import ServiceWorkerRegistrar from '@/components/ServiceWorkerRegistrar';
+import Analytics from '@/components/Analytics';
 import './globals.css';
 
 const spaceGrotesk = Space_Grotesk({
@@ -111,6 +112,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         ` }} />
       </head>
       <body className={`antialiased ${spaceGrotesk.variable} ${baloo.variable}`}>
+        <Analytics />
         <I18nProvider>
           <ThemeProvider>
             <ServiceWorkerRegistrar />
