@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { Sparkles, Loader2, ChefHat, Clock, Users, ArrowRight, Plus, X, PiggyBank, Leaf } from 'lucide-react';
+import { Sparkles, Loader2, ChefHat, Clock, Users, ArrowRight, Plus, X, PiggyBank, Leaf, RotateCcw } from 'lucide-react';
 
 // Estimation simple des économies : cuisiner ce plat maison plutôt que
 // commander une livraison équivalente. Volontairement prudent pour rester crédible.
@@ -182,6 +182,12 @@ export default function EssaiPage() {
                 Créer mon compte gratuit <ArrowRight size={17} />
               </Link>
             </div>
+
+            <button
+              onClick={() => { setRecipe(null); setError(null); setUsed(false); }}
+              style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7, margin: '18px auto 0', color: 'var(--text-muted)', fontSize: 14, background: 'transparent' }}>
+              <RotateCcw size={15} /> Tester une autre recette
+            </button>
           </div>
         )}
 

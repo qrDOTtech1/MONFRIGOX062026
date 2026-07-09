@@ -9,11 +9,16 @@ import { generateTrialRecipe } from '@/lib/ollama';
 //   - plafond quotidien global (protège le budget tokens).
 const DAILY_GLOBAL_CAP = 300;
 
+// ⚙️ INTERRUPTEUR : limiter l'essai à 1 par navigateur.
+//    false = champ libre (phase de test) · true = limite active (production).
+//    Repasser à true quand on veut re-limiter.
+const ONE_TRY_PER_BROWSER = false;
+
 function todayKey() { return new Date().toISOString().slice(0, 10); }
 
 export async function POST(req: NextRequest) {
-  // 1 essai par navigateur.
-  if (req.cookies.get('mf_trial')?.value) {
+  // 1 essai par navigateur (désactivable via l'interrupteur ci-dessus).
+  if (ONE_TRY_PER_BROWSER && req.cookies.get('mf_trial')?.value) {
     return NextResponse.json(
       { error: 'trial_used', message: 'Tu as déjà utilisé ton essai gratuit. Crée ton compte pour continuer — c’est gratuit !' },
       { status: 429 },
@@ -53,12 +58,14 @@ export async function POST(req: NextRequest) {
     }).catch(() => {});
 
     const res = NextResponse.json({ recipe });
-    // Marque l'essai comme consommé (7 jours).
-    res.cookies.set('mf_trial', '1', {
-      httpOnly: true, sameSite: 'lax', path: '/',
-      secure: process.env.NODE_ENV === 'production',
-      maxAge: 60 * 60 * 24 * 7,
-    });
+    // Marque l'essai comme consommé (7 jours) — seulement si la limite est active.
+    if (ONE_TRY_PER_BROWSER) {
+      res.cookies.set('mf_trial', '1', {
+        httpOnly: true, sameSite: 'lax', path: '/',
+        secure: process.env.NODE_ENV === 'production',
+        maxAge: 60 * 60 * 24 * 7,
+      });
+    }
     return res;
   } catch (e) {
     console.error('[ai/trial] Erreur:', e);
