@@ -3,6 +3,8 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { Sparkles, Loader2, ChefHat, Clock, Users, ArrowRight, Plus, X, PiggyBank, Leaf, RotateCcw, Recycle, Wallet } from 'lucide-react';
+import FoodBackground from '@/components/FoodBackground';
+import Celebration from '@/components/Celebration';
 
 // Prix moyen d'un plat équivalent livré (Uber Eats / Deliveroo, plat + frais),
 // par personne. Comparé au coût RÉEL de cuisson calculé depuis les ingrédients.
@@ -32,6 +34,7 @@ export default function EssaiPage() {
   const [recipes, setRecipes] = useState<TrialRecipe[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [used, setUsed] = useState(false);
+  const [genCount, setGenCount] = useState(0); // relance les confettis à chaque génération
 
   function addItem(v: string) {
     const val = v.trim();
@@ -53,8 +56,11 @@ export default function EssaiPage() {
         if (res.status === 429) setUsed(true);
         return;
       }
-      setRecipes(Array.isArray(data.recipes) ? data.recipes : []);
+      const list = Array.isArray(data.recipes) ? data.recipes : [];
+      setRecipes(list);
       setUsed(true);
+      if (list.length > 0) setGenCount(c => c + 1); // déclenche les confettis
+
     } catch { setError('Erreur réseau, réessaie.'); }
     finally { setLoading(false); }
   }
@@ -68,8 +74,10 @@ export default function EssaiPage() {
   const saved = Math.max(5, deliveryCost - realCookCost);
 
   return (
-    <div style={{ minHeight: '100vh', padding: '32px 16px 64px' }}>
-      <div style={{ maxWidth: 640, margin: '0 auto' }}>
+    <div style={{ minHeight: '100vh', padding: '32px 16px 64px', position: 'relative' }}>
+      <FoodBackground />
+      {hasResult && <Celebration key={genCount} />}
+      <div style={{ maxWidth: 640, margin: '0 auto', position: 'relative' }}>
         {/* En-tête */}
         <div style={{ textAlign: 'center', marginBottom: 28 }}>
           <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--brand, #2563EB)', fontWeight: 600, marginBottom: 12 }}>
