@@ -77,7 +77,7 @@ export default function EssaiPage() {
     <div style={{ minHeight: '100vh', padding: '32px 16px 64px', position: 'relative' }}>
       <FoodBackground />
       {hasResult && <Celebration key={genCount} />}
-      <div style={{ maxWidth: 640, margin: '0 auto', position: 'relative' }}>
+      <div style={{ maxWidth: 640, margin: '0 auto', position: 'relative', zIndex: 1 }}>
         {/* En-tête */}
         <div style={{ textAlign: 'center', marginBottom: 28 }}>
           <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--brand, #2563EB)', fontWeight: 600, marginBottom: 12 }}>
