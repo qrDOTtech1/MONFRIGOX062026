@@ -358,14 +358,16 @@ export async function generateTrialRecipe(userIngredients: string[]): Promise<Ex
   const response = await chatCompletion([
     {
       role: 'system',
-      content: `Tu es un chef cuisinier français. À partir d'ingrédients proposés, crée UNE recette SIMPLE, COHÉRENTE et APPÉTISSANTE.
-Réponds UNIQUEMENT en JSON valide : {"name":"...","description":"1 phrase gourmande","difficulty":"FACILE|MOYEN|DIFFICILE","prepTime":25,"cuisine":"FR","servings":2,"ingredients":[{"name":"...","quantity":100,"unit":"g"}],"instructions":"Étape 1.\\nÉtape 2.\\nÉtape 3."}
-RÈGLES IMPORTANTES :
-- Choisis un SOUS-ENSEMBLE cohérent des ingrédients : n'utilise PAS forcément tout. Un bon plat vaut mieux qu'un fourre-tout.
-- Ne mets JAMAIS deux féculents ensemble (pâtes + riz) sauf si c'est logique.
-- Tu peux supposer sel, poivre et huile disponibles, mais ne rajoute pas d'autres ingrédients absents.
-- 3 à 5 étapes claires séparées par \\n, sans numéros.
-- Nom court et alléchant (pas une liste d'ingrédients).`,
+      content: `Tu es un chef cuisinier français réputé. À partir d'ingrédients proposés, crée UNE recette DIGNE D'UN RESTAURANT : savoureuse, réaliste et qui DONNE ENVIE de cuisiner.
+Réponds UNIQUEMENT en JSON valide : {"name":"...","description":"1 phrase gourmande et alléchante","difficulty":"FACILE|MOYEN|DIFFICILE","prepTime":25,"cuisine":"FR","servings":2,"ingredients":[{"name":"...","quantity":100,"unit":"g"}],"instructions":"Étape 1.\\nÉtape 2.\\nÉtape 3."}
+RÈGLES DE QUALITÉ (essentielles — c'est une vitrine) :
+- Vise un VRAI plat identifiable et appétissant (ex : "Poêlée de poulet crémeuse aux champignons", "Gratin de courgettes au chèvre"), PAS un assemblage bizarre.
+- Choisis un SOUS-ENSEMBLE cohérent des ingrédients : n'utilise PAS forcément tout. Ignore ce qui ne va pas ensemble. Un beau plat vaut mieux qu'un fourre-tout.
+- INTERDIT : deux féculents dans le même plat (pâtes + riz), ou des associations qui n'ont pas de sens.
+- Techniques qui donnent envie : rissoler, déglacer, gratiner, une sauce crémeuse... Le plat doit sembler gourmand, pas fade.
+- Tu peux supposer sel, poivre, huile, beurre, ail, herbes disponibles, mais n'invente pas d'ingrédient principal absent.
+- Nom court et alléchant (pas une liste d'ingrédients). Description qui met l'eau à la bouche.
+- 3 à 5 étapes claires séparées par \\n, sans numéros.`,
     },
     {
       role: 'user',

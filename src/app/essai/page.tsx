@@ -2,7 +2,12 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { Sparkles, Loader2, ChefHat, Clock, Users, ArrowRight, Plus, X } from 'lucide-react';
+import { Sparkles, Loader2, ChefHat, Clock, Users, ArrowRight, Plus, X, PiggyBank, Leaf } from 'lucide-react';
+
+// Estimation simple des économies : cuisiner ce plat maison plutôt que
+// commander une livraison équivalente. Volontairement prudent pour rester crédible.
+const DELIVERY_PER_SERVING = 12; // € : un plat livré type
+const HOME_PER_SERVING = 3;      // € : coût maison estimé
 
 interface TrialRecipe {
   name: string;
@@ -146,11 +151,31 @@ export default function EssaiPage() {
               </ol>
             </div>
 
+            {/* Économies — effet anti-gaspi */}
+            {(() => {
+              const saved = Math.max(6, Math.round((DELIVERY_PER_SERVING - HOME_PER_SERVING) * (recipe.servings || 2)));
+              return (
+                <div style={{ background: 'color-mix(in srgb, var(--success, #22c55e) 12%, transparent)', border: '1px solid color-mix(in srgb, var(--success, #22c55e) 35%, transparent)', borderRadius: 20, padding: 18, marginBottom: 20 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+                    <PiggyBank size={22} style={{ color: 'var(--success, #22c55e)' }} />
+                    <span style={{ fontFamily: '"Baloo 2", sans-serif', fontSize: 18 }}>
+                      En cuisinant ce plat, tu économises <b style={{ color: 'var(--success, #16a34a)' }}>≈ {saved}€</b>
+                    </span>
+                  </div>
+                  <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 5, fontSize: 13.5, color: 'var(--text-secondary)' }}>
+                    <li style={{ display: 'flex', alignItems: 'center', gap: 7 }}><ArrowRight size={13} style={{ color: 'var(--success, #22c55e)' }} /> vs commander une livraison (~{DELIVERY_PER_SERVING}€/pers.)</li>
+                    <li style={{ display: 'flex', alignItems: 'center', gap: 7 }}><Leaf size={13} style={{ color: 'var(--success, #22c55e)' }} /> et <b>0 gaspillage</b> : tes ingrédients finissent dans l’assiette, pas à la poubelle</li>
+                  </ul>
+                </div>
+              );
+            })()}
+
             {/* CTA conversion */}
             <div style={{ background: 'linear-gradient(135deg, var(--brand, #2563EB), #4f46e5)', borderRadius: 20, padding: 24, textAlign: 'center', color: '#fff' }}>
               <p style={{ fontFamily: '"Baloo 2", sans-serif', fontSize: 20, marginBottom: 6 }}>Pas mal, non ? 😍</p>
               <p style={{ fontSize: 14, opacity: 0.9, marginBottom: 16 }}>
-                Crée ton compte gratuit pour générer des recettes à volonté, scanner ton frigo et cuisiner pas-à-pas.<br />
+                Imagine ça <b>chaque semaine</b> : des recettes avec ce que tu as déjà, moins de gaspillage et moins de livraisons.<br />
+                Crée ton compte gratuit — scan du frigo, recettes à volonté, mode cuisine pas-à-pas.<br />
                 <b>Et profite d’1 mois Premium offert.</b>
               </p>
               <Link href="/register" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: '#fff', color: 'var(--brand, #2563EB)', fontWeight: 600, padding: '12px 22px', borderRadius: 12, fontSize: 15 }}>
