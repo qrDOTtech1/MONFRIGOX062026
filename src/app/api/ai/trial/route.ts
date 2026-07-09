@@ -25,13 +25,15 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const { ingredients } = await req.json().catch(() => ({ ingredients: null }));
-  const list: string[] = Array.isArray(ingredients)
-    ? ingredients.map(s => String(s).trim()).filter(Boolean).slice(0, 12)
+  const body = await req.json().catch(() => ({}));
+  const list: string[] = Array.isArray(body.ingredients)
+    ? body.ingredients.map((s: unknown) => String(s).trim()).filter(Boolean).slice(0, 12)
     : [];
   if (list.length === 0) {
     return NextResponse.json({ error: 'Ajoute au moins un ingrédient.' }, { status: 400 });
   }
+  // Nombre de personnes choisi par l'utilisateur (borné pour rester réaliste).
+  const servings = Math.min(12, Math.max(1, parseInt(body.servings, 10) || 2));
 
   // Plafond quotidien global (garde-fou budget), stocké dans AppConfig (zéro migration).
   const capKey = `trial_gen_${todayKey()}`;
@@ -45,19 +47,28 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const recipe = await generateTrialRecipe(list);
-    if (!recipe) {
+    // 2 recettes EN PARALLÈLE : "chef" (cohérente) + "vide-frigo" (utilise tout).
+    const [chef, videFrigo] = await Promise.all([
+      generateTrialRecipe(list, servings, false),
+      generateTrialRecipe(list, servings, true),
+    ]);
+    const recipes = [
+      chef && { ...chef, kind: 'chef' as const },
+      videFrigo && { ...videFrigo, kind: 'vide-frigo' as const },
+    ].filter(Boolean);
+
+    if (recipes.length === 0) {
       return NextResponse.json({ error: 'L’IA n’a pas réussi cette fois, réessaie avec d’autres ingrédients.' }, { status: 502 });
     }
 
     // Incrémente le compteur global (fire-and-forget).
     prisma.appConfig.upsert({
       where: { key: capKey },
-      update: { value: String(usedToday + 1) },
-      create: { key: capKey, value: '1' },
+      update: { value: String(usedToday + recipes.length) },
+      create: { key: capKey, value: String(recipes.length) },
     }).catch(() => {});
 
-    const res = NextResponse.json({ recipe });
+    const res = NextResponse.json({ recipes });
     // Marque l'essai comme consommé (7 jours) — seulement si la limite est active.
     if (ONE_TRY_PER_BROWSER) {
       res.cookies.set('mf_trial', '1', {
