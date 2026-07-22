@@ -61,9 +61,11 @@ const scoredCache = new Map<string, { list: ScoredEntry[]; ts: number }>();
 
 export async function GET(req: NextRequest) {
   const user = await getCurrentUser();
-  if (!user) return NextResponse.json([], { status: 401 });
+  // Mode invité : accès au catalogue (pool FREE, sans frigo ni favoris personnalisés)
+  const isGuest = !user;
 
   const favOnly = req.nextUrl.searchParams.get('favorites') === 'true';
+  if (favOnly && isGuest) return NextResponse.json([]);
   const search = req.nextUrl.searchParams.get('q')?.trim().toLowerCase() || '';
   const page = parseInt(req.nextUrl.searchParams.get('page') || '0');
   const limitParam = parseInt(req.nextUrl.searchParams.get('limit') || '0');
@@ -73,9 +75,9 @@ export async function GET(req: NextRequest) {
   let tasteProfile: { cuisines?: string[]; skillLevel?: string; timePref?: string; goals?: string[] } = {};
   let userRole = 'USER';
   let effectivePlan = 'FREE';
-  try {
+  if (!isGuest) try {
     const prefs = await prisma.user.findUnique({
-      where: { id: user.id },
+      where: { id: user!.id },
       select: { allergens: true, dietMode: true, tasteProfile: true, role: true, plan: true, planExpiresAt: true },
     });
     if (prefs?.allergens) {
@@ -103,16 +105,17 @@ export async function GET(req: NextRequest) {
   const prefCodes    = prefCuisines.flatMap((c: string) => (CUISINE_MAP[c] ?? []).map((x: string) => x.toUpperCase()));
 
   // ── Solution 2 : liste notée + triée, en cache 60 s par utilisateur ──
-  // Clé = user + favoris + pool (FREE/payant), car le jeu de recettes diffère.
-  const cacheKey = `${user.id}:${favOnly ? 'fav' : 'all'}:${isFreeUser ? 'free' : 'paid'}`;
+  // Clé = user (ou 'guest' partagé) + favoris + pool (FREE/payant), car le jeu de recettes diffère.
+  const cacheKey = `${isGuest ? 'guest' : user!.id}:${favOnly ? 'fav' : 'all'}:${isFreeUser ? 'free' : 'paid'}`;
   const cachedEntry = scoredCache.get(cacheKey);
   let scored: ScoredEntry[];
 
   if (cachedEntry && Date.now() - cachedEntry.ts < SCORE_TTL) {
     scored = cachedEntry.list;                     // cache frais → on saute tout le gros calcul
   } else {
-    const userFridge = await prisma.fridgeItem.findMany({
-      where: { userId: user.id },
+    // Mode invité : pas de frigo personnel → aucun matching, catalogue neutre
+    const userFridge = isGuest ? [] : await prisma.fridgeItem.findMany({
+      where: { userId: user!.id },
       select: { ingredientId: true, expiresAt: true },
     });
     const fridgeIds = new Set(userFridge.map(f => f.ingredientId));
@@ -123,22 +126,24 @@ export async function GET(req: NextRequest) {
         .map(f => f.ingredientId),
     );
 
-    const visibility = {
-      OR: [
-        { authorId: null },
-        { isPublic: true },
-        { authorId: user.id },
-      ],
-    };
+    const visibility = isGuest
+      ? { OR: [{ authorId: null }, { isPublic: true }] }
+      : {
+          OR: [
+            { authorId: null },
+            { isPublic: true },
+            { authorId: user!.id },
+          ],
+        };
     const where = favOnly
-      ? { AND: [{ favorites: { some: { userId: user.id } } }, visibility] }
+      ? { AND: [{ favorites: { some: { userId: user!.id } } }, visibility] }
       : visibility;
 
     const recipes = await prisma.recipe.findMany({
       where,
       include: {
         ingredients: { include: { ingredient: true } },
-        favorites: { where: { userId: user.id } },
+        favorites: isGuest ? false : { where: { userId: user!.id } },
         author: { select: { name: true } },
       },
       // FREE : pool borné aux plus anciennes recettes (stable). Payants/admin : catalogue complet.
@@ -210,7 +215,7 @@ export async function GET(req: NextRequest) {
       calories: r.calories ?? null,
       matchPercent: s.matchPercent,
       matchCount: `${s.available}/${s.total} ingrédients`,
-      isFavorite: r.favorites.length > 0,
+      isFavorite: Array.isArray(r.favorites) ? r.favorites.length > 0 : false,
       // Payload allégé pour la LISTE : la carte n'a besoin que du nom (filtres
       // invité) et du 1er emoji (affichage). On retire quantité/unité/id/catégorie
       // → JSON beaucoup plus léger, chargement mobile nettement plus rapide.
@@ -225,7 +230,7 @@ export async function GET(req: NextRequest) {
       babyFriendly: r.babyFriendly,
       isRevisite: r.isRevisite,
       isCommunity: !!r.authorId,
-      isMine: r.authorId === user.id,
+      isMine: !isGuest && r.authorId === user!.id,
       author: r.author?.name || null,
       avgRating: r.avgRating || 0,
       ratingCount: r.ratingCount || 0,

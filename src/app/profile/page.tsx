@@ -8,7 +8,8 @@ import NotificationsToggle from '@/components/NotificationsToggle';
 import { useTheme } from '@/components/ThemeProvider';
 import InfoBubble from '@/components/InfoBubble';
 import { useT, LANGUAGES } from '@/lib/i18n';
-import { UserCircle, LogOut, Shield, Heart, ShoppingCart, Refrigerator, Sun, Moon, Save, Check, AlertTriangle, Baby, Users, History, Sparkles, ChefHat, Zap, Crown, Star, Plus, Loader2, CalendarDays, ChevronRight, PiggyBank, Leaf, Flame, Receipt, Tag, Home, ShieldAlert, Camera } from 'lucide-react';
+import { UserCircle, LogOut, Shield, Heart, ShoppingCart, Refrigerator, Sun, Moon, Save, Check, AlertTriangle, Baby, Users, History, Sparkles, ChefHat, Zap, Crown, Star, Plus, Loader2, CalendarDays, ChevronRight, PiggyBank, Leaf, Flame, Receipt, Tag, Home, ShieldAlert, Camera, UserPlus, LogIn } from 'lucide-react';
+import { trackEvent } from '@/lib/analytics';
 
 // Bouton qui crée une Checkout Session Stripe et redirige
 function CheckoutButton({ priceId, label, sub, color, Icon, compact = false }:
@@ -110,7 +111,139 @@ const KID_MODES = [
   { key: 'bebe', label: 'Bébé', desc: 'Purées, textures adaptées à l\'âge' },
 ];
 
+function GuestProfilePage() {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [name, setName] = useState('');
+  const [mode, setMode] = useState<'login' | 'register'>('login');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    setError('');
+    setLoading(true);
+    const endpoint = mode === 'login' ? '/api/auth/login' : '/api/auth/register';
+    const body = mode === 'login' ? { email, password } : { email, password, name };
+    trackEvent(mode === 'login' ? 'login_click' : 'register_click', { source: 'profile_page' });
+    const res = await fetch(endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    const data = await res.json();
+    if (!res.ok) { setError(data.error || 'Erreur'); setLoading(false); return; }
+    window.location.href = '/dashboard';
+  }
+
+  return (
+    <AppShell>
+      <div className="min-h-[80vh] flex flex-col items-center justify-center px-5 py-10">
+        <div className="w-full max-w-sm">
+          <div className="text-center mb-8">
+            <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4"
+              style={{ backgroundColor: 'rgba(16,185,129,0.1)' }}>
+              <UserCircle className="w-8 h-8" style={{ color: 'var(--accent)' }} />
+            </div>
+            <h1 className="text-2xl font-bold mb-1">
+              {mode === 'login' ? 'Bon retour !' : 'Créer un compte'}
+            </h1>
+            <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
+              {mode === 'login'
+                ? 'Connecte-toi pour retrouver ton frigo, tes recettes et ton planning.'
+                : 'Gratuit et sans carte bancaire. Tes données restent les tiennes.'}
+            </p>
+          </div>
+
+          <form onSubmit={submit} className="space-y-3">
+            {mode === 'register' && (
+              <div>
+                <label className="block text-xs font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>Prénom</label>
+                <input
+                  type="text"
+                  value={name}
+                  onChange={e => setName(e.target.value)}
+                  placeholder="Ton prénom"
+                  required
+                  className="w-full px-3 py-2.5 rounded-xl text-sm outline-none transition-all"
+                  style={{ backgroundColor: 'var(--bg-inset)', border: '1px solid var(--border)', color: 'var(--text)' }}
+                />
+              </div>
+            )}
+            <div>
+              <label className="block text-xs font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>Email</label>
+              <input
+                type="email"
+                value={email}
+                onChange={e => setEmail(e.target.value)}
+                placeholder="ton@email.com"
+                required
+                className="w-full px-3 py-2.5 rounded-xl text-sm outline-none"
+                style={{ backgroundColor: 'var(--bg-inset)', border: '1px solid var(--border)', color: 'var(--text)' }}
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>Mot de passe</label>
+              <input
+                type="password"
+                value={password}
+                onChange={e => setPassword(e.target.value)}
+                placeholder="••••••••"
+                required
+                minLength={6}
+                className="w-full px-3 py-2.5 rounded-xl text-sm outline-none"
+                style={{ backgroundColor: 'var(--bg-inset)', border: '1px solid var(--border)', color: 'var(--text)' }}
+              />
+            </div>
+
+            {error && (
+              <p className="text-sm text-center px-3 py-2 rounded-lg" style={{ backgroundColor: 'rgba(239,68,68,0.1)', color: 'rgb(239,68,68)' }}>
+                {error}
+              </p>
+            )}
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full py-3 rounded-xl font-semibold text-sm flex items-center justify-center gap-2 transition-all hover:scale-[1.02] active:scale-95 disabled:opacity-60"
+              style={{ backgroundColor: 'var(--accent)', color: 'var(--accent-text)' }}
+            >
+              {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : mode === 'login' ? <><LogIn className="w-4 h-4" /> Se connecter</> : <><UserPlus className="w-4 h-4" /> Créer mon compte</>}
+            </button>
+          </form>
+
+          <p className="text-center text-sm mt-5" style={{ color: 'var(--text-muted)' }}>
+            {mode === 'login' ? "Pas encore de compte ?" : "Déjà un compte ?"}
+            {' '}
+            <button
+              onClick={() => { setMode(m => m === 'login' ? 'register' : 'login'); setError(''); }}
+              className="font-semibold underline underline-offset-2"
+              style={{ color: 'var(--accent)' }}
+            >
+              {mode === 'login' ? "S'inscrire gratuitement" : 'Se connecter'}
+            </button>
+          </p>
+        </div>
+      </div>
+    </AppShell>
+  );
+}
+
 export default function ProfilePage() {
+  const [guestState, setGuestState] = useState<'checking' | 'guest' | 'auth'>('checking');
+
+  useEffect(() => {
+    fetch('/api/profile')
+      .then(r => setGuestState(r.ok ? 'auth' : 'guest'))
+      .catch(() => setGuestState('guest'));
+  }, []);
+
+  if (guestState === 'guest') return <GuestProfilePage />;
+  if (guestState === 'checking') return null; // bref flash invisible
+  return <ProfilePageContent />;
+}
+
+function ProfilePageContent() {
   const router = useRouter();
   const { theme, toggle } = useTheme();
   const { t, lang, setLang, isLoading } = useT();

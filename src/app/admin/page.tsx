@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Users, ChefHat, Refrigerator, ShoppingCart, BarChart3 } from 'lucide-react';
+import Link from 'next/link';
+import { Users, ChefHat, Refrigerator, ShoppingCart, BarChart3, TrendingUp } from 'lucide-react';
 
 interface Stats {
   totalUsers: number;
@@ -49,6 +50,15 @@ export default function AdminDashboard() {
           </div>
         ))}
       </div>
+
+      <Link href="/admin/analytics"
+        className="flex items-center gap-3 card p-4 mb-3 hover:opacity-80 transition-opacity">
+        <TrendingUp className="w-5 h-5" style={{ color: 'rgb(16,185,129)' }} />
+        <div>
+          <p className="font-medium text-sm">Analytics visiteurs</p>
+          <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Trafic, invités, conversions, funnel</p>
+        </div>
+      </Link>
 
       <div className="card p-4">
         <h2 className="font-medium text-sm mb-4">Derniers inscrits</h2>

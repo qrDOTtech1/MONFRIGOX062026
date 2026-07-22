@@ -411,3 +411,16 @@ model PromoUse {
   @@unique([promoId, userId])
   @@index([userId])
 }
+
+model AnalyticsEvent {
+  id        String   @id @default(cuid())
+  event     String   // page_view | scan_attempt | recipe_view | fridge_add | auth_prompt | register | login
+  page      String?
+  userId    String?  // null = guest
+  sessionId String?  // random anonymous ID from localStorage
+  meta      Json?
+  createdAt DateTime @default(now())
+
+  @@index([event, createdAt])
+  @@index([createdAt])
+}
