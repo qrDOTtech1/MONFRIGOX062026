@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import AppShell from '@/components/AppShell';
 import Mascot, { MascotVariant } from '@/components/Mascot';
 import { useMealTypes } from '@/lib/useMealTypes';
@@ -183,6 +184,7 @@ export default function HomePage() {
   const [data, setData] = useState<DashData | null>(null);
   const [loading, setLoading] = useState(true);
   const [allRecipes, setAllRecipes] = useState<any[]>([]);
+  const [guestMode, setGuestMode] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -194,8 +196,9 @@ export default function HomePage() {
         catch { if (attempt === 1) throw new Error('network'); await new Promise(r => setTimeout(r, 800)); }
       }
 
-      // Session expirée / non connecté → page de connexion (au lieu d'un écran d'erreur mort)
-      if (dashRes && dashRes.status === 401) { router.replace('/login'); return; }
+      // Invité (essai sans compte) : pas de redirection forcée — écran d'accueil dédié,
+      // navigation (retour, autres onglets) reste possible.
+      if (dashRes && dashRes.status === 401) { setGuestMode(true); return; }
       if (dashRes && dashRes.ok) setData(await dashRes.json());
 
       // Recettes : version allégée + cache partagé (navigation instantanée) — non bloquant
@@ -222,6 +225,18 @@ export default function HomePage() {
       </AppShell>
     );
   }
+
+  if (guestMode) return (
+    <AppShell>
+      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-5 text-center px-8">
+        <Mascot variant="happy" size="lg" animate="float" message="Crée ton compte gratuit pour débloquer ton accueil personnalisé" />
+        <div className="flex flex-wrap items-center justify-center gap-3">
+          <Link href="/register" className="btn-primary">Créer mon compte</Link>
+          <Link href="/essai" className="btn-secondary">Essayer l&apos;IA sans compte</Link>
+        </div>
+      </div>
+    </AppShell>
+  );
 
   if (!data) return (
     <AppShell>

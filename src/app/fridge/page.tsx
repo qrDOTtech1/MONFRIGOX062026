@@ -66,6 +66,7 @@ export default function FridgePage() {
   const [editExpiryId, setEditExpiryId] = useState<string | null>(null);
   const [editExpiryValue, setEditExpiryValue] = useState('');
   const [savingExpiry, setSavingExpiry] = useState(false);
+  const [guestMode, setGuestMode] = useState(false);
 
   const { t } = useT();
 
@@ -87,8 +88,9 @@ export default function FridgePage() {
         fetch('/api/auth/me'),
         fetch('/api/rappel-conso'),
       ]);
-      // Session expirée / non connecté → connexion (évite un frigo "vide" trompeur)
-      if (fridgeRes.status === 401) { router.replace('/login'); return; }
+      // Invité (essai sans compte) : pas de redirection forcée — le frigo reste
+      // navigable, une bannière invite simplement à créer un compte.
+      if (fridgeRes.status === 401) setGuestMode(true);
       if (fridgeRes.ok) setFridgeItems(await fridgeRes.json());
       // Recettes via cache partagé (le cache est invalidé quand le frigo change)
       cachedFetch<any[]>('/api/recipes?limit=300').then(setAllRecipes).catch(() => {});
@@ -118,6 +120,7 @@ export default function FridgePage() {
   }
 
   async function addToFridge(ingredientId: string) {
+    if (guestMode) { router.push('/register'); return; }
     await fetch('/api/fridge', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ ingredientId }),
@@ -129,6 +132,7 @@ export default function FridgePage() {
   }
 
   async function createAndAdd() {
+    if (guestMode) { router.push('/register'); return; }
     const name = searchIngredient.trim();
     if (!name) return;
     setCreatingIngredient(true);
@@ -190,6 +194,18 @@ export default function FridgePage() {
 
   return (
     <AppShell>
+      {guestMode && (
+        <Link href="/register"
+          className="flex items-center gap-2 rounded-xl px-3 py-2 mb-4 transition-colors hover:opacity-80"
+          style={{ backgroundColor: 'var(--brand-soft, rgba(37,99,235,0.08))', border: '1px solid rgba(37,99,235,0.25)' }}>
+          <Sparkles className="w-4 h-4 shrink-0" style={{ color: 'var(--accent)' }} />
+          <div className="flex-1 min-w-0">
+            <p className="text-xs font-semibold" style={{ color: 'var(--accent)' }}>Crée ton compte gratuit</p>
+            <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>Pour ajouter tes aliments et garder ton frigo à jour</p>
+          </div>
+          <span className="text-[10px] font-medium" style={{ color: 'var(--accent)' }}>C&apos;est parti →</span>
+        </Link>
+      )}
       {household ? (
         <Link href="/household"
           className="flex items-center gap-2 rounded-xl px-3 py-2 mb-4 transition-colors hover:opacity-80"
