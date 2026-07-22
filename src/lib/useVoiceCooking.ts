@@ -210,6 +210,18 @@ export function useVoiceCooking({ onNext, onPrev, onRepeat, onConfirm, onAskAI, 
       } else {
         noiseFloorRef.current = noiseFloorRef.current * 0.98 + rms * 0.02;
       }
+
+      // ── VAD : démarre un clip à la prise de parole, l'arrête après un court silence ──
+      const isSpeech = rms > getEffectiveSilenceThreshold();
+      if (isSpeech && !speakingRef.current && !justResumedRef.current) {
+        if (utteranceStopTimeoutRef.current) { clearTimeout(utteranceStopTimeoutRef.current); utteranceStopTimeoutRef.current = null; }
+        startUtteranceRecorder();
+      } else if (!isSpeech && utteranceRecorderRef.current && !utteranceStopTimeoutRef.current) {
+        utteranceStopTimeoutRef.current = setTimeout(() => {
+          utteranceStopTimeoutRef.current = null;
+          stopUtteranceRecorder();
+        }, UTTERANCE_SILENCE_HANGOVER_MS);
+      }
     }, 100);
   }
 
@@ -222,10 +234,52 @@ export function useVoiceCooking({ onNext, onPrev, onRepeat, onConfirm, onAskAI, 
     return Math.max(SILENCE_RMS_THRESHOLD, noiseFloorRef.current * 2.2);
   }
 
-  // Un seul MediaRecorder pour toute la session d'écoute (démarré une fois dans startContinuousRecording).
-  // On ne le stoppe/redémarre plus jamais pendant la session : sur mobile, chaque stop/start de
-  // MediaRecorder déclenche un petit son système — en boucle toutes les 3s + à chaque tour de TTS,
-  // ça donnait un "concert" de bips. On mute/démute juste la piste audio à la place (silencieux).
+  // ── Enregistrement par prise de parole (VAD) ──
+  // ⚠️ Un seul MediaRecorder continu + découpe par timeslice (ancienne approche) est CASSÉ :
+  // dans un fichier WebM, seul le tout premier morceau contient l'en-tête du conteneur — les
+  // morceaux suivants sont des données brutes sans en-tête, qu'ElevenLabs rejette avec
+  // "File is corrupted". On enregistre donc un clip COMPLET et valide à chaque prise de parole
+  // (démarré quand le volume dépasse le seuil, arrêté après un court silence), au lieu de couper
+  // à intervalle fixe. Les redémarrages ne surviennent que quand l'utilisateur parle vraiment
+  // (pas toutes les 3s en continu) → pas de retour du "concert de bips" mobile.
+  const utteranceRecorderRef = useRef<MediaRecorder | null>(null);
+  const utteranceChunksRef = useRef<Blob[]>([]);
+  const utteranceStopTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const utteranceMaxTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const UTTERANCE_SILENCE_HANGOVER_MS = 700; // silence à confirmer avant de clore le clip
+  const UTTERANCE_MAX_DURATION_MS = 8000;    // garde-fou anti-bruit continu
+
+  function stopUtteranceRecorder() {
+    if (utteranceStopTimeoutRef.current) { clearTimeout(utteranceStopTimeoutRef.current); utteranceStopTimeoutRef.current = null; }
+    if (utteranceMaxTimeoutRef.current) { clearTimeout(utteranceMaxTimeoutRef.current); utteranceMaxTimeoutRef.current = null; }
+    const rec = utteranceRecorderRef.current;
+    utteranceRecorderRef.current = null;
+    if (rec && rec.state !== 'inactive') rec.stop();
+  }
+
+  function startUtteranceRecorder() {
+    if (!mediaStreamRef.current || utteranceRecorderRef.current) return;
+    const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
+      ? 'audio/webm;codecs=opus'
+      : MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : 'audio/mp4';
+    const rec = new MediaRecorder(mediaStreamRef.current, { mimeType });
+    utteranceChunksRef.current = [];
+    rec.ondataavailable = (e) => { if (e.data.size > 0) utteranceChunksRef.current.push(e.data); };
+    rec.onstop = () => {
+      const chunks = utteranceChunksRef.current;
+      utteranceChunksRef.current = [];
+      const blob = new Blob(chunks, { type: mimeType });
+      if (blob.size > 1000 && !speakingRef.current) {
+        sendAudioChunkRef.current(blob);
+      } else {
+        console.log('[VoiceCooking] Skipped silent chunk');
+      }
+    };
+    utteranceRecorderRef.current = rec;
+    rec.start();
+    utteranceMaxTimeoutRef.current = setTimeout(() => stopUtteranceRecorder(), UTTERANCE_MAX_DURATION_MS);
+  }
+
   function pauseMic() {
     if (resumeTimeoutRef.current) { clearTimeout(resumeTimeoutRef.current); resumeTimeoutRef.current = null; }
     // Physically mute the input so no audio can be captured while the app talks
@@ -240,34 +294,17 @@ export function useVoiceCooking({ onNext, onPrev, onRepeat, onConfirm, onAskAI, 
     setTimeout(() => { justResumedRef.current = false; }, 350);
   }
 
+  // Démarre le suivi du volume (RMS) qui pilote le VAD ci-dessus — la capture
+  // audio elle-même est déclenchée à la demande par startUtteranceRecorder(),
+  // uniquement quand une prise de parole est détectée.
   function startContinuousRecording() {
-    if (!mediaStreamRef.current || mediaRecorderRef.current) return;
-
+    if (!mediaStreamRef.current) return;
     // Si le TTS parle déjà (ex: message d'accueil en cours) au moment où le flux micro arrive,
-    // on démarre muet pour ne pas capter sa propre voix dès la première tranche.
+    // on démarre muet pour ne pas capter sa propre voix.
     if (speakingRef.current) {
       mediaStreamRef.current.getAudioTracks().forEach(t => { t.enabled = false; });
     }
-
-    const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
-      ? 'audio/webm;codecs=opus'
-      : MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : 'audio/mp4';
-    const recorder = new MediaRecorder(mediaStreamRef.current, { mimeType });
-
-    recorder.ondataavailable = (e) => {
-      const hadSpeech = maxVolumeRef.current > getEffectiveSilenceThreshold();
-      maxVolumeRef.current = 0; // reset pour la tranche suivante
-      if (e.data.size === 0 || speakingRef.current || justResumedRef.current) return;
-      if (hadSpeech) {
-        sendAudioChunkRef.current(e.data);
-      } else {
-        console.log('[VoiceCooking] Skipped silent chunk');
-      }
-    };
-
-    mediaRecorderRef.current = recorder;
     startVolumeSampling();
-    recorder.start(3000); // timeslice : ondataavailable toutes les 3s SANS jamais stopper l'enregistrement
   }
 
   function markSpeaking(val: boolean) {
@@ -588,21 +625,43 @@ export function useVoiceCooking({ onNext, onPrev, onRepeat, onConfirm, onAskAI, 
   }, [onNext, onPrev, onRepeat, onConfirm, onAskAI, onRepeatStep, onSelectOption, onHelp, onTimerStart, onTimerStop, onTimerReset, onFinish, onPlayMusic, onPlayMatchingMusic, onPauseMusic, onResumeMusic, onNextMusic, onPrevMusic, onSurpriseMusic, onWhichMusic, onVolumeUpMusic, onVolumeDownMusic, onMaxVolumeMusic, onStopMusic, onPlayQuiz, currentStepText, currentStep, totalSteps, ingredientsText, waitingForConfirm, allStepsTexts, speak]);
 
   // ── ElevenLabs STT chunk (ref-based to avoid stale closures) ──
+  // Circuit breaker : au-delà de quelques échecs consécutifs, l'endpoint est
+  // manifestement cassé (clé invalide, quota épuisé…) — on arrête d'appeler en
+  // boucle (ça gaspille des requêtes payantes) et on prévient l'utilisateur
+  // au lieu de le laisser parler dans le vide sans retour.
+  const sttFailCountRef = useRef(0);
+  const sttDisabledRef = useRef(false);
+  const STT_MAX_CONSECUTIVE_FAILURES = 3;
+
   const sendAudioChunkRef = useRef(async (blob: Blob) => {});
   sendAudioChunkRef.current = async (blob: Blob) => {
-    if (blob.size < 1000 || speakingRef.current) return;
+    if (blob.size < 1000 || speakingRef.current || sttDisabledRef.current) return;
     try {
       const form = new FormData();
       form.append('audio', blob, 'audio.webm');
       const res = await fetch('/api/stt', { method: 'POST', body: form });
       if (res.ok) {
+        sttFailCountRef.current = 0;
         const { text } = await res.json();
         if (text) {
           console.log('[VoiceCooking] STT:', text.slice(0, 60));
           processCommand(text);
         }
+      } else {
+        sttFailCountRef.current++;
+        console.warn('[VoiceCooking] STT error', res.status, `(${sttFailCountRef.current}/${STT_MAX_CONSECUTIVE_FAILURES})`);
+        if (sttFailCountRef.current >= STT_MAX_CONSECUTIVE_FAILURES && !sttDisabledRef.current) {
+          sttDisabledRef.current = true;
+          speak('La reconnaissance vocale est indisponible pour le moment. Utilise les boutons pour naviguer.');
+        }
       }
-    } catch {}
+    } catch {
+      sttFailCountRef.current++;
+      if (sttFailCountRef.current >= STT_MAX_CONSECUTIVE_FAILURES && !sttDisabledRef.current) {
+        sttDisabledRef.current = true;
+        speak('La reconnaissance vocale est indisponible pour le moment. Utilise les boutons pour naviguer.');
+      }
+    }
   };
 
   // ── Native Web Speech API STT ──
@@ -636,6 +695,8 @@ export function useVoiceCooking({ onNext, onPrev, onRepeat, onConfirm, onAskAI, 
 
   // ── ElevenLabs STT (MediaRecorder) ──
   const startElevenLabsSTT = useCallback(async () => {
+    sttFailCountRef.current = 0;
+    sttDisabledRef.current = false;
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
@@ -666,9 +727,13 @@ export function useVoiceCooking({ onNext, onPrev, onRepeat, onConfirm, onAskAI, 
     if (recordingTimeoutRef.current) { clearTimeout(recordingTimeoutRef.current); recordingTimeoutRef.current = null; }
     if (resumeTimeoutRef.current) { clearTimeout(resumeTimeoutRef.current); resumeTimeoutRef.current = null; }
     stopVolumeSampling();
-    if (mediaRecorderRef.current?.state === 'recording') {
-      mediaRecorderRef.current.onstop = null;
-      mediaRecorderRef.current.stop();
+    // Clip VAD en cours : on coupe sans l'envoyer (arrêt volontaire, pas une prise de parole finie).
+    if (utteranceRecorderRef.current) {
+      utteranceRecorderRef.current.onstop = null;
+      if (utteranceStopTimeoutRef.current) { clearTimeout(utteranceStopTimeoutRef.current); utteranceStopTimeoutRef.current = null; }
+      if (utteranceMaxTimeoutRef.current) { clearTimeout(utteranceMaxTimeoutRef.current); utteranceMaxTimeoutRef.current = null; }
+      if (utteranceRecorderRef.current.state !== 'inactive') utteranceRecorderRef.current.stop();
+      utteranceRecorderRef.current = null;
     }
     mediaRecorderRef.current = null;
     mediaStreamRef.current?.getTracks().forEach(t => t.stop());
@@ -694,9 +759,12 @@ export function useVoiceCooking({ onNext, onPrev, onRepeat, onConfirm, onAskAI, 
     return () => {
       mountedRef.current = false;
       if (recordingTimeoutRef.current) clearTimeout(recordingTimeoutRef.current);
-      if (mediaRecorderRef.current?.state === 'recording') {
-        mediaRecorderRef.current.onstop = null;
-        mediaRecorderRef.current.stop();
+      if (utteranceRecorderRef.current) {
+        utteranceRecorderRef.current.onstop = null;
+        if (utteranceStopTimeoutRef.current) clearTimeout(utteranceStopTimeoutRef.current);
+        if (utteranceMaxTimeoutRef.current) clearTimeout(utteranceMaxTimeoutRef.current);
+        if (utteranceRecorderRef.current.state !== 'inactive') utteranceRecorderRef.current.stop();
+        utteranceRecorderRef.current = null;
       }
       mediaStreamRef.current?.getTracks().forEach(t => t.stop());
       if (audioContextRef.current) audioContextRef.current.close().catch(() => {});
