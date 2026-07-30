@@ -99,4 +99,4 @@ export const PROMO_PRESETS = {
 // ============================================================
 //  ⬇️  LA PROMO ACTIVE  —  change juste le nom du preset ici
 // ============================================================
-export const PROMO: PromoConfig = PROMO_PRESETS.worldcup;
+export const PROMO: PromoConfig = PROMO_PRESETS.aucune;
