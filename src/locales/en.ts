@@ -18,8 +18,8 @@ const en: Record<string, string> = {
   // ── Landing ──
   'landing.badge': 'Free to start · No credit card required',
   'landing.hero.title1': 'Cook',
-  'landing.hero.title2': 'better',
-  'landing.hero.title3': ', with what you already have.',
+  'landing.hero.title2': 'better,',
+  'landing.hero.title3': 'with what you already have.',
   'landing.hero.sub': 'Manage your fridge, plan your meals, cook step-by-step and reduce waste — free, forever.',
   'landing.hero.sub2': 'The AI cooking assistant that deserves a permanent spot on your phone.',
   'landing.cta': 'Get started for free',

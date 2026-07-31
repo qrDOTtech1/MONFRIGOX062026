@@ -18,8 +18,8 @@ const fr: Record<string, string> = {
   // ── Landing ──
   'landing.badge': 'Gratuit pour commencer · Aucune carte requise',
   'landing.hero.title1': 'Cuisine',
-  'landing.hero.title2': 'mieux',
-  'landing.hero.title3': ', avec ce que tu as déjà.',
+  'landing.hero.title2': 'mieux,',
+  'landing.hero.title3': 'avec ce que tu as déjà.',
   'landing.hero.sub': 'Gère ton frigo, planifie tes repas, cuisine pas-à-pas et réduis le gaspillage — gratuitement, pour toujours.',
   'landing.hero.sub2': "L'assistant culinaire IA qui mérite une place permanente sur ton téléphone.",
   'landing.cta': 'Commencer gratuitement',

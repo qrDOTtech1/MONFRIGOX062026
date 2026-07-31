@@ -25,7 +25,7 @@
   --border-subtle: #eef1f5;
   --text: #161920;            /* quasi noir neutre (contraste AA) */
   --text-secondary: #4c5563;
-  --text-muted: #8a919e;
+  --text-muted: #6b7280;      /* assez foncé pour rester lisible (AA) sur fond blanc/cartes */
 
   /* ── MARQUE : bleu encre ── */
   --accent: #2563eb;
