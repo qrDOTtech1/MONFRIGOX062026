@@ -431,17 +431,17 @@ export default async function SeoLandingPage({ params }: { params: Promise<{ slu
     <>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
 
-      <div style={{ minHeight: '100vh', backgroundColor: 'var(--bg, #fafafa)', color: 'var(--text, #111)' }}>
+      <div style={{ minHeight: '100vh', backgroundColor: 'var(--bg)', color: 'var(--text)' }}>
         {/* Header */}
-        <header style={{ borderBottom: '1px solid #e5e7eb', padding: '1rem 1.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <header style={{ borderBottom: '1px solid var(--border)', padding: '1rem 1.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <Link href="/" style={{ fontWeight: 700, fontSize: '1.1rem', textDecoration: 'none', color: 'inherit' }}>
             <span style={{ fontSize: '1.5rem', marginRight: 6 }}>🧊</span> Mon Frigo
           </Link>
           <div style={{ display: 'flex', gap: 8 }}>
-            <Link href="/login" style={{ padding: '6px 16px', borderRadius: 8, fontSize: 14, textDecoration: 'none', color: 'inherit', border: '1px solid #e5e7eb' }}>
+            <Link href="/login" className="btn-secondary" style={{ padding: '6px 16px', borderRadius: 8, fontSize: 14, textDecoration: 'none' }}>
               Connexion
             </Link>
-            <Link href="/register" style={{ padding: '6px 16px', borderRadius: 8, fontSize: 14, textDecoration: 'none', color: 'white', backgroundColor: '#111', fontWeight: 600 }}>
+            <Link href="/register" className="btn-primary" style={{ padding: '6px 16px', borderRadius: 8, fontSize: 14, textDecoration: 'none', fontWeight: 600 }}>
               S&apos;inscrire gratuitement
             </Link>
           </div>
@@ -449,8 +449,8 @@ export default async function SeoLandingPage({ params }: { params: Promise<{ slu
 
         <main style={{ maxWidth: 720, margin: '0 auto', padding: '2rem 1.25rem 4rem' }}>
           {/* Breadcrumb */}
-          <nav style={{ fontSize: 12, marginBottom: 24, color: '#6b7280' }}>
-            <Link href="/" style={{ color: '#6b7280', textDecoration: 'none' }}>Accueil</Link>
+          <nav style={{ fontSize: 12, marginBottom: 24, color: 'var(--text-muted)' }}>
+            <Link href="/" style={{ color: 'var(--text-muted)', textDecoration: 'none' }}>Accueil</Link>
             {' > '}
             <span>{page.h1.slice(0, 50)}{page.h1.length > 50 ? '...' : ''}</span>
           </nav>
@@ -459,18 +459,18 @@ export default async function SeoLandingPage({ params }: { params: Promise<{ slu
           <div style={{ textAlign: 'center', marginBottom: 40 }}>
             <span style={{ fontSize: '3.5rem', display: 'block', marginBottom: 16 }}>{page.emoji}</span>
             <h1 style={{ fontSize: '2rem', fontWeight: 800, lineHeight: 1.2, marginBottom: 16 }}>{page.h1}</h1>
-            <p style={{ fontSize: 16, lineHeight: 1.6, color: '#4b5563', maxWidth: 560, margin: '0 auto 24px' }}>
+            <p style={{ fontSize: 16, lineHeight: 1.6, color: 'var(--text-secondary)', maxWidth: 560, margin: '0 auto 24px' }}>
               {page.description}
             </p>
-            <Link href="/register"
-              style={{ display: 'inline-block', padding: '12px 32px', borderRadius: 12, fontSize: 15, fontWeight: 700, textDecoration: 'none', color: 'white', backgroundColor: '#111' }}>
+            <Link href="/register" className="btn-primary"
+              style={{ display: 'inline-block', padding: '12px 32px', borderRadius: 12, fontSize: 15, fontWeight: 700, textDecoration: 'none' }}>
               Essayer gratuitement
             </Link>
-            <p style={{ fontSize: 11, color: '#9ca3af', marginTop: 8 }}>Gratuit · Sans carte · Inscription en 30s</p>
+            <p style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 8 }}>Gratuit · Sans carte · Inscription en 30s</p>
           </div>
 
           {/* Long description */}
-          <article style={{ fontSize: 15, lineHeight: 1.8, color: '#374151', marginBottom: 40 }}>
+          <article style={{ fontSize: 15, lineHeight: 1.8, color: 'var(--text-secondary)', marginBottom: 40 }}>
             <p>{page.longDesc}</p>
           </article>
 
@@ -479,8 +479,8 @@ export default async function SeoLandingPage({ params }: { params: Promise<{ slu
             <h2 style={{ fontSize: '1.25rem', fontWeight: 700, marginBottom: 16 }}>Ce que Mon Frigo fait pour toi</h2>
             <ul style={{ listStyle: 'none', padding: 0, display: 'flex', flexDirection: 'column', gap: 10 }}>
               {page.features.map((f, i) => (
-                <li key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '10px 14px', borderRadius: 10, backgroundColor: '#f9fafb', border: '1px solid #f3f4f6' }}>
-                  <span style={{ color: '#10b981', fontWeight: 700, fontSize: 16, flexShrink: 0 }}>✓</span>
+                <li key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '10px 14px', borderRadius: 10, backgroundColor: 'var(--bg-raised)', border: '1px solid var(--border-subtle)' }}>
+                  <span style={{ color: 'var(--success)', fontWeight: 700, fontSize: 16, flexShrink: 0 }}>✓</span>
                   <span style={{ fontSize: 14 }}>{f}</span>
                 </li>
               ))}
@@ -492,19 +492,19 @@ export default async function SeoLandingPage({ params }: { params: Promise<{ slu
             <h2 style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: 12, textAlign: 'center' }}>Tarifs transparents</h2>
             <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
               {[
-                { name: 'Gratuit', price: '0€', desc: 'Pour découvrir', color: '#6b7280' },
+                { name: 'Gratuit', price: '0€', desc: 'Pour découvrir', color: 'var(--text-muted)' },
                 { name: 'Premium', price: '3,99€/mois', desc: 'Tout débloquer', color: '#f59e0b' },
                 { name: 'VIP', price: '6,99€/mois', desc: 'IA illimitée', color: '#a855f7' },
               ].map(p => (
-                <div key={p.name} style={{ textAlign: 'center', padding: '12px 20px', borderRadius: 12, backgroundColor: 'white', border: `1.5px solid ${p.color}30`, minWidth: 120 }}>
+                <div key={p.name} style={{ textAlign: 'center', padding: '12px 20px', borderRadius: 12, backgroundColor: 'var(--bg-raised)', border: `1.5px solid ${p.color}30`, minWidth: 120 }}>
                   <p style={{ fontWeight: 700, fontSize: 14, color: p.color }}>{p.name}</p>
-                  <p style={{ fontWeight: 800, fontSize: 18 }}>{p.price}</p>
-                  <p style={{ fontSize: 11, color: '#9ca3af' }}>{p.desc}</p>
+                  <p style={{ fontWeight: 800, fontSize: 18, color: 'var(--text)' }}>{p.price}</p>
+                  <p style={{ fontSize: 11, color: 'var(--text-muted)' }}>{p.desc}</p>
                 </div>
               ))}
             </div>
             <p style={{ textAlign: 'center', marginTop: 16 }}>
-              <Link href="/register" style={{ fontWeight: 700, fontSize: 14, color: '#111', textDecoration: 'underline' }}>
+              <Link href="/register" style={{ fontWeight: 700, fontSize: 14, color: 'var(--text)', textDecoration: 'underline' }}>
                 Commencer gratuitement →
               </Link>
             </p>
@@ -514,33 +514,33 @@ export default async function SeoLandingPage({ params }: { params: Promise<{ slu
           <section style={{ marginBottom: 40 }}>
             <h2 style={{ fontSize: '1.25rem', fontWeight: 700, marginBottom: 16 }}>Questions fréquentes</h2>
             {page.faq.map((f, i) => (
-              <details key={i} style={{ marginBottom: 8, padding: '12px 16px', borderRadius: 10, backgroundColor: '#f9fafb', border: '1px solid #f3f4f6' }}>
+              <details key={i} style={{ marginBottom: 8, padding: '12px 16px', borderRadius: 10, backgroundColor: 'var(--bg-raised)', border: '1px solid var(--border-subtle)' }}>
                 <summary style={{ fontWeight: 600, fontSize: 14, cursor: 'pointer' }}>{f.q}</summary>
-                <p style={{ fontSize: 13, lineHeight: 1.7, color: '#4b5563', marginTop: 8 }}>{f.a}</p>
+                <p style={{ fontSize: 13, lineHeight: 1.7, color: 'var(--text-secondary)', marginTop: 8 }}>{f.a}</p>
               </details>
             ))}
           </section>
 
           {/* Final CTA */}
-          <section style={{ textAlign: 'center', padding: '2.5rem 1.5rem', borderRadius: 16, backgroundColor: '#111', color: 'white' }}>
+          <section style={{ textAlign: 'center', padding: '2.5rem 1.5rem', borderRadius: 16, backgroundColor: 'var(--accent)', color: 'var(--accent-text)' }}>
             <p style={{ fontSize: '2rem', marginBottom: 8 }}>🍽️</p>
             <h2 style={{ fontSize: '1.25rem', fontWeight: 700, marginBottom: 8 }}>Prêt à cuisiner mieux ?</h2>
-            <p style={{ fontSize: 13, color: '#9ca3af', marginBottom: 20 }}>
+            <p style={{ fontSize: 13, opacity: 0.85, marginBottom: 20 }}>
               Inscription gratuite en 30 secondes. Aucune carte requise.
             </p>
             <Link href="/register"
-              style={{ display: 'inline-block', padding: '12px 32px', borderRadius: 12, fontSize: 15, fontWeight: 700, textDecoration: 'none', color: '#111', backgroundColor: 'white' }}>
+              style={{ display: 'inline-block', padding: '12px 32px', borderRadius: 12, fontSize: 15, fontWeight: 700, textDecoration: 'none', color: 'var(--accent)', backgroundColor: 'var(--bg-raised)' }}>
               Créer mon compte — c&apos;est gratuit
             </Link>
           </section>
         </main>
 
         {/* Footer */}
-        <footer style={{ textAlign: 'center', fontSize: 11, color: '#9ca3af', padding: '2rem 1rem' }}>
-          <p>Mon Frigo © 2026 — <a href="https://matable.pro" target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'underline', color: '#9ca3af' }}>matable.pro</a></p>
+        <footer style={{ textAlign: 'center', fontSize: 11, color: 'var(--text-muted)', padding: '2rem 1rem' }}>
+          <p>Mon Frigo © 2026 — <a href="https://matable.pro" target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'underline', color: 'var(--text-muted)' }}>matable.pro</a></p>
           <nav style={{ marginTop: 8, display: 'flex', justifyContent: 'center', gap: 16, flexWrap: 'wrap' }}>
             {Object.entries(SEO_PAGES).slice(0, 8).map(([s, p]) => (
-              <Link key={s} href={`/s/${s}`} style={{ color: '#9ca3af', textDecoration: 'none', fontSize: 10 }}>
+              <Link key={s} href={`/s/${s}`} style={{ color: 'var(--text-muted)', textDecoration: 'none', fontSize: 10 }}>
                 {p.emoji} {p.h1.slice(0, 35)}
               </Link>
             ))}
