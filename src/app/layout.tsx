@@ -56,19 +56,20 @@ export const metadata: Metadata = {
     apple: '/favicon.png',
   },
   openGraph: {
+    // Pas d'"images" ici : générées par src/app/opengraph-image.tsx (convention
+    // de fichier Next.js), injectées automatiquement — évite une URL statique
+    // à maintenir manuellement.
     type: 'website',
     locale: 'fr_FR',
     url: SITE_URL,
     siteName: SITE_NAME,
     title: 'Mon Frigo — Recettes avec ce que tu as dans le frigo',
     description: SITE_DESC,
-    images: [{ url: `${SITE_URL}/og-image.png`, width: 1200, height: 630, alt: 'Mon Frigo — Cuisine intelligente, zéro gaspi' }],
   },
   twitter: {
     card: 'summary_large_image',
     title: 'Mon Frigo — Recettes anti-gaspi avec ce que tu as',
     description: 'Scanne ton frigo, trouve des recettes, fais tes courses moins cher. Gratuit.',
-    images: [`${SITE_URL}/og-image.png`],
   },
   robots: {
     index: true,
