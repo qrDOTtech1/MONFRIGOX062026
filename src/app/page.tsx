@@ -7,6 +7,6 @@ import LandingPage from '@/components/LandingPage';
 // Un utilisateur DÉJÀ connecté file direct dans l'app, sans revoir la landing.
 export default async function RootPage() {
   const user = await getCurrentUser();
-  if (user) redirect('/dashboard');
+  if (user) redirect('/home');
   return <LandingPage />;
 }
