@@ -33,10 +33,8 @@ function LoginForm() {
 
       if (redirectTo) {
         router.push(redirectTo);
-      } else if (data.user.role === 'ADMIN') {
-        router.push('/admin');
       } else {
-        router.push('/dashboard');
+        router.push('/home');
       }
     } catch {
       setError(t('login.error'));
