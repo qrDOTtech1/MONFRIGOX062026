@@ -383,6 +383,10 @@ export async function generateStaticParams() {
   return Object.keys(SEO_PAGES).map(slug => ({ slug }));
 }
 
+// Un slug hors de la liste ci-dessus doit renvoyer un vrai 404 HTTP (pas un
+// "soft 404" — 200 avec un contenu d'erreur — que Google pénalise en SEO).
+export const dynamicParams = false;
+
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;
   const page = SEO_PAGES[slug];
