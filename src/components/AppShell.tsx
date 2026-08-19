@@ -99,8 +99,6 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
           }}>
           <LogoAnim size={32} withName nameSize="text-sm" />
         </div>
-        {/* Bannière invité sous le header */}
-        <GuestBanner />
       </header>
 
       {/* Contenu décalé sous le top bar + bannière éventuelle */}
@@ -108,6 +106,9 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
         className="page-container fade-in app-enter relative z-[1]"
         style={{ paddingTop: 'calc(3rem + env(safe-area-inset-top))' }}
       >
+        {/* Dans le flux, pas dans l'en-tête fixe : sinon elle recouvre le haut
+            du contenu (bulle de la mascotte, titres de section). */}
+        <GuestBanner />
         {children}
       </div>
       {pathname !== '/home' && <RecipeChat allRecipes={recipes} />}

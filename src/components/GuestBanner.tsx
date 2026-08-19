@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { X, UserPlus, LogIn } from 'lucide-react';
 import { useGuest } from '@/lib/GuestContext';
@@ -29,6 +30,7 @@ export default function GuestBanner() {
   const [dismissed, setDismissed] = useState(false);
   const [msgIdx, setMsgIdx] = useState(0);
   const [inFridge, setInFridge] = useState(0);
+  const pathname = usePathname();
 
   // Dès que l'invité a des aliments, le message générique laisse place à une
   // promesse concrète : c'est SON frigo qu'il risque de perdre.
@@ -53,7 +55,9 @@ export default function GuestBanner() {
     }
   }, [isGuest, loading, dismissed]);
 
-  if (loading || !isGuest || dismissed) return null;
+  // /home porte déjà son propre appel à l'action : deux messages d'inscription
+  // côte à côte donnent l'impression d'un mur, pas d'une invitation.
+  if (loading || !isGuest || dismissed || pathname === '/home') return null;
 
   return (
     <div
@@ -62,8 +66,6 @@ export default function GuestBanner() {
         backgroundColor: 'color-mix(in srgb, var(--accent) 12%, var(--bg))',
         borderBottom: '1px solid color-mix(in srgb, var(--accent) 25%, transparent)',
         color: 'var(--text)',
-        zIndex: 50,
-        position: 'relative',
       }}
     >
       <span className="flex-1 text-[13px] leading-tight" style={{ color: 'var(--text-secondary)' }}>

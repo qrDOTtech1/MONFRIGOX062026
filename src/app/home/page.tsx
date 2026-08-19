@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import AppShell from '@/components/AppShell';
+import GuestHome from '@/components/GuestHome';
 import Mascot, { MascotVariant } from '@/components/Mascot';
 import { useMealTypes } from '@/lib/useMealTypes';
 import { useRecentPages } from '@/lib/useRecentPages';
@@ -226,15 +227,11 @@ export default function HomePage() {
     );
   }
 
+  // Accueil des visiteurs sans compte : contenu réel et indexable plutôt qu'un
+  // mur d'inscription (voir src/components/GuestHome.tsx).
   if (guestMode) return (
     <AppShell>
-      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-5 text-center px-8">
-        <Mascot variant="happy" size="lg" animate="float" message="Crée ton compte gratuit pour débloquer ton accueil personnalisé" />
-        <div className="flex flex-wrap items-center justify-center gap-3">
-          <Link href="/register" className="btn-primary">Créer mon compte</Link>
-          <Link href="/essai" className="btn-secondary">Essayer l&apos;IA sans compte</Link>
-        </div>
-      </div>
+      <GuestHome />
     </AppShell>
   );
 
