@@ -3,14 +3,19 @@ import { jwtVerify } from 'jose';
 
 const secret = new TextEncoder().encode(process.env.JWT_SECRET || 'dev-secret-change-me');
 
-// Pages de l'app accessibles en mode invité (sans redirection vers /login)
+// Pages de l'app accessibles en mode invité (sans redirection vers /login).
+//
+// ⚠️ Ne pas réduire cette liste. Un visiteur doit pouvoir parcourir l'app,
+// remplir un frigo et voir des recettes AVANT qu'on lui demande un compte —
+// c'est le parcours de conversion actuel (voir le commentaire détaillé en tête
+// de src/app/page.tsx). Renvoyer un anonyme vers /login le fait partir.
 const guestAppPaths = [
   '/dashboard', '/recipes', '/fridge', '/scan', '/photo-scan',
   '/shopping', '/home', '/rappels', '/collections', '/community',
   '/favorites', '/coach', '/profile', '/s/',
 ];
 
-const publicPaths = ['/', '/login', '/register', '/api/auth/login', '/api/auth/register', '/api/analytics', '/privacy'];
+const publicPaths = ['/', '/landing', '/login', '/register', '/api/auth/login', '/api/auth/register', '/api/analytics', '/privacy'];
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;

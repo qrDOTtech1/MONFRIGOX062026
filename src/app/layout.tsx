@@ -98,6 +98,21 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="" suppressHydrationWarning>
       <head>
+        {/*
+          Vérification Google Search Console.
+
+          Posée ici en dur plutôt que via `metadata.verification` : ce dernier
+          n'était émis que sur la racine, pas sur /dashboard. Or la racine
+          redirige désormais vers l'app — Googlebot suit la redirection et doit
+          retrouver sa preuve à l'arrivée, sinon la propriété du domaine saute.
+          Le jeton est public (il est lu dans le HTML), le garder en repli évite
+          une dévérification si la variable d'environnement disparaît.
+        */}
+        <meta
+          name="google-site-verification"
+          content={process.env.GOOGLE_SITE_VERIFICATION
+            || 'qc3-6Ir1rHfMdTkHJ6831yhXpQWbyFxhse3ZwbBM2ZI'}
+        />
         {/* Inline theme script — applique le thème AVANT le premier paint, évite le flash blanc sur Edge */}
         <script dangerouslySetInnerHTML={{ __html: `
           (function(){

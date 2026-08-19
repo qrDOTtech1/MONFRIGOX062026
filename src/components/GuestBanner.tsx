@@ -15,6 +15,15 @@ const MESSAGES = [
   'Ton planning repas t\'attend — inscris-toi, c\'est gratuit !',
 ];
 
+/**
+ * Bandeau d'invitation à créer un compte, affiché aux visiteurs anonymes.
+ *
+ * ⚠️ C'est le seul endroit où l'on demande l'inscription pendant la visite —
+ * volontairement discret et refermable. Ne pas le transformer en mur bloquant
+ * ni en modale : la version « on demande le compte d'abord » a été testée et
+ * n'a produit qu'une seule inscription, sans aucune réutilisation ensuite.
+ * Contexte complet en tête de src/app/page.tsx.
+ */
 export default function GuestBanner() {
   const { isGuest, loading } = useGuest();
   const [dismissed, setDismissed] = useState(false);
