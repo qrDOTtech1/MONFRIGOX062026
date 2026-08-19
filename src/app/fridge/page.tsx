@@ -12,6 +12,7 @@ import {
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useT } from '@/lib/i18n';
+import { getGuestFridge, addGuestItem, removeGuestItem, guestFridgeIds } from '@/lib/guestFridge';
 import { cachedFetch, invalidate } from '@/lib/dataCache';
 import { getShelfInfo } from '@/lib/shelf-life';
 import ScanDLC from '@/components/ScanDLC';
@@ -90,10 +91,29 @@ export default function FridgePage() {
       ]);
       // Invité (essai sans compte) : pas de redirection forcée — le frigo reste
       // navigable, une bannière invite simplement à créer un compte.
-      if (fridgeRes.status === 401) setGuestMode(true);
+      const guest = fridgeRes.status === 401;
+      setGuestMode(guest);
       if (fridgeRes.ok) setFridgeItems(await fridgeRes.json());
-      // Recettes via cache partagé (le cache est invalidé quand le frigo change)
-      cachedFetch<any[]>('/api/recipes?limit=300').then(setAllRecipes).catch(() => {});
+
+      if (guest) {
+        // Frigo gardé dans le navigateur : l'invité voit ses aliments et les
+        // recettes correspondantes sans avoir eu à créer de compte.
+        const local = getGuestFridge();
+        setFridgeItems(local.map(i => ({
+          id: i.ingredientId,
+          quantity: 1,
+          unit: '',
+          expiresAt: null,
+          addedById: null,
+          ingredient: { id: i.ingredientId, name: i.name, emoji: i.emoji, category: '' },
+        })) as any);
+        const ids = local.map(i => i.ingredientId).join(',');
+        cachedFetch<any[]>(`/api/recipes?limit=300&fridge=${ids}`)
+          .then(setAllRecipes).catch(() => {});
+      } else {
+        // Recettes via cache partagé (le cache est invalidé quand le frigo change)
+        cachedFetch<any[]>('/api/recipes?limit=300').then(setAllRecipes).catch(() => {});
+      }
       if (householdRes.ok) setHousehold(await householdRes.json());
       if (meRes.ok) { const me = await meRes.json(); setCurrentUserId(me.id); }
       if (rappelRes.ok) { const rappels = await rappelRes.json(); setRappelCount(Array.isArray(rappels) ? rappels.length : 0); }
@@ -119,8 +139,21 @@ export default function FridgePage() {
     }
   }
 
-  async function addToFridge(ingredientId: string) {
-    if (guestMode) { router.push('/register'); return; }
+  async function addToFridge(ingredientId: string, meta?: { name: string; emoji: string }) {
+    if (guestMode) {
+      // On n'éjecte plus vers l'inscription : l'invité remplit son frigo,
+      // découvre ses recettes, et c'est CE moment qui donne envie du compte.
+      const info = meta || suggestions.find(s => s.id === ingredientId);
+      addGuestItem({
+        ingredientId,
+        name: info?.name || 'Ingrédient',
+        emoji: info?.emoji || '🥘',
+      });
+      setSearchIngredient(''); setSuggestions([]); setShowAdd(false);
+      invalidate('/api/recipes');
+      loadData();
+      return;
+    }
     await fetch('/api/fridge', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ ingredientId }),
@@ -132,6 +165,7 @@ export default function FridgePage() {
   }
 
   async function createAndAdd() {
+    // Créer un ingrédient inédit écrit en base : réservé aux membres.
     if (guestMode) { router.push('/register'); return; }
     const name = searchIngredient.trim();
     if (!name) return;
@@ -151,6 +185,12 @@ export default function FridgePage() {
   }
 
   async function removeFromFridge(id: string) {
+    if (guestMode) {
+      removeGuestItem(id);
+      invalidate('/api/recipes');
+      loadData();
+      return;
+    }
     await fetch(`/api/fridge/${id}`, { method: 'DELETE' });
     invalidate('/api/recipes');   // le frigo a changé → recettes à recalculer
     loadData();

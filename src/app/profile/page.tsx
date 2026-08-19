@@ -10,6 +10,7 @@ import InfoBubble from '@/components/InfoBubble';
 import { useT, LANGUAGES } from '@/lib/i18n';
 import { UserCircle, LogOut, Shield, Heart, ShoppingCart, Refrigerator, Sun, Moon, Save, Check, AlertTriangle, Baby, Users, History, Sparkles, ChefHat, Zap, Crown, Star, Plus, Loader2, CalendarDays, ChevronRight, PiggyBank, Leaf, Flame, Receipt, Tag, Home, ShieldAlert, Camera, UserPlus, LogIn } from 'lucide-react';
 import { trackEvent } from '@/lib/analytics';
+import { migrateGuestFridge } from '@/lib/guestFridge';
 
 // Bouton qui crée une Checkout Session Stripe et redirige
 function CheckoutButton({ priceId, label, sub, color, Icon, compact = false }:
@@ -133,6 +134,7 @@ function GuestProfilePage() {
     });
     const data = await res.json();
     if (!res.ok) { setError(data.error || 'Erreur'); setLoading(false); return; }
+    await migrateGuestFridge();     // le frigo de l'invité suit son compte
     window.location.href = '/dashboard';
   }
 

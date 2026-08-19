@@ -1,5 +1,7 @@
 'use client';
 
+import { migrateGuestFridge } from '@/lib/guestFridge';
+
 import { useState, Suspense } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -30,6 +32,9 @@ function LoginForm() {
       });
       const data = await res.json();
       if (!res.ok) { setError(data.error); return; }
+
+      // Le frigo rempli avant la connexion rejoint le compte : rien n'est perdu.
+      await migrateGuestFridge();
 
       if (redirectTo) {
         router.push(redirectTo);

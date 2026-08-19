@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { X, UserPlus, LogIn } from 'lucide-react';
 import { useGuest } from '@/lib/GuestContext';
 import { trackEvent } from '@/lib/analytics';
+import { guestFridgeCount } from '@/lib/guestFridge';
 
 // Messages rotatifs pour éviter la fatigue du même texte
 const MESSAGES = [
@@ -18,6 +19,16 @@ export default function GuestBanner() {
   const { isGuest, loading } = useGuest();
   const [dismissed, setDismissed] = useState(false);
   const [msgIdx, setMsgIdx] = useState(0);
+  const [inFridge, setInFridge] = useState(0);
+
+  // Dès que l'invité a des aliments, le message générique laisse place à une
+  // promesse concrète : c'est SON frigo qu'il risque de perdre.
+  useEffect(() => {
+    const sync = () => setInFridge(guestFridgeCount());
+    sync();
+    window.addEventListener('guest-fridge-change', sync);
+    return () => window.removeEventListener('guest-fridge-change', sync);
+  }, []);
 
   // Rotation toutes les 6 secondes
   useEffect(() => {
@@ -47,7 +58,9 @@ export default function GuestBanner() {
       }}
     >
       <span className="flex-1 text-[13px] leading-tight" style={{ color: 'var(--text-secondary)' }}>
-        {MESSAGES[msgIdx]}
+        {inFridge > 0
+          ? `Tu as ${inFridge} ingrédient${inFridge > 1 ? 's' : ''} dans ton frigo — crée ton compte pour les garder.`
+          : MESSAGES[msgIdx]}
       </span>
 
       <Link

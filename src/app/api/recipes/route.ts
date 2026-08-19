@@ -66,6 +66,13 @@ export async function GET(req: NextRequest) {
 
   const favOnly = req.nextUrl.searchParams.get('favorites') === 'true';
   if (favOnly && isGuest) return NextResponse.json([]);
+
+  // Un invité n'a pas de frigo en base : il envoie le sien, gardé dans son
+  // navigateur, pour obtenir les mêmes correspondances qu'un membre.
+  const guestFridgeIds = isGuest
+    ? (req.nextUrl.searchParams.get('fridge') || '')
+        .split(',').map(s => s.trim()).filter(Boolean).slice(0, 60)
+    : [];
   const search = req.nextUrl.searchParams.get('q')?.trim().toLowerCase() || '';
   const page = parseInt(req.nextUrl.searchParams.get('page') || '0');
   const limitParam = parseInt(req.nextUrl.searchParams.get('limit') || '0');
@@ -106,7 +113,7 @@ export async function GET(req: NextRequest) {
 
   // ── Solution 2 : liste notée + triée, en cache 60 s par utilisateur ──
   // Clé = user (ou 'guest' partagé) + favoris + pool (FREE/payant), car le jeu de recettes diffère.
-  const cacheKey = `${isGuest ? 'guest' : user!.id}:${favOnly ? 'fav' : 'all'}:${isFreeUser ? 'free' : 'paid'}`;
+  const cacheKey = `${isGuest ? `guest:${guestFridgeIds.join('.')}` : user!.id}:${favOnly ? 'fav' : 'all'}:${isFreeUser ? 'free' : 'paid'}`;
   const cachedEntry = scoredCache.get(cacheKey);
   let scored: ScoredEntry[];
 
@@ -118,7 +125,9 @@ export async function GET(req: NextRequest) {
       where: { userId: user!.id },
       select: { ingredientId: true, expiresAt: true },
     });
-    const fridgeIds = new Set(userFridge.map(f => f.ingredientId));
+    const fridgeIds = new Set(
+      isGuest ? guestFridgeIds : userFridge.map(f => f.ingredientId),
+    );
     const now = Date.now();
     const expiringIds = new Set(
       userFridge

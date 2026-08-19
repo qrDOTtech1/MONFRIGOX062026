@@ -1,5 +1,7 @@
 'use client';
 
+import { migrateGuestFridge } from '@/lib/guestFridge';
+
 import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -32,6 +34,9 @@ export default function RegisterPage() {
       if (!res.ok) { setError(data.error); return; }
       // Signale la conversion aux pixels (Meta/TikTok/GA) → optimisation des pubs.
       trackSignup();
+      // Le frigo constitué en visiteur est versé dans le nouveau compte : c'est
+      // la promesse faite sur la bannière, elle doit être tenue.
+      await migrateGuestFridge();
       // Onboarding lancé automatiquement juste après la création du compte
       router.push('/onboarding');
     } catch {
