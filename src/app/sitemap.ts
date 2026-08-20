@@ -3,10 +3,13 @@ import { listIngredientPages } from '@/lib/ingredientPages';
 
 const BASE = process.env.NEXT_PUBLIC_APP_URL || 'https://monfrigo.app';
 
-// Le sitemap est régénéré chaque jour plutôt que figé au build : les pages
-// « Que faire avec … » viennent de la base, qui grossit en continu. Généré une
-// seule fois au build, il restait vide si la base répondait mal à cet instant.
-export const revalidate = 86400;
+// Rendu à la REQUÊTE, pas au build.
+//
+// Les pages « Que faire avec … » sont lues en base. Or le conteneur de build
+// Railway n'atteint pas la base : la requête échouait, le catch avalait
+// l'erreur, et le sitemap partait en production sans aucune de ces pages —
+// alors qu'elles répondaient bien en 200. Ne pas repasser en statique.
+export const dynamic = 'force-dynamic';
 
 const SEO_SLUGS = [
   'recette-avec-ce-que-j-ai',
