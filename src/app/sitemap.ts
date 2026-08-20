@@ -1,4 +1,5 @@
 import { MetadataRoute } from 'next';
+import { listIngredientPages } from '@/lib/ingredientPages';
 
 const BASE = process.env.NEXT_PUBLIC_APP_URL || 'https://monfrigo.app';
 
@@ -23,7 +24,7 @@ const SEO_SLUGS = [
   'application-cuisine-gratuite',
 ];
 
-export default function sitemap(): MetadataRoute.Sitemap {
+export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const now = new Date().toISOString();
 
   const staticPages = [
@@ -32,6 +33,19 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { url: `${BASE}/login`, lastModified: now, changeFrequency: 'monthly' as const, priority: 0.5 },
   ];
 
+  // Pages de longue traîne générées depuis le catalogue. Si la base est
+  // injoignable au build, on publie le sitemap sans elles plutôt que d'échouer.
+  let ingredientPages: MetadataRoute.Sitemap = [];
+  try {
+    const pages = await listIngredientPages();
+    ingredientPages = pages.map(p => ({
+      url: `${BASE}/que-faire-avec/${p.slug}`,
+      lastModified: now,
+      changeFrequency: 'weekly' as const,
+      priority: 0.7,
+    }));
+  } catch { /* base indisponible */ }
+
   const seoPages = SEO_SLUGS.map(slug => ({
     url: `${BASE}/s/${slug}`,
     lastModified: now,
@@ -39,5 +53,5 @@ export default function sitemap(): MetadataRoute.Sitemap {
     priority: 0.9,
   }));
 
-  return [...staticPages, ...seoPages];
+  return [...staticPages, ...seoPages, ...ingredientPages];
 }

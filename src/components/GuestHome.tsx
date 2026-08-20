@@ -38,7 +38,12 @@ const USAGES = [
   { icon: Sparkles, texte: "Demande une substitution quand il te manque un ingrédient" },
 ];
 
-export default function GuestHome() {
+/**
+ * `liens` reçoit le maillage vers les pages « Que faire avec … ». Il est rendu
+ * côté serveur par src/app/page.tsx et passé ici : ce composant est client, il
+ * ne peut pas appeler la base lui-même.
+ */
+export default function GuestHome({ liens }: { liens?: React.ReactNode }) {
   return (
     <div className="max-w-2xl mx-auto px-5 pb-16">
       <section className="text-center pt-6 pb-8">
@@ -97,6 +102,9 @@ export default function GuestHome() {
           ))}
         </div>
       </section>
+
+      {/* Maillage vers la longue traîne : c'est par là que Google les découvre */}
+      {liens}
 
       <section className="mb-10">
         <h2 className="text-lg font-semibold mb-3">Questions fréquentes</h2>

@@ -15,7 +15,7 @@ const guestAppPaths = [
   '/favorites', '/coach', '/profile', '/s/',
 ];
 
-const publicPaths = ['/', '/landing', '/login', '/register', '/api/auth/login', '/api/auth/register', '/api/analytics', '/privacy'];
+const publicPaths = ['/', '/landing', '/login', '/register', '/api/auth/login', '/api/auth/register', '/api/analytics', '/privacy', '/que-faire-avec'];
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;

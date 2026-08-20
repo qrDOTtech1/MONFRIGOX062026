@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation';
 import { getCurrentUser } from '@/lib/auth';
 import AppShell from '@/components/AppShell';
 import GuestHome from '@/components/GuestHome';
+import IngredientLinks from '@/components/IngredientLinks';
 
 /**
  * ═══════════════════════════════════════════════════════════════════════════
@@ -116,7 +117,7 @@ export default async function RootPage() {
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLdFaq }} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLdHowTo }} />
       <AppShell>
-        <GuestHome />
+        <GuestHome liens={<IngredientLinks limit={24} />} />
       </AppShell>
     </>
   );
