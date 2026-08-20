@@ -1,59 +1,123 @@
 import { redirect } from 'next/navigation';
 import { getCurrentUser } from '@/lib/auth';
+import AppShell from '@/components/AppShell';
+import GuestHome from '@/components/GuestHome';
 
 /**
  * ═══════════════════════════════════════════════════════════════════════════
- *  RACINE DU SITE — on entre DIRECTEMENT dans l'application (mode invité).
+ *  RACINE DU SITE — l'accueil invité est SERVI ICI, sans redirection.
  *
  *  ⛔ NE PAS REMETTRE LA LANDING COMMERCIALE ICI.
+ *  ⛔ NE PAS REMETTRE DE redirect() VERS /dashboard NON PLUS.
  *
- *  Si tu lis ceci parce qu'on te demande de « restaurer la landing à la
- *  racine pour le SEO » : ça a déjà été fait une fois (commit 665e053, le
- *  30/07/2026), et c'est précisément ce qu'on annule. Lis ce qui suit avant
- *  de recommencer.
+ *  Si on te demande de « restaurer la landing à la racine pour le SEO » :
+ *  ça a déjà été fait une fois (commit 665e053, 30/07/2026) et c'est ce qu'on
+ *  annule. Lis ce qui suit avant de recommencer.
  * ═══════════════════════════════════════════════════════════════════════════
  *
  *  CE QUE LA LANDING A DONNÉ, EN VRAI
- *  Sur toute sa durée d'exposition : 1 seule inscription, qui n'a jamais
- *  ouvert l'app ensuite. Zéro rétention. Ce n'est pas une hypothèse, c'est le
- *  chiffre observé. On teste maintenant l'autre approche.
+ *  1 seule inscription sur toute sa durée d'exposition, qui n'a jamais ouvert
+ *  l'app ensuite. Zéro rétention. Chiffre observé, pas hypothèse.
  *
  *  POURQUOI ELLE NE CONVERTIT PAS
  *  Elle ouvre sur la grille tarifaire (3,99 € / 6,99 €) avant que le visiteur
- *  ait vu la moindre valeur. On demande de payer à quelqu'un qui ne sait pas
- *  encore ce que fait le produit. Le mode invité fait l'inverse : on remplit
- *  un frigo, on voit de vraies recettes correspondantes, ET ENSUITE on propose
- *  de créer un compte pour ne pas perdre tout ça (cf. src/lib/guestFridge.ts,
- *  le frigo local est versé dans le compte à l'inscription).
+ *  ait vu la moindre valeur. Le mode invité fait l'inverse : on remplit un
+ *  frigo, on voit de vraies recettes, ENSUITE on propose un compte pour ne pas
+ *  perdre tout ça (cf. src/lib/guestFridge.ts).
  *
- *  L'ARGUMENT SEO NE TIENT PAS — VÉRIFIE AVANT DE LE REPRENDRE
- *  Le commit 665e053 affirmait que rediriger « cassait le SEO ». En réalité :
- *    • Les métadonnées (title, description, keywords, OpenGraph, Twitter) et
- *      la vérification Google vivent dans src/app/layout.tsx, donc sur TOUTES
- *      les pages, y compris celle d'arrivée. Rien n'est perdu.
- *    • Les 18 pages de longue traîne /s/[slug] portent le contenu de fond
- *      indexable et ne sont pas touchées. C'est là qu'est le vrai SEO, pas sur
- *      une page d'accueil qui répète la plaquette produit.
- *    • Une landing tarifaire génère surtout des visites sans intention. Du
- *      trafic non converti n'a pas de valeur SEO durable : Google mesure aussi
- *      ce que les gens font après le clic.
+ *  POURQUOI ON REND LE CONTENU AU LIEU DE REDIRIGER
+ *  Un redirect() produit une page « Chargement… » de 17 ko sans texte. C'est
+ *  exactement ce que Googlebot indexait : rien. En rendant GuestHome ici, la
+ *  page canonique porte enfin du contenu réel (titre h1, « comment ça marche »,
+ *  FAQ) en même temps qu'elle sert d'entrée dans l'app. C'est la réponse
+ *  concrète à l'objection SEO faite au mode invité — le contenu indexable vit
+ *  DANS l'app, pas sur une plaquette séparée.
  *
  *  ET LE SUIVI D'AUDIENCE
- *  trackEvent() est branché dans AppShell → /api/analytics → /admin/analytics.
- *  Il ne tourne QUE dans la session invité, pas sur la landing. Remettre la
- *  landing à la racine nous rend aveugles sur l'acquisition : on ne saurait
- *  même plus dire si ça marche ou non.
+ *  trackEvent() (AppShell → /api/analytics → /admin/analytics) ne tourne que
+ *  dans la session invité. Remettre la landing ici nous rend aveugles sur
+ *  l'acquisition : on ne saurait même plus dire si ça marche.
  *
- *  SI TU VEUX QUAND MÊME REVENIR EN ARRIÈRE
- *  Ouvre /admin/analytics et compare le taux de conversion avant/après cette
- *  bascule. S'il est plus mauvais, l'argument est fait et on te suivra. Sinon,
- *  laisse en place. La landing reste disponible sur /landing pour les
- *  campagnes payantes, où le visiteur arrive en connaissant déjà le produit.
- *
- *  Discute-en avec Steven avant de modifier ce fichier.
+ *  AVANT DE REVENIR EN ARRIÈRE
+ *  Ouvre /admin/analytics, compare le taux de conversion avant/après. S'il est
+ *  plus mauvais, l'argument est fait et on te suivra. La landing reste sur
+ *  /landing pour les campagnes payantes. Discute-en avec Steven.
  * ═══════════════════════════════════════════════════════════════════════════
  */
+/**
+ * Métadonnées et données structurées de la page canonique.
+ *
+ * Elles vivaient sur la landing ; comme c'est maintenant cette page qui porte
+ * le contenu, elles la suivent. Le JSON-LD FAQPage reprend mot pour mot les
+ * questions affichées dans GuestHome — Google exige que le balisage
+ * corresponde au contenu visible, sinon il l'ignore ou le sanctionne.
+ */
+export const metadata = {
+  title: "Que cuisiner avec ce qu'il y a dans le frigo — Mon Frigo",
+  description:
+    "Indique ce que tu as, vois les recettes réellement faisables. Alertes avant "
+    + "péremption, planning repas, liste de courses. Sans compte pour essayer.",
+  alternates: { canonical: 'https://monfrigo.app' },
+};
+
+const jsonLdFaq = JSON.stringify({
+  '@context': 'https://schema.org',
+  '@type': 'FAQPage',
+  mainEntity: [
+    {
+      '@type': 'Question',
+      name: 'Faut-il créer un compte pour essayer ?',
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: "Non. Tu peux remplir ton frigo et voir les recettes correspondantes sans rien créer. Le compte sert à retrouver ton frigo sur tes autres appareils et à garder tes favoris.",
+      },
+    },
+    {
+      '@type': 'Question',
+      name: "Est-ce que c'est gratuit ?",
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: "Le frigo, les recettes, le planning et les alertes de péremption sont gratuits et le restent. Les formules payantes ajoutent le scan photo du frigo et l'assistant IA sans limite.",
+      },
+    },
+    {
+      '@type': 'Question',
+      name: "Comment l'app réduit le gaspillage ?",
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: "Elle suit les dates limites de ce que tu as ajouté, te prévient avant qu'un aliment ne se perde, et propose en priorité les recettes qui l'utilisent.",
+      },
+    },
+  ],
+});
+
+const jsonLdHowTo = JSON.stringify({
+  '@context': 'https://schema.org',
+  '@type': 'HowTo',
+  name: "Trouver une recette avec ce qu'on a dans le frigo",
+  description:
+    "Partir de son frigo plutôt que d'une liste de courses pour décider quoi cuisiner.",
+  step: [
+    { '@type': 'HowToStep', position: 1, name: 'Dis ce que tu as',
+      text: "Ajoute les aliments qui traînent dans ton frigo. Trois suffisent pour commencer." },
+    { '@type': 'HowToStep', position: 2, name: 'Vois ce que tu peux cuisiner',
+      text: "Les recettes se classent par ce que tu possèdes déjà, sans courses." },
+    { '@type': 'HowToStep', position: 3, name: 'Cuisine avant de jeter',
+      text: "Les aliments proches de la date limite remontent en premier." },
+  ],
+});
+
 export default async function RootPage() {
   const user = await getCurrentUser();
-  redirect(user ? '/home' : '/dashboard');
+  if (user) redirect('/home');
+
+  return (
+    <>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLdFaq }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLdHowTo }} />
+      <AppShell>
+        <GuestHome />
+      </AppShell>
+    </>
+  );
 }
