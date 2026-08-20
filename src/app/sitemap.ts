@@ -3,6 +3,11 @@ import { listIngredientPages } from '@/lib/ingredientPages';
 
 const BASE = process.env.NEXT_PUBLIC_APP_URL || 'https://monfrigo.app';
 
+// Le sitemap est régénéré chaque jour plutôt que figé au build : les pages
+// « Que faire avec … » viennent de la base, qui grossit en continu. Généré une
+// seule fois au build, il restait vide si la base répondait mal à cet instant.
+export const revalidate = 86400;
+
 const SEO_SLUGS = [
   'recette-avec-ce-que-j-ai',
   'courses-moins-cheres',
